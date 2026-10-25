@@ -1,0 +1,16 @@
+name: Feature request
+description: Something in Firestone the bot should handle.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: What should the bot do?
+      description: The game screen or feature, and what you'd like automated.
+    validations:
+      required: true
+  - type: textarea
+    id: map
+    attributes:
+      label: Screen map (optional, speeds things up a lot)
+      description: Open that screen in game, press F9, and drag in the newest file from UserData\screenmaps.

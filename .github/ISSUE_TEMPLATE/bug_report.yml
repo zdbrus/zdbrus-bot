@@ -1,0 +1,29 @@
+name: Bug report
+description: Something is clicked wrong, a task fails, or the bot stops.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Bot version
+      description: Shown in MelonLoader\Latest.log ("Zdbrus Bot vX.Y.Z").
+      placeholder: 0.6.0
+    validations:
+      required: true
+  - type: input
+    id: game
+    attributes:
+      label: Game version and store
+      placeholder: 9.1.3a, Steam
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Which feature, what you expected, what it did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Log and screen map
+      description: Drag in MelonLoader\Latest.log and, if a screen is involved, the matching file from UserData\screenmaps (press F9 on that screen).

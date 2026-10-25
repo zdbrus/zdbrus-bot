@@ -1,0 +1,32 @@
+## --- Build and Binary Directories ---
+bin/
+obj/
+
+## --- Dependencies and User-Specific Settings ---
+packages/
+*.user
+*.userosscache
+*.sln.DotSettings.user
+
+## --- IDE Specific Files (Rider, VS Code, Visual Studio) ---
+.idea/
+.vscode/
+*.iml
+*.suo
+_ReSharper.Caches/
+
+## --- Operating System Files ---
+.DS_Store
+Thumbs.db
+global.json
+
+# Ignore analysis and reports directory
+Reports/
+
+## --- Source Files (No Modifications) ---
+src/Utilities/Polyfills.cs
+
+.analyzer/
+
+## --- Local build helper (machine specific) ---
+src/Directory.Build.targets
