@@ -1,0 +1,280 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using Firebot.Core;
+using Firebot.GameModel.Base;
+using Firebot.GameModel.Features.MainScene;
+using Firebot.GameModel.Primitives;
+using Firebot.Infrastructure;
+using Firebot.Utilities;
+using MelonLoader;
+using UnityEngine;
+using Logger = Firebot.Core.Logger;
+
+namespace Firebot.BotActions;
+
+public static class AutoUpgrade
+{
+    private const float HoldPerButtonSeconds = 0.5f;
+    private const float GapBetweenButtonsSeconds = 0.5f;
+    private const float IdlePollSeconds = 0.5f;
+
+    private static readonly WaitForSeconds GapBetweenButtonsWait = new(GapBetweenButtonsSeconds);
+    private static readonly WaitForSeconds IdlePollWait = new(IdlePollSeconds);
+    private static readonly List<CachedGameButton> ButtonsBuffer = new();
+    private static bool _isRunning;
+    private static object _autoUpgradeRoutineHandle;
+    private static bool _isInitialized;
+    private static MelonPreferences_Entry<KeyCode> _shortcutKey;
+    private static MelonPreferences_Entry<bool> _isEnabled;
+    private static MelonPreferences_Entry<string> _upgradeTargetSlots;
+
+    private static bool IsEnabled => _isEnabled?.Value ?? false;
+
+    /// <summary>
+    ///     Armed and actually running. The pause during a task's execution (UpgradeLoop) is ignored on
+    ///     purpose: it is frequent and would make the indicator flicker.
+    /// </summary>
+    public static bool IsActive => IsEnabled && _isRunning;
+
+    private static bool IsShortcutDisabled => _shortcutKey?.Value == KeyCode.None;
+
+    private static KeyCode ShortcutKey =>
+        Enum.IsDefined(typeof(KeyCode), _shortcutKey?.Value ?? KeyCode.F6)
+            ? _shortcutKey?.Value ?? KeyCode.F6
+            : KeyCode.F6;
+
+    public static void Initialize()
+    {
+        if (_isInitialized) return;
+
+        var clazzName = StringUtils.Humanize(nameof(AutoUpgrade));
+        var sectionId = clazzName.Replace(" ", "_").ToLowerInvariant();
+
+        // The display name is the panel's, and it is the plain class name the settings themselves use.
+        // The identifier keeps coming from clazzName ('auto_upgrade') because that is the .cfg key.
+        var section = MelonPreferences.CreateCategory(sectionId, nameof(AutoUpgrade));
+        section.SetFilePath(BotSettings.ConfigPath);
+
+        _shortcutKey = section.CreateEntry(
+            "shortcut_key",
+            KeyCode.F6,
+            "Shortcut Key",
+            "The physical key used to manually toggle the AutoUpgrade execution state during gameplay. Default: F6."
+        );
+
+        _isEnabled = section.CreateEntry(
+            "enabled",
+            false,
+            "Enable AutoUpgrade",
+            "Enables or disables the AutoUpgrade automation task. When disabled, this task will be ignored during the execution loop. Default: false."
+        );
+
+        _upgradeTargetSlots = section.CreateEntry(
+            "upgrade_target_slots",
+            "",
+            "Upgrade Slots",
+            "AUTOUPGRADE TARGET SLOT CONFIGURATION. " +
+            "\nThis setting controls which upgrade slots (heroes/skills) will be upgraded. " +
+            "\nSLOT IDs ARE ZERO-BASED and range from 0 to 6. " +
+            "\nORIENTATION: Slot numbering follows the list from top to bottom. " +
+            "\nSLOT MAP: 0 = Specials, 1 = Guardian, 2 to 6 = Heroes 1 to 5. " +
+            "\nTASK PRIORITY: Main bot tasks always have priority over AutoUpgrade. " +
+            "\nAUTO PAUSE/RESUME: When a main task is approaching, AutoUpgrade pauses about 30 seconds before that task runs, allows the task to execute, and then resumes automatically. " +
+            "\nHOW TO USE: In the panel, toggle the buttons to pick the targets. 'Specials' = slot 0, " +
+            "'Guardian' = slot 1 and '1' to '5' = slots 2 to 6. " +
+            "\nThe same choice is stored as comma-separated slot IDs, and the .cfg order is the order they are " +
+            "upgraded. The panel writes it in ascending order. " +
+            "\nEXAMPLES: '0,6' = only Specials and Hero 5. '3,1,5' = only slots 3, 1 and 5. " +
+            "\nTo upgrade every slot, mark all of them ('0,1,2,3,4,5,6'). " +
+            "\nIf empty, AutoUpgrade will upgrade all visible slots. " +
+            "\nInvalid values are ignored."
+        );
+
+        section.SaveToFile();
+        _isInitialized = true;
+        Logger.Debug("AutoUpgrade configuration initialized.");
+    }
+
+    private static List<CachedGameButton> Buttons()
+    {
+        var ge = new GameElement(Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.UpgradesList);
+        ButtonsBuffer.Clear();
+
+        var selectedTargetSlots = GetSelectedTargetSlots();
+
+        if (selectedTargetSlots.Length == 0)
+        {
+            foreach (var child in ge.GetChildren())
+            {
+                if (child == null) continue;
+
+                var button = "customUpgrade".Equals(child.Name)
+                    ? new CachedGameButton(Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.BuyBtn, child)
+                    : new CachedGameButton(Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.LvlUpBtn, child);
+
+                ButtonsBuffer.Add(button);
+            }
+
+            return ButtonsBuffer;
+        }
+
+        foreach (var position in selectedTargetSlots)
+        {
+            var child = ge.GetChild(position);
+            if (child == null) continue;
+
+            var button = "customUpgrade".Equals(child.Name)
+                ? new CachedGameButton(Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.BuyBtn, child)
+                : new CachedGameButton(Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.LvlUpBtn, child);
+
+            ButtonsBuffer.Add(button);
+        }
+
+        return ButtonsBuffer;
+    }
+
+    private static int[] GetSelectedTargetSlots()
+    {
+        if (_upgradeTargetSlots == null) return Array.Empty<int>();
+
+        var value = _upgradeTargetSlots.Value;
+        if (string.IsNullOrWhiteSpace(value)) return Array.Empty<int>();
+
+        var parts = value.Split(',');
+        var result = new List<int>(parts.Length);
+        var seen = new bool[7];
+
+        foreach (var part in parts)
+        {
+            var candidate = part.Trim();
+            if (!int.TryParse(candidate, out var slot)) continue;
+            if (slot < 0 || slot > 6) continue;
+            if (seen[slot]) continue;
+
+            seen[slot] = true;
+            result.Add(slot);
+        }
+
+        return result.Count > 0 ? result.ToArray() : Array.Empty<int>();
+    }
+
+    public static void Update()
+    {
+        if (_shortcutKey == null)
+            return;
+
+        if (!IsEnabled && _isRunning)
+        {
+            Stop();
+            return;
+        }
+
+        if (IsShortcutDisabled) return;
+
+        // Its own hotkey, being recorded, belongs to the capture and not to this action: pressing it to
+        // bind it must not also start or stop AutoUpgrade (see HotkeyGate).
+        if (HotkeyGate.IsCapturing) return;
+
+        if (!Input.GetKeyDown(ShortcutKey)) return;
+
+        if (_isRunning)
+        {
+            Stop();
+            return;
+        }
+
+        Start();
+    }
+
+    private static void Start()
+    {
+        if (IsShortcutDisabled) return;
+        if (!IsEnabled) return;
+        if (_isRunning) return;
+        _isRunning = true;
+        _autoUpgradeRoutineHandle = MelonCoroutines.Start(UpgradeLoop());
+        Logger.Debug("AutoUpgrade started.");
+    }
+
+    private static void Stop()
+    {
+        if (!_isRunning) return;
+        _isRunning = false;
+        if (_autoUpgradeRoutineHandle != null) MelonCoroutines.Stop(_autoUpgradeRoutineHandle);
+        _autoUpgradeRoutineHandle = null;
+        MelonCoroutines.Start(CloseUpgradesMenu());
+        Logger.Info("AutoUpgrade stopped.");
+    }
+
+    private static IEnumerator UpgradeLoop()
+    {
+        var wasPaused = false;
+        while (_isRunning)
+        {
+            var isPaused = BotManager.ShouldPauseAutoUpgrade();
+            if (isPaused)
+            {
+                if (!wasPaused && Upgrades.IsVisible) yield return Upgrades.Close;
+                wasPaused = true;
+                yield return IdlePollWait;
+                continue;
+            }
+
+            if (wasPaused) wasPaused = false;
+
+            // Driven through the guard: one step throwing used to kill this coroutine with _isRunning still true,
+            // leaving the badge claiming "on" with nothing behind it.
+            yield return CoroutineGuard.Run(UpgradeCycle(), "[AutoUpgrade] cycle", AbortAfterFailure);
+        }
+    }
+
+    /// <summary>One pass over the upgrade buttons. The pause is checked outside, in the loop that owns it.</summary>
+    private static IEnumerator UpgradeCycle()
+    {
+        if (!Upgrades.IsVisible)
+        {
+            yield return new GameButton(Paths.BattleLoc.BottomSideUIDesktopLoc.MenuButtonsLoc.UpgradesBtn).Click();
+            yield return Upgrades.SetUpgradeLevel();
+            yield return IdlePollWait;
+        }
+
+        var buttons = Buttons();
+        if (buttons.Count == 0)
+        {
+            yield return null;
+            yield break;
+        }
+
+        foreach (var buyUpgradeBtn in buttons)
+        {
+            if (BotManager.ShouldPauseAutoUpgrade()) break;
+
+            Logger.Debug($"Name: {buyUpgradeBtn.Name}, IsVisible: {buyUpgradeBtn.IsVisible()}");
+            yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);
+            yield return GapBetweenButtonsWait;
+        }
+    }
+
+    /// <summary>
+    ///     What the guard does when a step throws: the coroutine is already ending, so the state that drives the
+    ///     badge and the hotkey is corrected here instead of through <see cref="Stop" />, which would be stopping
+    ///     this coroutine from the inside.
+    /// </summary>
+    private static void AbortAfterFailure()
+    {
+        _isRunning = false;
+        _autoUpgradeRoutineHandle = null;
+
+        // Stop() promises the upgrades menu is not left open, and the loop that would have closed it is gone.
+        // Starting a coroutine here is safe, unlike stopping this one from the inside.
+        MelonCoroutines.Start(CloseUpgradesMenu());
+        Logger.Warning("[AutoUpgrade] Stopped after the error above.");
+    }
+
+    private static IEnumerator CloseUpgradesMenu()
+    {
+        if (!Upgrades.IsVisible) yield break;
+        yield return Upgrades.Close;
+    }
+}

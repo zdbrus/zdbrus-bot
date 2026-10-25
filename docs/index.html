@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zdbrus Bot: free Firestone Idle RPG bot (MelonLoader mod)</title>
+<meta name="description" content="Free, open-source auto-play bot for Firestone: Idle Clicker Online RPG. Automates research, expeditions, map missions, arena, Chaos Rift, war machines and more. Never spends gems.">
+<meta name="keywords" content="Firestone bot, Firestone Idle RPG bot, Firestone auto clicker, Firestone mod, Firestone automation, MelonLoader">
+<meta property="og:title" content="Zdbrus Bot: free Firestone Idle RPG bot">
+<meta property="og:description" content="Auto-play mod for Firestone. Research, expeditions, map missions, arena, Chaos Rift and more. Never spends gems.">
+<meta property="og:image" content="https://zdbrus.github.io/zdbrus-bot/logo.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#120c08;--panel:#1d140d;--line:#3a2a1b;--ink:#f6ead9;--muted:#bba68c;--fire:#ff7a1a;--gold:#f2b632}
+*{box-sizing:border-box;margin:0}
+body{background:radial-gradient(1200px 600px at 50% -10%,#3b1d08 0%,var(--bg) 60%);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif;min-height:100vh}
+a{color:var(--gold)}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px}
+header{text-align:center;padding:64px 0 40px}
+header img{width:150px;height:150px;filter:drop-shadow(0 10px 40px rgba(255,122,26,.45))}
+h1{font:800 clamp(40px,7vw,68px)/1.05 "Bricolage Grotesque",sans-serif;letter-spacing:-.02em;margin-top:18px}
+h1 span{color:var(--fire)}
+.tag{color:var(--muted);font-size:19px;margin:14px auto 30px;max-width:620px}
+.cta{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(180deg,#ff9a3c,#e85d04);color:#1a0d02;font-weight:800;font-size:19px;padding:16px 30px;border-radius:14px;text-decoration:none;box-shadow:0 10px 30px rgba(232,93,4,.35)}
+.cta:hover{transform:translateY(-1px)}
+.sub{margin-top:14px;color:var(--muted);font-size:14px}
+.stats{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 18px;min-width:120px}
+.stat b{display:block;font:800 24px "Bricolage Grotesque",sans-serif;color:var(--gold)}
+.stat small{color:var(--muted)}
+section{padding:40px 0}
+h2{font:800 30px "Bricolage Grotesque",sans-serif;margin-bottom:18px}
+.steps{counter-reset:s;display:grid;gap:12px}
+.steps li{list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px 16px 62px;position:relative}
+.steps li:before{counter-increment:s;content:counter(s);position:absolute;left:16px;top:14px;width:32px;height:32px;border-radius:50%;background:var(--fire);color:#1a0d02;font-weight:800;display:grid;place-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h3{font:800 18px "Bricolage Grotesque",sans-serif;color:var(--gold);margin-bottom:6px}
+.card p{color:var(--muted);font-size:15px}
+.safe{border-left:4px solid var(--fire)}
+kbd{background:#2c1f14;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:inherit;font-size:14px}
+footer{color:var(--muted);text-align:center;padding:40px 0 60px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <img src="logo.png" alt="Zdbrus Bot logo">
+  <h1>Zdbrus <span>Bot</span></h1>
+  <p class="tag">The free auto-play bot for <b>Firestone: Idle Clicker Online RPG</b>. It runs inside the game, so it never misclicks, at any screen size.</p>
+  <a class="cta" id="dl" href="https://github.com/zdbrus/zdbrus-bot/releases/latest/download/ZdbrusBot.zip">Download for Windows</a>
+  <p class="sub"><span id="ver">Latest version</span> · Needs <a href="https://github.com/LavaGang/MelonLoader/releases/latest">MelonLoader 0.7.3+</a> · <a href="https://github.com/zdbrus/zdbrus-bot">Source on GitHub</a></p>
+  <div class="stats">
+    <div class="stat"><b id="downloads">·</b><small>downloads</small></div>
+    <div class="stat"><b id="stars">·</b><small>GitHub stars</small></div>
+  </div>
+</header>
+
+<section>
+  <h2>Install in 4 steps</h2>
+  <ol class="steps">
+    <li>Install <a href="https://github.com/LavaGang/MelonLoader/releases/latest">MelonLoader</a> on Firestone (point the installer at <code>Firestone.exe</code>).</li>
+    <li>Start the game once and close it.</li>
+    <li>Extract <b>ZdbrusBot.zip</b> into the Firestone folder (Steam: right-click Firestone, Manage, Browse local files).</li>
+    <li>Start the game, press <kbd>F1</kbd> to choose features, then <kbd>F7</kbd> to start.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>What it plays for you</h2>
+  <div class="grid">
+    <div class="card"><h3>Daily routine</h3><p>Daily rewards, check-in, mail, quests, free shop items and battle pass rewards.</p></div>
+    <div class="card"><h3>Research</h3><p>Firestone and meteorite research in your priority order, plus forbidden knowledge.</p></div>
+    <div class="card"><h3>Guild</h3><p>Expeditions, free pickaxes, guild crystal, Chaos Rift, personal tree and hero awakening.</p></div>
+    <div class="card"><h3>Map and Warfront</h3><p>Map missions with free speedups, Warfront loot and Liberation missions back to back.</p></div>
+    <div class="card"><h3>Arena and war machines</h3><p>Fights the easiest opponent, uses free refreshes, levels the war machine you pick.</p></div>
+    <div class="card"><h3>Town and events</h3><p>Alchemist, Oracle, tavern, exotic merchant, Scarab's game and seasonal event shops.</p></div>
+    <div class="card"><h3>Collector</h3><p>Clicks coal miners and double-beer dragons the moment they show up.</p></div>
+    <div class="card safe"><h3>Never spends gems</h3><p>Every purchase needs the button enabled and enough of the exact currency. No gems, no real money, ever.</p></div>
+  </div>
+</section>
+
+<footer>
+  Open source (MIT), built on <a href="https://github.com/danilogmoura/fire-bot">Firebot</a> by danilogmoura. Not affiliated with Holyday Studios. Using bots may break the game's terms; use at your own risk.
+</footer>
+</div>
+<script>
+(async () => {
+  try {
+    const repo = "zdbrus/zdbrus-bot";
+    const [rels, info] = await Promise.all([
+      fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`).then(r => r.json()),
+      fetch(`https://api.github.com/repos/${repo}`).then(r => r.json())
+    ]);
+    const total = rels.reduce((n, r) => n + r.assets.reduce((m, a) => m + a.download_count, 0), 0);
+    document.getElementById("downloads").textContent = total.toLocaleString();
+    document.getElementById("stars").textContent = (info.stargazers_count ?? 0).toLocaleString();
+    if (rels[0]) document.getElementById("ver").textContent = "Version " + rels[0].tag_name.replace(/^v/, "");
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

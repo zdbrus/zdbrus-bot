@@ -1,0 +1,454 @@
+﻿namespace Firebot.Infrastructure;
+
+public static class Paths
+{
+    public static class Watchdog
+    {
+        private const string CanvasRoot = "menusRoot/menuCanvasParent/SafeArea/menuCanvas";
+
+        public const string EventsRoot = CanvasRoot + "/events";
+
+        public const string PopupsRoot = CanvasRoot + "/popups";
+
+        public const string MenusRoot = CanvasRoot + "/menus";
+
+        public const string CloseSuffix = "/bg/closeButton";
+
+        public const string CollectSuffix = "/bg/collectButton";
+
+        public const string MenuCloseSuffix = "/closeButton";
+    }
+
+    public static class BattleLoc
+    {
+        private const string Root = "battleRoot/battleMain/battleCanvas/SafeArea";
+
+        public static class NotificationsLoc
+        {
+            public const string Root = BattleLoc.Root + "/leftSideUI/notifications/Viewport/grid";
+
+            public const string EngineerBtn = Root + "/Engineer";
+
+            public const string WarfrontCampaignBtn = Root + "/WarfrontCampaign";
+
+            public const string FreePickaxesBtn = Root + "/FreePickaxes";
+
+            public const string ExpeditionsBtn = Root + "/Expeditions";
+
+            public const string QuestsBtn = Root + "/Quests";
+
+            public const string GuardianTrainingBtn = Root + "/GuardianTraining";
+
+            public const string FirestoneResearchBtn = Root + "/FirestoneResearch";
+
+            public const string ExperimentsBtn = Root + "/Experiments";
+
+            public const string OracleRitualsBtn = Root + "/OracleRituals";
+
+            public const string MapMissionsBtn = Root + "/MapMissions";
+
+            public const string OraclesGiftBtn = Root + "/OraclesGift";
+
+            public const string MysteryBoxBtn = Root + "/MysteryBox";
+
+            public const string CheckInBtn = Root + "/CheckIn";
+
+            public const string ScarabGameShopFreeTokenBtn = Root + "/ScarabGameShopFreeToken";
+        }
+
+        public static class BottomSideUIDesktopLoc
+        {
+            private const string Root = BattleLoc.Root + "/bottomSideUIDesktop";
+
+            public static class LeaderPanelLoc
+            {
+                private const string Root = BottomSideUIDesktopLoc.Root + "/leaderPanel/abilitiesContainer";
+
+                public const string HotKeyOneBtn = Root + "/abilityBattle (0)";
+
+                public const string HotKeyTwoBtn = Root + "/abilityBattle (1)";
+
+                public const string HotKeyThreeBtn = Root + "/abilityBattle (2)";
+            }
+
+            public static class MenuButtonsLoc
+            {
+                private const string Root = BottomSideUIDesktopLoc.Root + "/menuButtons";
+
+                public const string UpgradesBtn = Root + "/upgradesButtonUI";
+            }
+        }
+    }
+
+    public static class MenusLoc
+    {
+        private const string Root = "menusRoot";
+
+        public static class CanvasLoc
+        {
+            private const string Root = MenusLoc.Root + "/menuCanvasParent/SafeArea/menuCanvas";
+
+            public static class MainSceneLoc
+            {
+                public static class UpgradesLoc
+                {
+                    public const string Root = CanvasLoc.Root + "/menus/Upgrades/";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public const string UpgradesList = Root + "/upgradesList";
+
+                    public const string BuyBtn = "/buyButton";
+
+                    public const string LvlUpBtn = "/lvlUpButton";
+
+                    public const string ChangeLevelUpModeButton = Root + "/changeLevelUpModeButton";
+
+                    public const string ChangeLevelUpModeBtnTxt = ChangeLevelUpModeButton + "/text";
+                }
+            }
+
+            private static class PopupsLoc
+            {
+                public const string Root = CanvasLoc.Root + "/popups";
+
+                public const string CloseBtn = "/bg/closeButton";
+            }
+
+            public static class StoreLoc
+            {
+                private const string Root = CanvasLoc.Root + "/menus/Store";
+
+                private const string RootSubMenus = Root + "/bg/submenus";
+
+                public const string CloseBtn = Root + "/closeButton";
+
+                public static class MysteryBoxLoc
+                {
+                    private const string Root = RootSubMenus + "/extremeValueBundles/bundles/mysteryBox/Graphics";
+
+                    public const string MysteryBoxBtn = Root + "/purchaseButton";
+
+                    public const string NextRunTimeTxt = Root + "/renewText";
+                }
+
+                public static class CheckInLoc
+                {
+                    private const string Root = RootSubMenus + "/dailyRewards/Viewport/transparentFrame";
+
+                    public const string CheckInBtn = Root + "/checkIn";
+
+                    public const string NextRunTimeTxt = Root + "/textHolder/timer";
+                }
+            }
+
+            public static class ScarabGameShopLoc
+            {
+                private const string Root = CanvasLoc.Root + "/popups/ScarabGameShop";
+
+                public const string CloseBtn = Root + "/bg/closeButton";
+
+                public const string ClaimFreeTokenBtn =
+                    Root + "/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
+
+                public const string NextRunTimeTxt =
+                    Root + "/bg/submenuButtons/sale/timeLeftBg/timeLeft";
+            }
+
+            public static class OracleStoreLoc
+            {
+                public const string Root = CanvasLoc.Root + "/menus/OracleStore";
+
+                public const string CloseBtn = Root + "/closeButton";
+
+                private const string OraclesGift = Root + "/bg/submenus/extremeValueBundles/items/oraclesGift/Graphics";
+
+                public const string OraclesGiftBtn = OraclesGift + "/purchaseButton/";
+
+                public const string OraclesGiftRenewTxt = OraclesGift + "/renewText";
+            }
+
+            public static class MapLoc
+            {
+                private const string Root = CanvasLoc.Root + "/menus/WorldMap";
+
+                private const string Sub = Root + "/submenus/mapMissionsSubmenu";
+
+                public const string CloseBtn = Root + "/closeButton";
+
+                public const string NextRunTimeTxt =
+                    Sub + "/bottomLeftUI/missionRefreshCanvas/missionRefreshBg/missionRefreshText";
+
+                public static class MissionsLoc
+                {
+                    public static class PreviewLoc
+                    {
+                        private const string Root = PopupsLoc.Root + "/PreviewMission";
+
+                        public const string CloseBtn = Root + PopupsLoc.CloseBtn;
+
+                        public const string StartBtn = Root + "/bg/managementBg/container/startMissionButton";
+
+                        public const string SpeedupBtn = Root + "/bg/managementBg/container/speedUpButton";
+
+                        public const string SpeedupFinishDesc = SpeedupBtn + "/finishDesc";
+
+                        public const string NotEnoughSquadsTxt =
+                            Root + "/bg/managementBg/previewMissionNotEnoughSquads";
+
+                        public const string NextRunTimeTxt =
+                            Root +
+                            "/bg/rewardBg/previewMissionTime/previewBar/missionProgress/activeMissionProgressText";
+                    }
+
+                    public static class PinLoc
+                    {
+                        public const string Root = MenusLoc.Root + "/mapRoot/mapElements/missions";
+
+                        public const string ActiveIcon = "/missionActiveIcon";
+
+                        public const string TimeReq = "/missionBg/missionTimeBg/missionTimeReq";
+
+                        public const string Tick = "/missionBg/completedTick";
+                    }
+
+                    public static class MissionRewardsLoc
+                    {
+                        private const string Root = PopupsLoc.Root + "/MissionRewards";
+
+                        public const string CloseBtn = Root + PopupsLoc.CloseBtn;
+                    }
+                }
+
+                public static class WarfrontLoc
+                {
+                    private const string Root = MapLoc.Root + "/submenus/warfrontCampaignSubmenu";
+
+                    private const string LootBtn = Root + "/loot";
+
+                    public const string NextRunTimeTxt = LootBtn + "/nextLootTimeLeft";
+
+                    public const string ClaimBtn = LootBtn + "/claimButton";
+
+                    public const string DailyMissionsBtn = Root + "/dailyMissionsButton";
+
+                    public static class DailyMissionsLoc
+                    {
+                        public static class DailyMissionsPopup
+                        {
+                            private const string Root = PopupsLoc.Root + "/WFDailyMissions";
+
+                            public const string CloseBtn = Root + PopupsLoc.CloseBtn;
+
+                            public const string OpenBtn = Root + "/bg/liberationMissions/openButton";
+
+                            public const string NextRunTimeTxt = Root + "/bg/timeLeftMain/timeLeftText";
+                        }
+
+                        public static class LiberationMissionsPopup
+                        {
+                            private const string Root = PopupsLoc.Root + "/WFLiberationMissions";
+
+                            public const string CloseBtn = Root + PopupsLoc.CloseBtn;
+
+                            public const string Missions = Root + "/bg/missionsScrollView/Viewport/missionGrid";
+
+                            public const string FightBtn = "/fightButton";
+
+                            public const string Locked = "/locked";
+
+                            public const string WonTxt = "/wonText";
+                        }
+                    }
+                }
+            }
+
+            public static class TownLoc
+            {
+                public static class EngineerLoc
+                {
+                    private const string Root = CanvasLoc.Root + "/menus/Engineer";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public const string ClaimBtn =
+                        Root + "/submenus/bg/engineerSubmenu/toolsProductionSection/claimToolsButton";
+
+                    public const string NextRunTimeTxt = ClaimBtn + "/cooldownOn/cooldownTimeLeft";
+                }
+
+                public static class MagicQuarters
+                {
+                    private const string Root = CanvasLoc.Root + "/menus/MagicQuarters";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public const string Guardoians = Root + "/guardianList";
+
+                    private const string UnlockedGuadian = Root + "/submenus/bg/infoSubmenu/activities/unlocked";
+
+                    public const string EnlightenmentBtn = UnlockedGuadian + "/enlightenment/enlightenmentButton";
+
+                    public const string TrainBtn = UnlockedGuadian + "/train/trainButton";
+
+                    public const string NextRunTimeTxt = TrainBtn + "/cooldownOn/cooldownTimeLeft";
+
+                    public const string
+                        GuardianStarsIcon = "/starsParent";
+
+                    public static class LockedGuardianLoc
+                    {
+                        private const string Root = PopupsLoc.Root + "/LockedGuardian";
+
+                        public const string CloseBtn = Root + PopupsLoc.CloseBtn;
+                    }
+                }
+
+                public static class LibraryLoc
+                {
+                    private const string Root = CanvasLoc.Root + "/menus/Library";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public static class ResearchPanelLoc
+                    {
+                        public const string Root = LibraryLoc.Root + "/submenus/firestoneResearch/researchPanel";
+
+                        public const string SelectResearchTable = Root + "/selectResearchTable";
+
+                        public const string ClaimBtn = "/container/claimButton";
+
+                        public const string NextRunTimeTxt = "/container/researchInfo/progressBarBg/timeLeftText";
+
+                        public const string SpeedupBtn = "/container/speedUpButton";
+
+                        public const string SpeedupFinishDesc = SpeedupBtn + "/finishDesc";
+                    }
+
+                    public static class NodeLoc
+                    {
+                        public const string Root = LibraryLoc.Root +
+                                                   "/submenus/firestoneResearch/researchScrollView/viewport/content/submenus";
+
+                        public const string Glow = "/glow";
+
+                        public const string ProgressBar = "/progressBarBg";
+
+                        public const string CompletedTxt = "/genericText";
+                    }
+
+                    public static class PreviewLoc
+                    {
+                        private const string Root = PopupsLoc.Root + "/FirestoneResearchPreview";
+ 
+                        public const string UnlockedTxt = Root + "/bg/unlocked";
+
+                        public const string MaxedTxt = Root + "/bg/maxed";
+
+                        public const string ActivateBtn =
+                            Root + "/bg/unlocked/buttonHolder/researchActivateButton";
+                    }
+                }
+
+                public static class OracleLoc
+                {
+                    private const string Root = CanvasLoc.Root + "/menus/Oracle";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public static class RitualLoc
+                    {
+                        private const string Root = OracleLoc.Root + "/submenus/bg/ritualSubmenu";
+
+                        public const string Rituals = Root + "/ritualsGrid";
+
+                        public const string ClaimBtn = "/claimButton";
+
+                        public const string CurrentRunTimeTxt = "/ritualProgressBg/timeLeftText";
+
+                        public const string StartBtn = "/startButton";
+
+                        public const string NextRunTimeTxt = Root + "/timeBg/timeLeft";
+                    }
+                }
+
+                public static class AlchemistLoc
+                {
+                    private const string Root = CanvasLoc.Root + "/menus/Alchemist";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public static class CountersLoc
+                    {
+                        private const string Root = AlchemistLoc.Root + "/counters";
+
+                        public const string DragonBloodQuantity = Root + "/currencyInteraction (DragonBlood)/quantity";
+
+                        public const string StrangeDustQuantity = Root + "/currencyInteraction (StrangeDust)/quantity";
+
+                        public const string ExoticCoinQuantity = Root + "/currencyInteraction (ExoticCoin)/quantity";
+                    }
+
+                    public static class ExperimentsLoc
+                    {
+                        public const string Root = AlchemistLoc.Root + "/submenus/bg/experimentsSubmenu/experiments";
+
+                        public const string StartBtn = "/startExperiment";
+
+                        public const string ClaimBtn = "/claimButton";
+
+                        public const string NextRunTimeTxt = "/progressBarBg/timeLeftText";
+
+                        public const string SpeedupBtn = "/speedUpButton";
+
+                        public const string SpeedupFinishDesc = SpeedupBtn + "/finishDesc";
+                    }
+                }
+            }
+
+            public static class GuildLoc
+            {
+                public static class GuildShopLoc
+                {
+                    private const string Root = CanvasLoc.Root + "/menus/GuildShop";
+
+                    public const string CloseBtn = Root + "/closeButton";
+
+                    public static class FreePickaxeLoc
+                    {
+                        private const string Root = GuildShopLoc.Root + "/bg/submenus/supplies/items/freePickaxe";
+
+                        public const string ClaimBtn = Root + "/claimBg/purchaseButton";
+
+                        public const string QuantityTxt = Root + "/claimBg/itemBg/itemQuantity";
+
+                        public const string NextRunTimeTxt = Root + "/nextFreeObj/progressBarBg/timeLeftText";
+                    }
+                }
+
+                public static class ExpeditionLoc
+                {
+                    private const string Root = PopupsLoc.Root + "/Expeditions";
+
+                    public const string CloseBtn = Root + PopupsLoc.CloseBtn;
+
+                    public const string NextRunTimeTxt = Root + "/bg/timeLeftBg/timeLeftText";
+
+                    private const string ExpeditionsParents = Root + "/bg/expeditionsParent";
+
+                    public const string ActiveExpedition =
+                        ExpeditionsParents + "/activeExpeditionParent/activeExpedition";
+
+                    public const string ClaimBtn = ActiveExpedition + "/claimButton";
+
+                    public const string CurrentRunTimeTxt =
+                        ActiveExpedition + "/expeditionProgressBg/timeLeftText";
+
+                    public const string StartBtn =
+                        ExpeditionsParents +
+                        "/pendingExpeditionsParent/expeditionsScroll/Viewport/grid/expeditionPending0/startButton";
+                }
+            }
+        }
+    }
+}
