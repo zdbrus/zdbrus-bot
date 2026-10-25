@@ -91,6 +91,11 @@ It also reads the notification bubbles on the left of the screen, so it reacts t
 
 ## Credits
 
-Zdbrus Bot is built on [Firebot](https://github.com/danilogmoura/fire-bot) by danilogmoura (MIT license). Thanks to the MelonLoader team.
+Zdbrus Bot stands on the work of two earlier Firestone bots. Thank you to both authors for making their code public.
+
+- **[Firebot](https://github.com/danilogmoura/fire-bot)** by danilogmoura (MIT license). Zdbrus Bot is built on Firebot's code: the MelonLoader mod framework, task system, settings panel and many original tasks come from it.
+- **[Deaeth85 Firestone Bot](https://github.com/Mendenj85/Deaeth85-Firestone-Bot)** by Mendenj85. An AutoHotkey bot whose feature list and game routines helped shape what Zdbrus Bot automates. No code was copied from it; Zdbrus Bot works inside the game instead of clicking the screen.
+
+Thanks also to the [MelonLoader](https://github.com/LavaGang/MelonLoader) team.
 
 <sub>Keywords: Firestone bot, Firestone Idle RPG bot, Firestone auto clicker, Firestone mod, Firestone automation, Firestone script, MelonLoader mod, idle game bot.</sub>
