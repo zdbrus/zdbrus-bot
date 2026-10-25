@@ -27,6 +27,7 @@ public static class DropCollector
     private static readonly Dictionary<string, float> LastClick = new();
     private static readonly HashSet<string> Reported = new();
     private static readonly HashSet<string> Clicked = new();
+    private static readonly Dictionary<string, float> SeenSince = new();
     private static float _nextScan;
 
     public static void Tick()
@@ -44,12 +45,15 @@ public static class DropCollector
                 if (shownWhen != null)
                 {
                     shown = t.Find(shownWhen);
-                    if (shown == null || !shown.gameObject.activeInHierarchy) { Clicked.Remove(path); continue; }
+                    if (shown == null || !shown.gameObject.activeInHierarchy) { Clicked.Remove(path); SeenSince.Remove(path); continue; }
                 }
 
                 // Only while it is actually inside the screen, and once per visit.
-                if (!OnScreen(shown)) { Clicked.Remove(path); continue; }
+                if (!OnScreen(shown)) { Clicked.Remove(path); SeenSince.Remove(path); continue; }
                 if (Clicked.Contains(path)) continue;
+                // Let it settle on screen for a moment first: clicking one mid-spawn may upset the game.
+                if (!SeenSince.TryGetValue(path, out var since)) { SeenSince[path] = Time.unscaledTime; continue; }
+                if (Time.unscaledTime - since < 1.5f) continue;
                 if (LastClick.TryGetValue(path, out var last) && Time.unscaledTime - last < 2f) continue;
                 if (!t.TryGetComponent(out Button b) || !b.interactable)
                 {
@@ -58,11 +62,12 @@ public static class DropCollector
                     if (b == null || !b.interactable) continue;
                 }
 
-                b.onClick.Invoke();
+                // Logged before the click so a crash right after it can be traced to the object.
+                Logger.Debug($"[Collector] Clicking {t.name} ({label}).");
                 LastClick[path] = Time.unscaledTime;
                 Clicked.Add(path);
+                b.onClick.Invoke();
                 if (Reported.Add(label)) Logger.Info($"[Collector] Clicked the {label}.");
-                else Logger.Debug($"[Collector] Clicked the {label}.");
             }
             catch (Exception e)
             {
