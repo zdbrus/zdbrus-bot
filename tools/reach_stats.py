@@ -75,6 +75,9 @@ def main(d):
     views_daily = sorted(vd.values(), key=lambda v: v["day"])
 
     referrers = [{"source": r["referrer"], "views": r["count"], "visitors": r["uniques"]} for r in refs]
+    if not referrers:
+        # The dashboard can't read an empty file, so keep one placeholder row it knows to hide.
+        referrers = [{"source": "(none yet)", "views": 0, "visitors": 0}]
 
     save(d, "history.json", history)
     save(d, "views_daily.json", views_daily)
