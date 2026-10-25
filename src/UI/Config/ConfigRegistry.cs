@@ -79,7 +79,8 @@ internal static class ConfigRegistry
         ["arena/max_opponent_power_percent"] = new NumberRange(50f, 150f, true),
         ["personal_tree/keep_tokens"] = new NumberRange(0f, 5000f, true),
         ["meteorite_research/keep_meteorites"] = new NumberRange(0f, 100000f, true),
-        ["temple_prestige/min_gain_percent"] = new NumberRange(100f, 100000f, true),
+        ["temple_prestige/min_gain_percent"] = new NumberRange(0f, 100000f, true),
+        ["temple_prestige/stall_hours"] = new NumberRange(1f, 48f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
         ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true)
     };

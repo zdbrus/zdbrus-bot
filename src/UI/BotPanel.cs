@@ -151,7 +151,7 @@ public static class BotPanel
 
         // The chrome (canvas, blocker, window and header) is the same as the status screen's — it
         // lives in UiWindow.
-        _window = UiWindow.Create(RootName, Brand.Name, UiTheme.WindowWidth, UiTheme.WindowHeight, SortingOrder,
+        _window = UiWindow.Create(RootName, UpdateCheck.Newer == null ? Brand.Name : $"{Brand.Name}  (update {UpdateCheck.Newer} on GitHub)", UiTheme.WindowWidth, UiTheme.WindowHeight, SortingOrder,
             Close, UiTheme.DetailHeight + UiTheme.DetailGap);
         _builtForHeight = Screen.height;
 

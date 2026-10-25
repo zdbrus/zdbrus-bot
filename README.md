@@ -58,7 +58,7 @@ Every feature can be switched on or off in the F1 panel.
 | **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (keeps going after each win) |
 | **Battle** | Arena (picks the easiest opponent, uses the free refresh, tries again later), war machine levels and blueprints for the machine you pick (all 13 supported), clicks coal miners and double-beer dragons the moment they appear |
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
-| **Optional** | Temple prestige once the gold boost reaches the percent you choose (off by default) |
+| **Prestige** | Temple prestige once your run stalls (no new highest stage for 3 hours, adjustable), never the paid 2x |
 
 It also reads the notification bubbles on the left of the screen, so it reacts the moment something is ready instead of waiting for a timer.
 
@@ -87,7 +87,7 @@ It also reads the notification bubbles on the left of the screen, so it reacts t
 
 **Where are my settings?** `UserData\ZdbrusBotPreferences.cfg`. The F1 panel writes to it for you. See [ADVANCED.md](ADVANCED.md) for every option.
 
-**The game updated and the bot broke.** Watch or star this repo to get notified of the fix release.
+**The game updated and the bot broke.** The bot tells you when a new version is out (in the log and the F1 panel title). You can also watch or star this repo to get notified.
 
 ## Credits
 

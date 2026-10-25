@@ -32,6 +32,7 @@ public class Main : MelonMod
         AutoUpgrade.Initialize();
         BotPanel.Initialize();
         BotStatusScreen.Initialize();
+        UpdateCheck.Start();
 
         LoggerInstance.Msg($"{Brand.Name} ready. F1 settings, F2 status, F7 start/stop, F9 screen map.");
     }

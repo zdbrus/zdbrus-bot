@@ -272,7 +272,8 @@ public class ScarabGameTask : BotTask
 }
 
 /// <summary>
-///     Prestige ("Empower now") once the gold boost reaches the chosen percent. Off by default: it resets the run.
+///     Prestige ("Empower now") once the run has stalled: no new highest stage for a few hours, and the temple offers at
+///     least a minimum gold boost. Never uses the paid 2x empower.
 /// </summary>
 public class TemplePrestigeTask : BotTask
 {
@@ -280,15 +281,22 @@ public class TemplePrestigeTask : BotTask
 
     private const string T = P.Menus + "/TempleOfEternals";
     private const string Info = T + "/submenus/bgNew/prestigeSubmenu/adventureInfo";
+    private const string Stage = P.Battle + "/topSideUI/stageProgression/currentStage/stageNum";
+    private MelonPreferences_Entry<int> _stallHours;
     private MelonPreferences_Entry<int> _minGain;
     private MelonPreferences_Entry<int> _minHours;
+    private MelonPreferences_Entry<int> _bestStage;
+    private MelonPreferences_Entry<string> _bestAt;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _minGain = c.CreateEntry("min_gain_percent", 1000, "Minimum Gold Boost %",
-            "Only empower when the temple offers at least this much extra gold (the +% shown).");
-        _minHours = c.CreateEntry("min_hours_played", 6, "Minimum Hours In Run",
-            "Never empower a run younger than this.");
+        _stallHours = c.CreateEntry("stall_hours", 3, "Hours Without Progress",
+            "Empower once no new highest stage has been reached for this many hours (the run has stalled).");
+        _minGain = c.CreateEntry("min_gain_percent", 100, "Minimum Gold Boost %",
+            "Never empower for less than this extra gold (the +% the temple shows).");
+        _minHours = c.CreateEntry("min_hours_played", 1, "Minimum Hours In Run", "Never empower a run younger than this.");
+        _bestStage = c.CreateEntry("best_stage", 0, "Best Stage", "Highest stage seen this run (kept by the bot).", is_hidden: true);
+        _bestAt = c.CreateEntry("best_stage_at", "", "Best Stage Time", "When the highest stage was reached (kept by the bot).", is_hidden: true);
     }
 
     private static double GainPercent(string text)
@@ -300,38 +308,88 @@ public class TemplePrestigeTask : BotTask
         return suffix switch { "" => v, "K" => v * 1e3, "M" => v * 1e6, "B" => v * 1e9, _ => double.MaxValue };
     }
 
+    /// <summary>Tracks the highest stage and when it was reached. Returns hours since the last new best.</summary>
+    private double HoursSinceProgress()
+    {
+        var stage = (int)Ui.NumberAt(Stage);
+        if (stage <= 0) return 0;
+        var now = DateTime.Now;
+        DateTime.TryParse(_bestAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at);
+        // A much lower stage means a new run started (prestige done by hand or by the bot).
+        if (stage > _bestStage.Value || stage < _bestStage.Value / 2 || at == default)
+        {
+            _bestStage.Value = stage;
+            _bestAt.Value = now.ToString("o");
+            MelonPreferences.Save();
+            return 0;
+        }
+
+        return (now - at).TotalHours;
+    }
+
     public override IEnumerator Execute()
     {
-        NextRunTime = DateTime.Now.AddHours(1);
+        NextRunTime = DateTime.Now.AddMinutes(30);
+        var stalled = HoursSinceProgress();
+        if (stalled < _stallHours.Value)
+        {
+            Logger.Debug($"Temple: best stage {_bestStage.Value}, {stalled:0.#}h without a new one (empowers after {_stallHours.Value}h).");
+            yield break;
+        }
+
         yield return Ui.OpenTownBuilding("templeOfEternals");
         yield return Ui.WaitFor(T);
         if (!Ui.Visible(T)) yield break;
 
         var gain = GainPercent(Ui.Text(Info + "/empowerInfo"));
-        var played = TimeSpan.TryParse(Ui.Text(Info + "/adventureTimePlayed"), out var ts) ? ts.TotalHours : 0;
-        var dayMatch = Regex.Match(Ui.Text(Info + "/adventureTimePlayed") ?? "", @"(\d+)d");
+        var playedText = Ui.Text(Info + "/adventureTimePlayed") ?? "";
+        var played = TimeSpan.TryParse(playedText, out var ts) ? ts.TotalHours : 0;
+        var dayMatch = Regex.Match(playedText, @"(\d+)d");
         if (dayMatch.Success) played = Math.Max(played, int.Parse(dayMatch.Groups[1].Value) * 24);
-        Logger.Info($"Temple: gold boost +{gain}% after {played:0.#}h (needs {_minGain.Value}% and {_minHours.Value}h)");
+        Logger.Info($"Temple: stalled at stage {_bestStage.Value} for {stalled:0.#}h, gold boost +{gain}%, run {played:0.#}h.");
 
-        if (gain >= _minGain.Value && played >= _minHours.Value && Ui.Clickable(Info + "/openEmpowerButton"))
+        if (gain < _minGain.Value || played < _minHours.Value || !Ui.Clickable(Info + "/openEmpowerButton"))
         {
-            yield return Ui.Click(Info + "/openEmpowerButton", 2f, "Empower now");
-            // The game asks to confirm in a popup: press its empower/confirm button.
-            var popups = Ui.VisibleChildren(P.Popups).ToList();
-            foreach (var popup in popups)
-            {
-                var btn = popup.GetComponentsInChildren<UnityEngine.UI.Button>()
-                    .FirstOrDefault(b => b.interactable && b.gameObject.activeInHierarchy &&
-                                         Regex.IsMatch(b.name, "empower|confirm|yes|prestige", RegexOptions.IgnoreCase));
-                if (btn == null) continue;
-                yield return Ui.Click(btn.transform, 5f, "confirm empower");
-                break;
-            }
-
+            yield return Ui.Click(T + "/closeButton");
             yield break;
         }
 
-        yield return Ui.Click(T + "/closeButton");
+        // "Empower now" opens the empower popup; press its normal empower button (never the paid 2x one).
+        var before = new HashSet<int>(Ui.VisibleChildren(P.Popups).Select(t => t.GetInstanceID()));
+        yield return Ui.Click(Info + "/openEmpowerButton", 2f, "Empower now");
+        var popup = Ui.VisibleChildren(P.Popups).FirstOrDefault(t => !before.Contains(t.GetInstanceID()));
+        if (popup == null)
+        {
+            Logger.Warning("Temple: the empower popup did not open; skipped.");
+            yield break;
+        }
+
+        var empower = popup.GetComponentsInChildren<UnityEngine.UI.Button>()
+            .FirstOrDefault(b => b.name == "empowerButton" && b.interactable && b.gameObject.activeInHierarchy);
+        if (empower == null)
+        {
+            Logger.Warning($"Temple: no empower button in {popup.name}; skipped.");
+            yield break;
+        }
+
+        before = new HashSet<int>(Ui.VisibleChildren(P.Popups).Select(t => t.GetInstanceID()));
+        yield return Ui.Click(empower.transform, 3f, "empower (prestige)");
+
+        // The game may ask to confirm; press only an obvious confirm button in a newly opened popup.
+        foreach (var confirmPopup in Ui.VisibleChildren(P.Popups).Where(t => !before.Contains(t.GetInstanceID())).ToList())
+        {
+            var yes = confirmPopup.GetComponentsInChildren<UnityEngine.UI.Button>()
+                .FirstOrDefault(b => b.interactable && b.gameObject.activeInHierarchy &&
+                                     Regex.IsMatch(b.name, "^(confirm|yes|ok|accept|empower)", RegexOptions.IgnoreCase) &&
+                                     !b.name.Contains("2x"));
+            if (yes == null) continue;
+            yield return Ui.Click(yes.transform, 5f, "confirm empower");
+            break;
+        }
+
+        _bestStage.Value = 0;
+        _bestAt.Value = "";
+        MelonPreferences.Save();
     }
 }
 
