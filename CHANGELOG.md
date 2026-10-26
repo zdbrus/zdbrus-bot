@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.4 (2026-10-26)
+- Hero auto-upgrade no longer keeps the upgrades menu open. It opens the menu, buys up to the next milestone, closes it again and waits a minute (adjustable). Every other task, the notification bubbles and the miner/dragon collector keep working, with no more toggling F6 on and off.
+- It also steps aside the moment a task is about to run.
+
 ## 0.6.3 (2026-10-26)
 - Hero auto-upgrade now starts by itself when the game loads (it used to wait for F6), so heroes level up again right after a prestige.
 - New Upgrade Mode setting, default "Next milestone" (also x100, x25, x10, x1).

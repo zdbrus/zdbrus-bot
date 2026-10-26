@@ -82,7 +82,8 @@ internal static class ConfigRegistry
         ["temple_prestige/min_gain_percent"] = new NumberRange(0f, 100000f, true),
         ["temple_prestige/stall_hours"] = new NumberRange(1f, 48f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
-        ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true)
+        ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true),
+        ["auto_upgrade/every_seconds"] = new NumberRange(10f, 600f, true)
     };
 
     /// <summary>

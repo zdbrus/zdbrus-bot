@@ -29,6 +29,7 @@ public static class AutoUpgrade
     private static MelonPreferences_Entry<bool> _isEnabled;
     private static MelonPreferences_Entry<string> _upgradeTargetSlots;
     private static MelonPreferences_Entry<string> _upgradeMode;
+    private static MelonPreferences_Entry<int> _everySeconds;
 
     private static bool IsEnabled => _isEnabled?.Value ?? false;
 
@@ -76,6 +77,15 @@ public static class AutoUpgrade
             "milestone",
             "Upgrade Mode",
             "How many levels each press buys: milestone (up to the next milestone, the best value), x100, x25, x10 or x1."
+        );
+
+        _everySeconds = section.CreateEntry(
+            "every_seconds",
+            60,
+            "Upgrade Every (seconds)",
+            "AutoUpgrade opens the upgrades menu, buys what it can, closes the menu again and waits this long. " +
+            "Keeping the menu closed in between is what lets every other task, the bubbles and the miner/dragon " +
+            "collector keep working."
         );
 
         _upgradeTargetSlots = section.CreateEntry(
@@ -226,23 +236,25 @@ public static class AutoUpgrade
 
     private static IEnumerator UpgradeLoop()
     {
-        var wasPaused = false;
+        // Burst mode: open, buy, close, wait. The menu is never left open between bursts, so tasks, bubbles and the
+        // collector always see the battle screen.
         while (_isRunning)
         {
-            var isPaused = BotManager.ShouldPauseAutoUpgrade();
-            if (isPaused)
+            if (!BotManager.ShouldPauseAutoUpgrade())
             {
-                if (!wasPaused && Upgrades.IsVisible) yield return Upgrades.Close;
-                wasPaused = true;
-                yield return IdlePollWait;
-                continue;
+                yield return CoroutineGuard.Run(UpgradeCycle(), "[AutoUpgrade] cycle", AbortAfterFailure);
+                if (!_isRunning) yield break;
             }
 
-            if (wasPaused) wasPaused = false;
+            if (Upgrades.IsVisible) yield return Upgrades.Close;
 
-            // Driven through the guard: one step throwing used to kill this coroutine with _isRunning still true,
-            // leaving the badge claiming "on" with nothing behind it.
-            yield return CoroutineGuard.Run(UpgradeCycle(), "[AutoUpgrade] cycle", AbortAfterFailure);
+            var wait = Math.Max(10, _everySeconds?.Value ?? 60);
+            var until = Time.unscaledTime + wait;
+            while (_isRunning && Time.unscaledTime < until)
+            {
+                // A task that starts while we wait may have opened the menu itself; leave it alone then.
+                yield return IdlePollWait;
+            }
         }
     }
 
@@ -265,7 +277,7 @@ public static class AutoUpgrade
 
         foreach (var buyUpgradeBtn in buttons)
         {
-            if (BotManager.ShouldPauseAutoUpgrade()) break;
+            if (BotManager.ShouldPauseAutoUpgrade()) break; // the loop closes the menu right after
 
             Logger.Debug($"Name: {buyUpgradeBtn.Name}, IsVisible: {buyUpgradeBtn.IsVisible()}");
             yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);

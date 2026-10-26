@@ -45,11 +45,19 @@ public static class Upgrades
         if (Matches(current)) { _cachedLevel = current; yield break; }
 
         string fallback = null;
+        var seen = new System.Collections.Generic.List<string> { current };
         for (var n = 0; n < 8; n++)
         {
             yield return ChangeLevelUpModeBtn;
             current = LvlUpNumTxt;
-            if (Matches(current)) { _cachedLevel = current; yield break; }
+            seen.Add(current);
+            if (n == 7) Firebot.Core.Logger.Info($"[AutoUpgrade] Upgrade modes seen: {string.Join(" > ", seen)}");
+            if (Matches(current))
+            {
+                _cachedLevel = current;
+                Firebot.Core.Logger.Info($"[AutoUpgrade] Upgrade mode set: {current}");
+                yield break;
+            }
             if ((current ?? string.Empty).ToLowerInvariant().Contains("x100")) fallback ??= current;
         }
 

@@ -42,7 +42,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 | **F1** | Settings panel (turn features on or off, set priorities) |
 | **F2** | Task status (what runs next and when) |
 | **F7** | Start / stop the bot |
-| **F6** | Hero auto-upgrade on / off (on by default, upgrades to the next milestone) |
+| **F6** | Hero auto-upgrade on / off (on by default: every minute it opens upgrades, buys to the next milestone and closes the menu again) |
 | **F8** | Auto skills on / off |
 | **F9** | Save a screen map (attach it to bug reports) |
 
