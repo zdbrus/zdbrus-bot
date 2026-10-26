@@ -116,7 +116,7 @@ public class MeteoriteResearchTask : BotTask
 
     public override IEnumerator Execute()
     {
-        if (Cooldown.Recent(this, 20)) yield break;
+        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
         NextRunTime = DateTime.Now.AddHours(4);
         yield return Ui.OpenTownBuilding("library");
         yield return Ui.WaitFor(L);
@@ -173,7 +173,7 @@ public class ForbiddenKnowledgeTask : BotTask
 
     public override IEnumerator Execute()
     {
-        if (Cooldown.Recent(this, 20)) yield break;
+        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
         NextRunTime = DateTime.Now.AddHours(4);
         yield return Ui.OpenGuildBuilding("forbiddenKnowledge");
         yield return Ui.WaitFor(F);
@@ -224,7 +224,7 @@ public class ScarabGameTask : BotTask
 
     public override IEnumerator Execute()
     {
-        if (Cooldown.Recent(this, 20)) yield break;
+        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
         NextRunTime = DateTime.Now.AddHours(2);
         yield return Ui.OpenTownBuilding("tavern");
         yield return Ui.Click(P.Popups + "/TavernSelection/bg/scarabGame", 2.5f);
@@ -329,6 +329,8 @@ public class TemplePrestigeTask : BotTask
 
     public override IEnumerator Execute()
     {
+        // Its bubble stays lit the whole run, so check at most every 15 minutes.
+        BubbleQuietUntil = DateTime.Now.AddMinutes(15);
         NextRunTime = DateTime.Now.AddMinutes(30);
         var stalled = HoursSinceProgress();
         if (stalled < _stallHours.Value)
@@ -406,7 +408,7 @@ public class ScarabMilestonesTask : BotTask
 
     public override IEnumerator Execute()
     {
-        if (Cooldown.Recent(this, 20)) yield break;
+        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
         NextRunTime = DateTime.Now.AddHours(6);
         yield return Ui.OpenTownBuilding("tavern");
         yield return Ui.Click(P.Popups + "/TavernSelection/bg/scarabGame", 2.5f);
@@ -528,7 +530,7 @@ public class PharaohsVaultTask : BotTask
 
     public override IEnumerator Execute()
     {
-        if (Cooldown.Recent(this, 20)) yield break;
+        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
         NextRunTime = DateTime.Now.AddHours(6);
         yield return Ui.OpenTownBuilding("tavern");
         yield return Ui.Click(P.Popups + "/TavernSelection/bg/scarabGame", 2.5f);
@@ -665,5 +667,81 @@ public class BattlePassTask : BotTask
 
         Logger.Debug($"[BattlePass] claimed {claimed}");
         yield return Ui.Click(B + "/closeButton");
+    }
+}
+
+/// <summary>
+///     Opens the chests in the Bag (gear, jewel and celestial chests). A chest is opened only when it costs nothing but
+///     itself: the preview must show no requirement and the open button must carry the chest's own icon.
+/// </summary>
+public class OpenChestsTask : BotTask
+{
+    private const string Bag = P.Battle + "/bottomSideUIDesktop/menuButtons/inventoryButtonUI";
+    private const string Inv = P.Menus + "/Inventory";
+    private const string Content = Inv + "/submenus/items/ScrollView/Viewport/Content";
+    private const string Preview = P.Popups + "/ChestOpenPreview/bg";
+    private const string Opening = P.Menus + "/ChestOpening";
+    private MelonPreferences_Entry<string> _skip;
+
+    protected override void OnConfigure(MelonPreferences_Category c)
+    {
+        _skip = c.CreateEntry("skip", "mysteryBox,oraclesGift", "Chests To Keep",
+            "Chest names to leave unopened, comma-separated (Common, Uncommon, Rare, Epic, Legendary, Wooden, Iron, Golden, Comet, Lunar...).");
+    }
+
+    public override IEnumerator Execute()
+    {
+        NextRunTime = DateTime.Now.AddHours(2);
+        var skip = (_skip.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToHashSet();
+        yield return Ui.Click(Bag, 1.5f);
+        yield return Ui.Click(Inv + "/submenuButtons/chests", 1.2f);
+        if (!Ui.Visible(Content)) yield break;
+
+        for (var round = 0; round < 25; round++)
+        {
+            var chest = Ui.VisibleChildren(Content).FirstOrDefault(t =>
+                !skip.Contains(t.name.ToLowerInvariant()) && Ui.NumberOf(t.Find("quantity")) > 0 && Ui.Clickable(t));
+            if (chest == null) break;
+            var name = chest.name;
+            yield return Ui.Click(chest, 1.2f);
+            if (!Ui.Visible(Preview)) break;
+
+            if (Ui.Visible(Preview + "/chestRequirementBg"))
+            {
+                Logger.Info($"[Chests] {name} has a requirement; keeping it.");
+                skip.Add(name.ToLowerInvariant());
+                yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                continue;
+            }
+
+            Transform open = null;
+            foreach (var option in new[] { "openxMax", "openx10", "openx1" })
+            {
+                var b = Ui.Find(Preview + "/openingOptions/" + option);
+                if (Ui.Clickable(b) && b.Find("chestIcon") != null && b.Find("chestIcon").gameObject.activeInHierarchy) { open = b; break; }
+            }
+
+            if (open == null)
+            {
+                skip.Add(name.ToLowerInvariant());
+                yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                continue;
+            }
+
+            yield return Ui.Click(open, 2f, $"open {name} chest {Ui.Text(open.Find("quantity"))}");
+            if (Ui.MissingCurrency) break;
+
+            // Skip the animation, then close the reward screen.
+            for (var w = 0; w < 30 && Ui.Visible(Opening) && !Ui.Clickable(Opening + "/closeButton"); w++)
+            {
+                if (Ui.Clickable(Opening + "/background")) yield return Ui.Click(Opening + "/background", 0.5f);
+                else yield return new WaitForSeconds(0.5f);
+            }
+
+            if (Ui.Clickable(Opening + "/closeButton")) yield return Ui.Click(Opening + "/closeButton", 1f);
+            if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.6f);
+        }
+
+        if (Ui.Visible(Inv)) yield return Ui.Click(Inv + "/closeButton");
     }
 }

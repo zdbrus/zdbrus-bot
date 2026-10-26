@@ -27,7 +27,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 1. **Install MelonLoader 0.7.3 or newer** on Firestone using the official installer: [MelonLoader releases](https://github.com/LavaGang/MelonLoader/releases/latest). Point it at `Firestone.exe`.
    (Steam: right-click Firestone > Manage > Browse local files to find the folder.)
 2. **Start the game once and close it.** MelonLoader finishes setting itself up on the first run.
-3. **Download [ZdbrusBot.zip](https://github.com/zdbrus/zdbrus-bot/releases/latest/download/ZdbrusBot.zip)** and extract it into the Firestone folder (the one with `Firestone.exe`). It contains `Mods\ZdbrusBot.dll`.
+3. **Download [ZdbrusBot.zip](https://github.com/zdbrus/zdbrus-bot/releases/latest/download/ZdbrusBot.zip)** and extract all of it into the Firestone folder (the one with `Firestone.exe`), replacing files when asked. It contains `Mods\ZdbrusBot.dll` plus three fixed MelonLoader files (`MelonLoader\net6\Il2CppInterop.*.dll`) that the current game needs.
 4. **Start the game**, press **F1** to pick which features to turn on, then press **F7** to start the bot.
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
@@ -74,10 +74,12 @@ It also reads the notification bubbles on the left of the screen, so it reacts t
 ## Requirements
 
 - Windows, Firestone from Steam or Epic, game version **9.1.3a** (the bot is updated when the game updates).
-- MelonLoader **0.7.3 or newer** (older versions will not load it).
+- MelonLoader **0.7.3** (newer nightly builds crash the current game).
 - In the game settings, under **Gameplay**, set **Adventure buttons style** to **PC (Legacy)**.
 
 ## FAQ
+
+**The game closes right after loading.** The three MelonLoader files from the zip are missing, usually because MelonLoader was reinstalled or updated. Extract ZdbrusBot.zip into the game folder again and replace files. Use MelonLoader 0.7.3 with "Enable Nightly builds" off.
 
 **The bot doesn't start.** Check `MelonLoader\Latest.log` in the game folder for a line saying `Zdbrus Bot ready`. If it isn't there, MelonLoader isn't installed correctly or the DLL isn't in `Mods`.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2 (2026-10-25)
+- The download now includes the three fixed MelonLoader files (Il2CppInterop) the current game needs. Without them the game closes right after loading.
+- The update check is switched off for now while it is tested for crashes.
+
 ## 0.6.1 (2026-10-25)
 - Temple prestige now waits until the run stalls: no new highest stage for 3 hours (adjustable), at least +100% gold boost and 1 hour into the run. Never uses the paid 2x empower.
 - The bot checks GitHub once per start and tells you (log and F1 panel title) when a newer version is out. It never downloads anything by itself.

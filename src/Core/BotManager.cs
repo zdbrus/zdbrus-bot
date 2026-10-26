@@ -226,8 +226,13 @@ public static class BotManager
                     // because Logger.Debug filters the write but not the cost of building the output.
                     var stopwatch = Logger.IsDebugEnabled ? Stopwatch.StartNew() : null;
 
+                    var fromBubble = readyTask == notificationTask;
                     yield return RunSafe(readyTask.Execute(), $"Task {readyTask.SectionTitle}");
                     readyTask.LastRunTime = DateTime.Now;
+                    // A bubble that is still lit right after its task ran (nothing it could do) waits a little
+                    // before it can trigger again, so other tasks get their turn.
+                    if (fromBubble && readyTask.BubbleQuietUntil < DateTime.Now.AddMinutes(3))
+                        readyTask.BubbleQuietUntil = DateTime.Now.AddMinutes(3);
 
                     // The task owns its schedule, so it also owns the promise of leaving one behind.
                     readyTask.EnsureScheduled();

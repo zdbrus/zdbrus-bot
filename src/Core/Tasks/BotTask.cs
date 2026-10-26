@@ -152,7 +152,13 @@ public abstract class BotTask
 
     /// <summary>The level is looked up once per call through the guards above, not once per branch.</summary>
     private bool IsNotificationVisibleCore()
-        => IsEnabled && NotificationElement != null && NotificationElement.IsVisible();
+        => IsEnabled && DateTime.Now >= BubbleQuietUntil && NotificationElement != null && NotificationElement.IsVisible();
+
+    /// <summary>
+    ///     Until this time the task's bubble does not trigger a run (its timer still does). Keeps a bubble that stays lit,
+    ///     because there is nothing affordable to do, from taking every scan and starving the other tasks.
+    /// </summary>
+    public DateTime BubbleQuietUntil { get; set; } = DateTime.MinValue;
 
     public abstract IEnumerator Execute();
 
