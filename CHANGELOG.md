@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.3 (2026-10-26)
+- Hero auto-upgrade now starts by itself when the game loads (it used to wait for F6), so heroes level up again right after a prestige.
+- New Upgrade Mode setting, default "Next milestone" (also x100, x25, x10, x1).
+- Notification bubbles that offer nothing free are left alone for 3 hours instead of being reopened every 10 minutes.
+
 ## 0.6.2 (2026-10-25)
 - The download now includes the three fixed MelonLoader files (Il2CppInterop) the current game needs. Without them the game closes right after loading.
 - The update check is switched off for now while it is tested for crashes.

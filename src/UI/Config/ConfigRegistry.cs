@@ -92,6 +92,14 @@ internal static class ConfigRegistry
     /// </summary>
     private static readonly Dictionary<string, ConfigChoice[]> SingleChoices = new()
     {
+        ["auto_upgrade/upgrade_mode"] = new[]
+        {
+            new ConfigChoice("milestone", "Next milestone"),
+            new ConfigChoice("x100", "x100"),
+            new ConfigChoice("x25", "x25"),
+            new ConfigChoice("x10", "x10"),
+            new ConfigChoice("x1", "x1")
+        },
         ["magic_quarters/guardian_index"] = new[]
         {
             new ConfigChoice("0", "Vermilion"),

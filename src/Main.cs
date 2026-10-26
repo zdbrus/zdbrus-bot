@@ -47,6 +47,7 @@ public class Main : MelonMod
         if (_isGameReady)
         {
             if (BotSettings.AutoStart) BotManager.Start();
+            AutoUpgrade.AutoStart();
         }
         else BotManager.Stop();
     }

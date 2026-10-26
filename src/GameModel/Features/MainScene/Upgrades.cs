@@ -23,51 +23,40 @@ public static class Upgrades
         new GameButton(Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.ChangeLevelUpModeButton).Click();
 
     /// <summary>
-    ///     Sets the upgrade level. The default value is x25.
+    ///     Cycles the "Upgrade x1 / x10 / x25 / x100 / milestone" button until it shows the wanted mode.
+    ///     <paramref name="mode" /> is "milestone", "x100", "x25", "x10" or "x1". If the wanted mode never shows up,
+    ///     it settles on x100.
     /// </summary>
-    public static IEnumerator SetUpgradeLevel()
+    public static IEnumerator SetUpgradeLevel(string mode = "milestone")
     {
         if (!IsVisible) yield break;
-        var currentLevel = LvlUpNumTxt;
+        var want = (mode ?? "milestone").Trim().ToLowerInvariant();
 
-        if (!string.IsNullOrEmpty(currentLevel) &&
-            string.Equals(currentLevel, _cachedLevel, StringComparison.Ordinal))
-            yield break;
-
-        if (!string.IsNullOrEmpty(currentLevel) && currentLevel.Contains("x100"))
+        bool Matches(string text)
         {
-            yield return ChangeLevelUpModeBtn;
-            currentLevel = LvlUpNumTxt;
-            _cachedLevel = currentLevel;
-            yield break;
+            var t = (text ?? string.Empty).ToLowerInvariant();
+            if (want == "milestone") return t.Contains("milestone") || t.Contains("next");
+            // "x1" must not match "x10"/"x100": compare the number after the x.
+            var i = t.LastIndexOf('x');
+            return i >= 0 && t[(i)..].Trim() == want;
         }
 
-        var attempts = 0;
-        const int maxAttempts = 10; // Prevent infinite loop in case of unexpected issues
+        var current = LvlUpNumTxt;
+        if (Matches(current)) { _cachedLevel = current; yield break; }
 
-        while (attempts < maxAttempts)
+        string fallback = null;
+        for (var n = 0; n < 8; n++)
         {
             yield return ChangeLevelUpModeBtn;
-            currentLevel = LvlUpNumTxt;
-
-            if (string.IsNullOrEmpty(currentLevel))
-                break;
-
-            if (string.Equals(currentLevel, _cachedLevel, StringComparison.Ordinal))
-                break;
-
-            _cachedLevel = currentLevel;
-
-            if (currentLevel.Contains("x100"))
-            {
-                yield return ChangeLevelUpModeBtn;
-                currentLevel = LvlUpNumTxt;
-                if (!string.IsNullOrEmpty(currentLevel))
-                    _cachedLevel = currentLevel;
-                break;
-            }
-
-            attempts++;
+            current = LvlUpNumTxt;
+            if (Matches(current)) { _cachedLevel = current; yield break; }
+            if ((current ?? string.Empty).ToLowerInvariant().Contains("x100")) fallback ??= current;
         }
+
+        // Wanted mode not offered by the game: stop on x100 instead of wherever the cycle ended.
+        if (fallback == null) yield break;
+        for (var n = 0; n < 8 && !string.Equals(LvlUpNumTxt, fallback, StringComparison.Ordinal); n++)
+            yield return ChangeLevelUpModeBtn;
+        _cachedLevel = LvlUpNumTxt;
     }
 }

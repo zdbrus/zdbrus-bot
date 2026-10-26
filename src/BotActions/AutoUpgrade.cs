@@ -28,6 +28,7 @@ public static class AutoUpgrade
     private static MelonPreferences_Entry<KeyCode> _shortcutKey;
     private static MelonPreferences_Entry<bool> _isEnabled;
     private static MelonPreferences_Entry<string> _upgradeTargetSlots;
+    private static MelonPreferences_Entry<string> _upgradeMode;
 
     private static bool IsEnabled => _isEnabled?.Value ?? false;
 
@@ -65,9 +66,16 @@ public static class AutoUpgrade
 
         _isEnabled = section.CreateEntry(
             "enabled",
-            false,
+            true,
             "Enable AutoUpgrade",
-            "Enables or disables the AutoUpgrade automation task. When disabled, this task will be ignored during the execution loop. Default: false."
+            "Levels up your heroes, guardian and specials with gold. Starts by itself when the game loads (F6 still toggles it). Default: on."
+        );
+
+        _upgradeMode = section.CreateEntry(
+            "upgrade_mode",
+            "milestone",
+            "Upgrade Mode",
+            "How many levels each press buys: milestone (up to the next milestone, the best value), x100, x25, x10 or x1."
         );
 
         _upgradeTargetSlots = section.CreateEntry(
@@ -187,6 +195,15 @@ public static class AutoUpgrade
         Start();
     }
 
+    /// <summary>Starts AutoUpgrade once the game is ready, so it never sits idle after a restart or a prestige.</summary>
+    public static void AutoStart()
+    {
+        if (!IsEnabled || _isRunning) return;
+        _isRunning = true;
+        _autoUpgradeRoutineHandle = MelonCoroutines.Start(UpgradeLoop());
+        Logger.Info("AutoUpgrade started.");
+    }
+
     private static void Start()
     {
         if (IsShortcutDisabled) return;
@@ -235,7 +252,7 @@ public static class AutoUpgrade
         if (!Upgrades.IsVisible)
         {
             yield return new GameButton(Paths.BattleLoc.BottomSideUIDesktopLoc.MenuButtonsLoc.UpgradesBtn).Click();
-            yield return Upgrades.SetUpgradeLevel();
+            yield return Upgrades.SetUpgradeLevel(_upgradeMode?.Value ?? "milestone");
             yield return IdlePollWait;
         }
 

@@ -443,6 +443,8 @@ public class BubbleRewardsTask : BotTask
         new(@"^(claim|collect|free|getfree|claimall|claimbutton|collectbutton|claimallbutton|collectall)", RegexOptions.IgnoreCase);
 
     private MelonPreferences_Entry<string> _bubbles;
+    // A bubble that opened nothing free is left alone for a while instead of being reopened every 10 minutes.
+    private static readonly Dictionary<string, DateTime> Quiet = new();
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
@@ -481,6 +483,7 @@ public class BubbleRewardsTask : BotTask
         {
             var path = P.Notifications + "/" + name;
             if (!Ui.Visible(path)) continue;
+            if (Quiet.TryGetValue(name, out var until) && DateTime.Now < until) continue;
 
             var before = OpenRoots();
             yield return new Firebot.GameModel.Primitives.GameNotificationButton(path).Click();
@@ -506,6 +509,7 @@ public class BubbleRewardsTask : BotTask
             }
 
             Logger.Info($"[Bubbles] {name}: opened {string.Join(", ", opened.Select(o => o.name))}; claimed {claimed}");
+            if (claimed == 0) Quiet[name] = DateTime.Now.AddHours(3);
 
             // Close what the bubble opened, newest first.
             foreach (var screen in opened.AsEnumerable().Reverse())
