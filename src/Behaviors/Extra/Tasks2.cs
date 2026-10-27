@@ -751,8 +751,8 @@ public class OpenChestsTask : BotTask
 }
 
 /// <summary>
-///     Spends free talent points (earned by character level) in the Character > Talents tree. Talents are upgraded in
-///     the priority order you set, then any other talent. Talent points are the only thing this can spend.
+///     Spends free talent points (earned by character level) in the Character > Talents tree. Talents you list are
+///     filled first, then the rest in tree order. It stops as soon as no point is left. Only talent points are spent.
 /// </summary>
 public class TalentsTask : BotTask
 {
@@ -761,6 +761,7 @@ public class TalentsTask : BotTask
 
     private const string C = P.Popups + "/Character/bg";
     private const string Tree = C + "/submenus/talents/bg/talentTreeScroll/Viewport/content/talentTree";
+    private const string Points = C + "/submenus/talents/bg/talentPoints/container/pointInfo/talentsTextBg/talentsText";
     private const string Preview = P.Popups + "/TalentPreview/bg";
     private MelonPreferences_Entry<string> _priority;
 
@@ -770,6 +771,13 @@ public class TalentsTask : BotTask
             "Priority", "Talent names to fill first, comma-separated. Others are filled after, in tree order.");
     }
 
+    // Talent points shown as "free/total". -1 when unreadable, so the task still tries.
+    private static double Free()
+    {
+        var t = Ui.Text(Points) ?? "";
+        return t.Contains('/') ? Ui.Parse(t.Split('/')[0]) : -1;
+    }
+
     public override IEnumerator Execute()
     {
         BubbleQuietUntil = DateTime.Now.AddMinutes(30);
@@ -777,54 +785,57 @@ public class TalentsTask : BotTask
         if (!Ui.Visible(C)) yield return Ui.Click(P.Battle + "/topLeftSideUI/playerAvatar", 1.5f);
         if (!Ui.Visible(C)) yield break;
         yield return Ui.Click(C + "/submenuButtons/talents", 1.5f);
-        if (!Ui.Visible(Tree)) { yield return Ui.Click(C + "/closeButton"); yield break; }
 
-        var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
-        var nodes = Ui.VisibleChildren(Tree).Where(t => t.name.StartsWith("talentInteraction") && Ui.Clickable(t)).ToList();
-        var names = new Dictionary<Transform, string>();
         var spent = 0;
-
-        // First pass reads each talent's name so the priority order can be applied.
-        foreach (var n in nodes)
+        if (Ui.Visible(Tree) && Free() != 0)
         {
-            yield return Ui.Click(n, 0.8f);
-            if (!Ui.Visible(Preview)) continue;
-            names[n] = (Ui.Text(Preview + "/talentName") ?? "").Trim();
-            yield return TryUpgrade(n, names[n], order.Count == 0, v => spent += v);
-            if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.5f);
-        }
+            var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
+            var nodes = Ui.VisibleChildren(Tree).Where(t => t.name.StartsWith("talentInteraction") && Ui.Clickable(t)).ToList();
+            var later = new List<Transform>();
 
-        if (order.Count > 0)
-        {
-            var sorted = nodes.Where(names.ContainsKey).OrderBy(n =>
+            // Pass 1: listed talents. Pass 2: everything else that was skipped.
+            for (var pass = 0; pass < 2 && Free() != 0; pass++)
             {
-                var i = order.IndexOf(names[n].ToLowerInvariant());
-                return i < 0 ? 1000 : i;
-            }).ToList();
-            foreach (var n in sorted)
-            {
-                yield return Ui.Click(n, 0.8f);
-                if (!Ui.Visible(Preview)) continue;
-                yield return TryUpgrade(n, names[n], true, v => spent += v);
-                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.5f);
+                foreach (var n in pass == 0 ? nodes : later)
+                {
+                    if (Free() == 0) break;
+                    yield return Ui.Click(n, 0.6f);
+                    if (!Ui.Visible(Preview)) continue;
+                    var name = (Ui.Text(Preview + "/talentName") ?? "").Trim();
+                    if (pass == 0 && order.Count > 0 && !order.Contains(name.ToLowerInvariant()))
+                    {
+                        // Only talents that can take a point now are worth a second visit.
+                        if (Ui.Clickable(Preview + "/talentUpgrades/upgradeTalentButton")) later.Add(n);
+                    }
+                    else yield return Upgrade(name, () => spent++);
+                    if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
+                }
+
+                if (order.Count == 0) break;
             }
         }
 
-        Logger.Info($"[Talents] spent {spent} point(s)");
-        if (Ui.Visible(C)) yield return Ui.Click(C + "/closeButton");
+        Logger.Info($"[Talents] spent {spent} point(s), {Ui.Text(Points)} left");
+        if (Ui.Visible(C)) yield return Ui.Click(C + "/closeButton", 1f);
+        // Talent changes only stick once saved: the game asks when the window closes.
+        const string unsaved = P.Popups + "/UnsavedChanges/bg";
+        if (Ui.Visible(unsaved))
+        {
+            yield return Ui.Click(unsaved + "/saveChangesButton", 1f, "save talents");
+            if (Ui.Visible(C)) yield return Ui.Click(C + "/closeButton", 1f);
+        }
     }
 
-    private static IEnumerator TryUpgrade(Transform node, string name, bool spend, Action<int> add)
+    private static IEnumerator Upgrade(string name, Action add)
     {
-        if (!spend) yield break;
-        for (var i = 0; i < 60; i++)
+        for (var i = 0; i < 60 && Free() != 0; i++)
         {
             var up = Ui.Find(Preview + "/talentUpgrades/upgradeTalentButton");
             if (!Ui.Clickable(up)) yield break;
             var before = Ui.Text(Preview + "/talentLevelText");
             yield return Ui.Click(up, 0.4f, $"talent {name}");
             if (Ui.MissingCurrency || Ui.Text(Preview + "/talentLevelText") == before) yield break;
-            add(1);
+            add();
         }
     }
 }

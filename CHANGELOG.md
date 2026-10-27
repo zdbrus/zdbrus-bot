@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.7 (2026-10-27)
+- Talent points now really stick: the game only keeps talent changes after "Save changes", which the bot now presses.
+- The talents task checks your free points first and skips the whole tree when there are none (it used to walk every talent and time out).
 ## 0.6.6 (2026-10-26)
 - New: spends talent points as soon as the "talent available" bubble shows up (Character > Talents), filling the talents you list first. Only talent points are spent.
 - Pirate's prize free rewards are now claimed (the game names that button differently).
