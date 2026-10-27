@@ -59,6 +59,7 @@ internal sealed class UiWindow
         UiFactory.Center(window.rectTransform, width, height, Vector2.zero);
 
         var header = BuildHeader(window.transform, title, onClose);
+        BuildHudTrim(window.rectTransform);
 
         var content = UiFactory.CreateNode("content", window.transform);
         content.anchorMin = Vector2.zero;
@@ -67,6 +68,30 @@ internal sealed class UiWindow
         content.offsetMax = new Vector2(-UiTheme.Padding, -(UiTheme.HeaderHeight + UiTheme.ContentTopGap));
 
         return new UiWindow(root, window.transform, header, content);
+    }
+
+    /// <summary>Command-screen trim: a glowing cyan line under the header, cyan and orange corner brackets.</summary>
+    private static void BuildHudTrim(RectTransform window)
+    {
+        Strip("hudHeaderGlow", window, UiTheme.CyanGlow, new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(0f, -UiTheme.HeaderHeight - 6f), new Vector2(0f, -UiTheme.HeaderHeight));
+        Strip("hudHeaderLine", window, UiTheme.Cyan, new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(0f, -UiTheme.HeaderHeight - UiTheme.GlowLine), new Vector2(0f, -UiTheme.HeaderHeight));
+        Strip("hudTL1", window, UiTheme.Cyan, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -3f), new Vector2(UiTheme.Bracket, 0f));
+        Strip("hudTL2", window, UiTheme.Cyan, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -UiTheme.Bracket), new Vector2(3f, 0f));
+        Strip("hudBR1", window, UiTheme.Accent, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-UiTheme.Bracket, 0f), new Vector2(0f, 3f));
+        Strip("hudBR2", window, UiTheme.Accent, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-3f, 0f), new Vector2(0f, UiTheme.Bracket));
+    }
+
+    private static void Strip(string name, Transform parent, Color color, Vector2 anchorMin, Vector2 anchorMax,
+        Vector2 offsetMin, Vector2 offsetMax)
+    {
+        var img = UiFactory.CreateImage(name, parent, color, false);
+        var r = img.rectTransform;
+        r.anchorMin = anchorMin;
+        r.anchorMax = anchorMax;
+        r.offsetMin = offsetMin;
+        r.offsetMax = offsetMax;
     }
 
     private static RectTransform BuildHeader(Transform window, string title, Action onClose)

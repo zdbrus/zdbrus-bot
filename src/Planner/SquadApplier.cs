@@ -88,6 +88,26 @@ public static class SquadApplier
 
         Status = "Choosing war machines…";
         yield return SetMachines(plan);
+        var mech = Mech();
+        if (!OrderMatches(plan))
+        {
+            // Clicking the deck did not give the planned line-up: set it through the screen's own methods.
+            Logger.Info($"[Planner] Deck clicks gave [{string.Join(", ", UiOrder())}], setting the squad directly.");
+            if (mech != null)
+            {
+                try
+                {
+                    mech.EmptyFormationSpots();
+                    foreach (var p in plan)
+                    {
+                        var wm = FindMachine(p.Code);
+                        if (wm != null) mech.AddWarMachineInSpotAuto(wm);
+                    }
+                }
+                catch (Exception e) { Logger.Warning($"[Planner] Direct squad set failed: {e.Message}"); }
+                yield return new WaitForSeconds(1f);
+            }
+        }
 
         Status = "Setting crews…";
         // Two passes: first take off everyone who should not be on a machine, then add the planned heroes. That
@@ -95,18 +115,52 @@ public static class SquadApplier
         yield return SetCrews(plan, removeOnly: true);
         yield return SetCrews(plan, removeOnly: false);
 
-        Status = "Saving…";
-        var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachinesViewController>();
-        var save = vc?.SaveChangesButton;
-        if (save != null && save.gameObject.activeInHierarchy && save.interactable)
+        // Crews the picker did not take are set directly on the spot.
+        if (mech != null)
         {
-            save.onClick.Invoke();
-            yield return new WaitForSeconds(2f);
+            var spots = UnityEngine.Object.FindObjectOfType<SelectWarMachinesViewController>()?.WarMachineFormationSettingSpots;
+            for (var s = 0; spots != null && s < spots.Count; s++)
+            {
+                var spot = spots[s];
+                if (spot?.warMachine == null) continue;
+                var planned = plan.FirstOrDefault(p => Same(p.Code, spot.warMachine.machineCode.ToString()));
+                if (planned == null || planned.Crew.Count == 0) continue;
+                var crew = new List<int>();
+                for (var i = 0; spot.warMachine.crewHeroIds != null && i < spot.warMachine.crewHeroIds.Count; i++)
+                    crew.Add(spot.warMachine.crewHeroIds[i]);
+                if (planned.Crew.All(crew.Contains) && crew.All(planned.Crew.Contains)) continue;
+                try
+                {
+                    var list = new Il2CppSystem.Collections.Generic.List<int>();
+                    foreach (var id in planned.Crew) list.Add(id);
+                    mech.SetSpotCrew(spot.spotIndex, list);
+                }
+                catch (Exception e) { Logger.Warning($"[Planner] Direct crew set failed: {e.Message}"); }
+                yield return new WaitForSeconds(0.3f);
+            }
         }
 
-        yield return Watchdog.ForceClearAll("after applying the planner squad");
+        Status = "Saving…";
+        var before = string.Join(", ", UiOrder());
+        Logger.Info($"[Planner] Squad on screen before saving: [{before}]");
+        var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachinesViewController>();
+        var save = vc?.SaveChangesButton;
+        if (save != null && save.gameObject.activeInHierarchy && save.interactable) save.onClick.Invoke();
+        else if (mech != null)
+        {
+            try { mech.SaveChanges(); }
+            catch (Exception e) { Logger.Warning($"[Planner] SaveChanges failed: {e.Message}"); }
+        }
+        // The game saves through its server: wait for the reply before closing anything.
+        var until = Time.unscaledTime + 10f;
         yield return new WaitForSeconds(1f);
-        Verify(plan);
+        while (mech != null && Time.unscaledTime < until && SafeWaiting(mech)) yield return new WaitForSeconds(0.25f);
+        yield return new WaitForSeconds(1f);
+
+        yield return Watchdog.ForceClearAll("after applying the planner squad");
+        // The saved squad can take a moment to show up in the game's data.
+        for (var t = 0; t < 8 && !Matches(plan); t++) yield return new WaitForSeconds(1f);
+        Verify(plan, before);
     }
 
     private static IEnumerator Open()
@@ -119,6 +173,13 @@ public static class SquadApplier
         yield return Ui.WaitFor(Squads);
         yield return Ui.Click(EditActive, 2f);
         yield return Ui.WaitFor(Builder);
+        if (Ui.Visible(Builder)) yield break;
+
+        // The click route missed a step (a slow screen, a popup in the way): open the squad editor directly.
+        Logger.Info("[Planner] Opening the squad editor directly.");
+        try { Mech()?.Open(null); }
+        catch (Exception e) { Logger.Warning($"[Planner] Direct open failed: {e.Message}"); }
+        yield return Ui.WaitFor(Builder, 4f);
     }
 
     private static IEnumerator SetMachines(List<PlannedMachine> plan)
@@ -216,6 +277,65 @@ public static class SquadApplier
         }
     }
 
+    private static SelectWarMachinesMech Mech()
+    {
+        try { return GameInitialize.MenuLoader?.SelectWarMachinesMech; }
+        catch { return null; }
+    }
+
+    private static bool SafeWaiting(SelectWarMachinesMech mech)
+    {
+        try { return mech.WaitingServerReply; }
+        catch { return false; }
+    }
+
+    private static WarMachine FindMachine(string code)
+    {
+        var list = GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.warMachineList;
+        for (var i = 0; list != null && i < list.Count; i++)
+            if (list[i] != null && Same(list[i].machineCode.ToString(), code)) return list[i];
+        return null;
+    }
+
+    /// <summary>True when a saved squad entry (internal machine code) is the planned machine (by name).</summary>
+    private static bool IsMachine(string savedCode, string plannedName)
+    {
+        if (Same(savedCode, plannedName)) return true;
+        var wm = FindMachine(plannedName);
+        return wm != null && (Same(wm.code, savedCode) || Same(wm.id, savedCode));
+    }
+
+    private static string NameOf(string savedCode)
+    {
+        var list = GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.warMachineList;
+        for (var i = 0; list != null && i < list.Count; i++)
+            if (list[i] != null && (Same(list[i].code, savedCode) || Same(list[i].id, savedCode)))
+                return list[i].machineCode.ToString();
+        return savedCode;
+    }
+
+    private static List<string> UiOrder()
+    {
+        var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachinesViewController>();
+        return vc == null ? new List<string>() : CurrentOrder(vc);
+    }
+
+    private static bool OrderMatches(List<PlannedMachine> plan)
+    {
+        var have = UiOrder();
+        return plan.All(p => have.Any(h => Same(h, p.Code)));
+    }
+
+    /// <summary>True when every planned machine is in the saved squad.</summary>
+    private static bool Matches(List<PlannedMachine> plan)
+    {
+        var data = GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList;
+        if (data == null) return false;
+        var codes = new List<string>();
+        for (var i = 0; i < data.Count; i++) if (data[i] != null) codes.Add(data[i].code);
+        return plan.All(p => codes.Any(c => IsMachine(c, p.Code)));
+    }
+
     private static void Press(WarMachineSelectInteraction tile)
     {
         var b = tile.clickButton;
@@ -233,7 +353,7 @@ public static class SquadApplier
     }
 
     /// <summary>Reads the active squad back from the game and says what matched.</summary>
-    private static void Verify(List<PlannedMachine> plan)
+    private static void Verify(List<PlannedMachine> plan, string onScreen)
     {
         try
         {
@@ -245,7 +365,7 @@ public static class SquadApplier
             {
                 WarMachineSpotData spot = null;
                 for (var i = 0; i < data.Count; i++)
-                    if (data[i] != null && Same(data[i].code, p.Code)) { spot = data[i]; break; }
+                    if (data[i] != null && IsMachine(data[i].code, p.Code)) { spot = data[i]; break; }
                 if (spot == null) { problems.Add($"{p.Code} is not in the squad"); continue; }
                 var crew = new HashSet<int>();
                 for (var i = 0; spot.warMachineHeroCodes != null && i < spot.warMachineHeroCodes.Count; i++) crew.Add(spot.warMachineHeroCodes[i]);
@@ -253,8 +373,12 @@ public static class SquadApplier
                 if (missing > 0) problems.Add($"{p.Code} is missing {missing} crew");
             }
 
-            if (problems.Count == 0) Finish(true, "Squad applied. The game now runs your planned machines and crews.");
-            else Finish(false, "Applied with differences: " + string.Join("; ", problems) + ".");
+            if (problems.Count == 0) { Finish(true, "Squad applied. The game now runs your planned machines and crews."); return; }
+            var saved = new List<string>();
+            for (var i = 0; i < data.Count; i++)
+                if (data[i] != null && !string.IsNullOrEmpty(data[i].code)) saved.Add(NameOf(data[i].code));
+            Finish(false, "Applied with differences: " + string.Join("; ", problems) +
+                          $". Saved squad: [{string.Join(", ", saved)}]. On screen before saving: [{onScreen}].");
         }
         catch (Exception e)
         {
@@ -271,5 +395,8 @@ public static class SquadApplier
         else Logger.Warning($"[Planner] {message}");
     }
 
-    private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+    private static bool Same(string a, string b) => string.Equals(Norm(a), Norm(b), StringComparison.Ordinal);
+
+    private static string Norm(string s) =>
+        s == null ? "" : new string(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 }

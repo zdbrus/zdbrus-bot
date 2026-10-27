@@ -158,8 +158,15 @@ public static class BotPanel
         UiBadges.Build(_window.Header);
         BuildDetailBox(_window.Window);
 
+        var tabBar = UiFactory.CreateNode("tabs", _window.Window);
+        tabBar.anchorMin = new Vector2(0f, 1f);
+        tabBar.anchorMax = new Vector2(1f, 1f);
+        tabBar.offsetMin = new Vector2(UiTheme.Padding, -(UiTheme.HeaderHeight + UiTheme.ContentTopGap + UiTheme.TabBarHeight));
+        tabBar.offsetMax = new Vector2(-UiTheme.Padding, -(UiTheme.HeaderHeight + UiTheme.ContentTopGap));
+
         var rows = BuildScrollView(_window.Window);
         BuildContent(rows, _window.Root.GetComponent<GraphicRaycaster>());
+        UiContentBuilder.BuildTabs(tabBar);
     }
 
     /// <summary>Fixed box at the bottom of the window: this is where each option's description appears.</summary>
@@ -211,7 +218,8 @@ public static class BotPanel
         content.anchorMax = Vector2.one;
         content.offsetMin = new Vector2(UiTheme.Padding,
             UiTheme.Padding + UiTheme.DetailHeight + UiTheme.DetailGap);
-        content.offsetMax = new Vector2(-UiTheme.Padding, -(UiTheme.HeaderHeight + UiTheme.ContentTopGap));
+        content.offsetMax = new Vector2(-UiTheme.Padding,
+            -(UiTheme.HeaderHeight + UiTheme.ContentTopGap + UiTheme.TabBarHeight + UiTheme.TabGap * 2f));
 
         var scroll = content.gameObject.AddComponent<ScrollRect>();
         scroll.horizontal = false;

@@ -149,25 +149,36 @@ internal static class UiTheme
 
     // ---- Paleta ----
     public static readonly Color Blocker = new(0f, 0f, 0f, 0.68f);
-    public static readonly Color Window = new(0.098f, 0.106f, 0.125f, 0.99f);
-    public static readonly Color Header = new(0.157f, 0.169f, 0.196f, 1f);
-    public static readonly Color SectionHeader = new(0.180f, 0.196f, 0.231f, 1f);
-    public static readonly Color Detail = new(0.075f, 0.082f, 0.098f, 1f);
+    public static readonly Color Window = new(0.051f, 0.082f, 0.098f, 0.985f);
+    public static readonly Color Header = new(0.035f, 0.059f, 0.071f, 1f);
+    public static readonly Color SectionHeader = new(0.082f, 0.133f, 0.165f, 1f);
+    public static readonly Color Detail = new(0.031f, 0.055f, 0.067f, 1f);
 
     /// <summary>Border of the description box. It is what separates the box from the rest of the window.</summary>
-    public static readonly Color DetailEdge = new(1f, 1f, 1f, 0.18f);
-    public static readonly Color Row = new(1f, 1f, 1f, 0.08f);
-    public static readonly Color RowHighlight = new(1f, 1f, 1f, 0.17f);
-    public static readonly Color RowPressed = new(1f, 1f, 1f, 0.26f);
-    public static readonly Color Text = new(0.914f, 0.925f, 0.945f, 1f);
-    public static readonly Color TextMuted = new(0.596f, 0.627f, 0.675f, 1f);
-    public static readonly Color Accent = new(0.980f, 0.718f, 0.180f, 1f);
+    public static readonly Color DetailEdge = new(0.271f, 0.827f, 0.902f, 0.45f);
+    public static readonly Color Row = new(0.271f, 0.827f, 0.902f, 0.045f);
+    public static readonly Color RowHighlight = new(0.271f, 0.827f, 0.902f, 0.13f);
+    public static readonly Color RowPressed = new(0.271f, 0.827f, 0.902f, 0.22f);
+    public static readonly Color Text = new(0.886f, 0.929f, 0.941f, 1f);
+    public static readonly Color TextMuted = new(0.525f, 0.627f, 0.659f, 1f);
+    public static readonly Color Accent = new(1f, 0.541f, 0.239f, 1f);
     public static readonly Color Danger = new(0.898f, 0.298f, 0.278f, 1f);
 
     /// <summary>Green of the indicators that are on. The off red is Danger.</summary>
-    public static readonly Color StateOn = new(0.231f, 0.820f, 0.435f, 1f);
-    public static readonly Color Button = new(0.235f, 0.255f, 0.302f, 1f);
+    public static readonly Color StateOn = new(0.271f, 0.827f, 0.902f, 1f);
+    public static readonly Color Button = new(0.106f, 0.169f, 0.200f, 1f);
     public static readonly Color Transparent = new(0f, 0f, 0f, 0f);
+
+    // ---- HUD extras (tabs, glow lines, corner brackets) ----
+    public static readonly Color Cyan = new(0.271f, 0.827f, 0.902f, 1f);
+    public static readonly Color CyanGlow = new(0.271f, 0.827f, 0.902f, 0.18f);
+    public static readonly Color TabIdle = new(0.067f, 0.110f, 0.133f, 1f);
+    public static readonly Color TabActive = new(0.110f, 0.235f, 0.275f, 1f);
+    public const float TabBarHeight = 46f;
+    public const float TabGap = 6f;
+    public const float TabFontSize = 19f;
+    public const float GlowLine = 2f;
+    public const float Bracket = 26f;
 
     private static Sprite _whiteSprite;
     private static Sprite _circleSprite;

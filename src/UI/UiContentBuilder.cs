@@ -40,6 +40,30 @@ internal static class UiContentBuilder
         public string Body { get; }
     }
 
+    /// <summary>
+    ///     Tabs, in order. A section lands in the first tab whose words appear in its title (spaces ignored);
+    ///     anything new and unmatched goes to "Other", so a new task never disappears from the panel.
+    /// </summary>
+    private static readonly (string Name, string[] Keys)[] TabDefs =
+    {
+        ("Bot", new[] { "general", "autoskill", "autoupgrade" }),
+        ("Daily", new[] { "dailyrewards", "quests", "mail", "battlepass", "bubblerewards", "openchests" }),
+        ("Town", new[] { "alchemist", "firestoneresearch", "meteoriteresearch", "magicquarters", "oracle", "engineertools",
+            "exoticmerchant", "tavern", "scarab", "pharaoh" }),
+        ("Guild", new[] { "expedition", "freepickaxes", "arcanecrystal", "chaosrift", "personaltree", "awakenheroes",
+            "forbiddenknowledge" }),
+        ("Battle", new[] { "mapmissions", "warfront", "liberation", "arena", "warmachine", "bossretry" }),
+        ("Events", new[] { "event" }),
+        ("Progress", new[] { "talents", "templeprestige", "prestige" }),
+        ("Other", new string[0])
+    };
+
+    private static readonly List<int> SectionTab = new();
+    private static readonly List<int> UsedTabs = new();
+    private static readonly List<Image> TabImages = new();
+    private static readonly List<TMP_Text> TabLabels = new();
+    private static int _currentTab = -1;
+
     private static readonly List<Block> Blocks = new();
     private static readonly List<bool> Expanded = new();
     private static readonly List<TMP_Text> Markers = new();
@@ -73,6 +97,7 @@ internal static class UiContentBuilder
         _lastPointer = Vector3.zero;
 
         Blocks.Clear();
+        SectionTab.Clear();
         Expanded.Clear();
         Markers.Clear();
         Details.Clear();
@@ -85,9 +110,9 @@ internal static class UiContentBuilder
             var group = groups[g];
             var section = Expanded.Count;
 
-            // Every section starts closed. The panel then opens as a short list of 13 headers and the user
-            // expands what they came for, instead of scrolling past 32 settings to reach it.
+            // Sections start closed; a tab with only a few of them opens them all (see below).
             Expanded.Add(false);
+            SectionTab.Add(TabFor(group.Title));
 
             AddSectionHeader(group, section);
 
@@ -98,8 +123,83 @@ internal static class UiContentBuilder
             }
         }
 
+        UsedTabs.Clear();
+        for (var t = 0; t < TabDefs.Length; t++)
+        {
+            var count = 0;
+            for (var s = 0; s < SectionTab.Count; s++) if (SectionTab[s] == t) count++;
+            if (count == 0) continue;
+            UsedTabs.Add(t);
+            // A short tab shows everything at once; a long one stays a list of headers to pick from.
+            if (count <= 4)
+                for (var s = 0; s < SectionTab.Count; s++) if (SectionTab[s] == t) Expanded[s] = true;
+        }
+        if (_currentTab < 0 || !UsedTabs.Contains(_currentTab)) _currentTab = UsedTabs.Count > 0 ? UsedTabs[0] : 0;
+
         Relayout();
-        Logger.Debug($"[UI] Panel content: {groups.Count} section(s), {rowCount} setting(s).");
+        Logger.Debug($"[UI] Panel content: {groups.Count} section(s), {rowCount} setting(s), {UsedTabs.Count} tab(s).");
+    }
+
+    private static int TabFor(string title)
+    {
+        var key = (title ?? "").Replace(" ", "").ToLowerInvariant();
+        for (var t = 0; t < TabDefs.Length; t++)
+            foreach (var k in TabDefs[t].Keys)
+                if (key.Contains(k)) return t;
+        return TabDefs.Length - 1;
+    }
+
+    /// <summary>One button per tab that has sections, sharing the bar's width.</summary>
+    public static void BuildTabs(RectTransform bar)
+    {
+        TabImages.Clear();
+        TabLabels.Clear();
+        var n = Mathf.Max(1, UsedTabs.Count);
+        for (var i = 0; i < UsedTabs.Count; i++)
+        {
+            var tab = UsedTabs[i];
+            var button = UiFactory.CreateButton($"tab_{TabDefs[tab].Name}", bar, TabDefs[tab].Name.ToUpperInvariant(),
+                UiTheme.TabIdle, () => SelectTab(tab), UiTheme.TabFontSize);
+            var r = button.GetComponent<RectTransform>();
+            r.anchorMin = new Vector2((float)i / n, 0f);
+            r.anchorMax = new Vector2((float)(i + 1) / n, 1f);
+            r.offsetMin = new Vector2(i == 0 ? 0f : UiTheme.TabGap / 2f, 0f);
+            r.offsetMax = new Vector2(i == n - 1 ? 0f : -UiTheme.TabGap / 2f, 0f);
+            TabImages.Add(button.GetComponent<Image>());
+            TabLabels.Add(button.GetComponentInChildren<TMP_Text>());
+
+            var line = UiFactory.CreateImage("active", button.transform, UiTheme.Cyan, false);
+            var lr = line.rectTransform;
+            lr.anchorMin = new Vector2(0f, 0f);
+            lr.anchorMax = new Vector2(1f, 0f);
+            lr.offsetMin = new Vector2(0f, 0f);
+            lr.offsetMax = new Vector2(0f, UiTheme.GlowLine + 1f);
+        }
+        PaintTabs();
+    }
+
+    private static void SelectTab(int tab)
+    {
+        if (_currentTab == tab) return;
+        _currentTab = tab;
+        PaintTabs();
+        Relayout();
+        if (_rows != null) _rows.anchoredPosition = Vector2.zero; // a new tab starts at the top
+    }
+
+    private static void PaintTabs()
+    {
+        for (var i = 0; i < TabImages.Count && i < UsedTabs.Count; i++)
+        {
+            var active = UsedTabs[i] == _currentTab;
+            if (TabImages[i] != null)
+            {
+                TabImages[i].color = active ? UiTheme.TabActive : UiTheme.TabIdle;
+                var line = TabImages[i].transform.Find("active");
+                if (line != null) line.gameObject.SetActive(active);
+            }
+            if (TabLabels[i] != null) TabLabels[i].color = active ? UiTheme.Cyan : UiTheme.TextMuted;
+        }
     }
 
     private static void AddSectionHeader(ConfigGroup group, int section)
@@ -212,7 +312,8 @@ internal static class UiContentBuilder
         for (var i = 0; i < Blocks.Count; i++)
         {
             var block = Blocks[i];
-            var visible = block.AlwaysVisible || Expanded[block.Section];
+            var inTab = block.Section >= SectionTab.Count || SectionTab[block.Section] == _currentTab;
+            var visible = inTab && (block.AlwaysVisible || Expanded[block.Section]);
 
             var go = block.Rect.gameObject;
             if (go.activeSelf != visible) go.SetActive(visible);
