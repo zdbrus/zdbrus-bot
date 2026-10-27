@@ -153,43 +153,50 @@ public static class SquadApplier
     private static IEnumerator SetMachines(List<PlannedMachine> plan)
     {
         var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachinesViewController>();
+        var mech = Mech();
         if (vc == null) yield break;
         var deck = vc.WarMachineSelectInteractions;
-        if (deck == null) yield break;
-
         var wanted = plan.Select(p => p.Code).ToList();
-        if (CurrentOrder(vc).SequenceEqual(wanted, StringComparer.OrdinalIgnoreCase)) yield break;
 
-        // Take every machine out, then put the planned ones back in order: the first one picked fills the
-        // front spot, so the squad ends up in the planned order.
+        // Only swap what differs: machines that stay keep their crews and spots.
         var spots = vc.WarMachineFormationSettingSpots;
         for (var s = 0; spots != null && s < spots.Count; s++)
         {
-            if (spots[s] == null || spots[s].warMachine == null) continue;
-            try { spots[s].RemoveWarMachine(); }
-            catch (Exception e) { Logger.Debug($"[Planner] remove: {e.Message}"); }
+            var spot = spots[s];
+            if (spot?.warMachine == null) continue;
+            var code = spot.warMachine.machineCode.ToString();
+            if (wanted.Any(w => Same(w, code))) continue;
+            var removed = false;
+            // Clicking a squad machine on the deck takes it out, the same as a player does.
+            for (var i = 0; deck != null && i < deck.Count && !removed; i++)
+                if (deck[i]?.warMachine != null && Same(deck[i].warMachine.machineCode.ToString(), code))
+                {
+                    Press(deck[i]);
+                    removed = true;
+                }
             yield return new WaitForSeconds(Step);
+            if (spot.warMachine != null && Same(spot.warMachine.machineCode.ToString(), code) && mech != null)
+            {
+                try { mech.RemoveWarMachineFromFormation(spot.spotIndex); }
+                catch (Exception e) { Logger.Debug($"[Planner] remove: {e.Message}"); }
+                yield return new WaitForSeconds(Step);
+            }
         }
-        for (var i = 0; i < deck.Count; i++)
-        {
-            var tile = deck[i];
-            if (tile == null || tile.warMachine == null || !tile.IsSelected()) continue;
-            Press(tile);
-            yield return new WaitForSeconds(Step);
-        }
-        Logger.Info($"[Planner] After clearing: [{string.Join(", ", CurrentOrder(vc))}]");
+        Logger.Info($"[Planner] After removing: [{string.Join(", ", CurrentOrder(vc))}]");
 
         foreach (var code in wanted)
         {
-            for (var i = 0; i < deck.Count; i++)
+            if (CurrentOrder(vc).Any(c => Same(c, code))) continue;
+            for (var i = 0; deck != null && i < deck.Count; i++)
             {
                 var tile = deck[i];
                 if (tile?.warMachine == null || !Same(tile.warMachine.machineCode.ToString(), code)) continue;
-                if (!tile.IsSelected()) Press(tile);
+                Press(tile);
                 yield return new WaitForSeconds(Step);
                 break;
             }
         }
+        Logger.Info($"[Planner] After adding: [{string.Join(", ", CurrentOrder(vc))}]");
     }
 
     private static IEnumerator SetCrews(List<PlannedMachine> plan, bool removeOnly)
