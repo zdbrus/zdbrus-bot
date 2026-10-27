@@ -43,6 +43,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 | **F2** | Task status (what runs next and when) |
 | **F7** | Start / stop the bot |
 | **F6** | Hero auto-upgrade on / off (on by default: every minute it opens upgrades, buys to the next milestone and closes the menu again) |
+| **F4** | War Machine Planner (opens in your browser) |
 | **F8** | Auto skills on / off |
 | **F9** | Save a screen map (attach it to bug reports) |
 
@@ -61,6 +62,16 @@ Every feature can be switched on or off in the F1 panel.
 | **Character** | Spends talent points the moment you earn them (and saves them) |
 | **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
 | **Prestige** | Temple prestige once your run stalls (no new highest stage for 3 hours, adjustable), never the paid 2x |
+
+### War Machine Planner (F4)
+
+Press **F4** in game and your browser opens the planner at `http://localhost:5577`. It reads your real war machines, crews, heroes and jewels from the game every few seconds.
+
+- **Auto-build squad** picks your best 5 machines and crews for the campaign or the arena (each hero once, always a tank).
+- **Drag heroes** between machines; the bench shows how much power each hero would add to the selected machine.
+- **Game check** compares every number with the game's own, so you can trust the math.
+- **Campaign target** shows the power a mission needs and the furthest mission your squad covers.
+- **Plan upgrades** by editing levels, rarities, blueprints or jewels. The planner never changes anything in the game; set your crews in the Engineer as usual.
 
 It also reads the notification bubbles on the left of the screen, so it reacts the moment something is ready instead of waiting for a timer.
 

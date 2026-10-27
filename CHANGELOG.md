@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 (2026-10-27)
+- New: War Machine Planner. Press **F4** and your browser opens a planner at `localhost:5577` that reads your real war machines, crews, heroes and jewels straight from the game.
+  - Auto-build picks the best 5 machines and crews (each hero used once, always keeps a tank), for the campaign or the arena.
+  - Drag heroes between machines and see the power change; the bench shows how much each hero would add.
+  - Shows the full stat math for every machine, and a Game check that compares the planner with the game's own numbers.
+  - Campaign target: shows the power a mission needs and the furthest mission your squad covers.
+  - Edit levels, rarities, blueprints or jewels to plan upgrades. Edits stay in the planner; nothing is changed in the game.
+  - Only reachable from your own PC. It reads game data and never writes it.
 ## 0.6.8 (2026-10-27)
 - New: retries the stage boss. After a lost boss fight the game keeps farming the same stage until "Boss" is pressed; the bot now presses it every 4 minutes (adjustable), so the run keeps climbing. On by default.
 ## 0.6.7 (2026-10-27)
