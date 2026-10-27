@@ -71,7 +71,9 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - **Drag heroes** between machines; the bench shows how much power each hero would add to the selected machine.
 - **Game check** compares every number with the game's own, so you can trust the math.
 - **Campaign target** shows the power a mission needs and the furthest mission your squad covers.
-- **Plan upgrades** by editing levels, rarities, blueprints or jewels. The planner never changes anything in the game; set your crews in the Engineer as usual.
+- **Apply to game** sets your planned squad in one click: the bot goes through Engineer, Squads, Edit and Select crew like a player would, saves, and confirms what stuck.
+- **Hero faces** come from your own game (open Engineer > Select crew once).
+- **Plan upgrades** by editing levels, rarities, blueprints or jewels.
 
 It also reads the notification bubbles on the left of the screen, so it reacts the moment something is ready instead of waiting for a timer.
 

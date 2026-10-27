@@ -4,14 +4,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: engineer's bay. Command strip on top, five machine bays in a row, crew bench + math ledger below. */
+/* Layout: war-machine command HUD. Gauge + campaign curve on top, five machine bays, crew bench + math ledger below.
+   Warm orange vs cool cyan carries meaning (safe for red-green color blindness); every gauge also has a text label. */
 :root{
-  --ground:#11151b; --plate:#181e26; --plate-2:#1f2731; --seam:#2c3643; --seam-hi:#3a4757;
-  --ink:#ebe6da; --ink-dim:#97a1ae; --ink-faint:#66707d;
-  --brass:#d9a441; --brass-hi:#f0bf5c; --brass-ink:#1a1408;
-  /* colorblind-safe stat hues (Okabe-Ito), always paired with a text label */
-  --dmg:#ef7f3c; --hp:#56b4e9; --arm:#cc79a7;
-  --ok:#56b4e9; --warn:#f0e442; --bad:#ef7f3c;
+  --ground:#080e11; --plate:#0f181d; --plate-2:#15222a; --seam:#1e2e36; --seam-hi:#2b434e;
+  --ink:#e2edf0; --ink-dim:#86a0a8; --ink-faint:#58707a;
+  --brass:#ff8a3d; --brass-hi:#ffb36e; --brass-ink:#1c0b02;
+  --cyan:#45d3e6; --cyan-dim:#1b6c78;
+  --dmg:#ff8a3d; --hp:#45d3e6; --arm:#b791ff;
+  --ok:#45d3e6; --warn:#ffd166; --bad:#ff8a3d;
+  --glow-o:0 0 12px rgba(255,138,61,.45); --glow-c:0 0 12px rgba(69,211,230,.4);
   --f-display:"Chakra Petch","Segoe UI",system-ui,sans-serif;
   --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
   --f-num:"JetBrains Mono",ui-monospace,Consolas,monospace;
@@ -20,7 +22,9 @@
 *{box-sizing:border-box}
 html,body{background:var(--ground);color:var(--ink)}
 body{font:14px/1.45 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px;
-  background-image:linear-gradient(var(--plate) 1px,transparent 1px),linear-gradient(90deg,var(--plate) 1px,transparent 1px);background-size:28px 28px;background-attachment:fixed}
+  background:radial-gradient(1200px 600px at 70% -10%,rgba(69,211,230,.07),transparent 60%),radial-gradient(900px 500px at 0% 100%,rgba(255,138,61,.05),transparent 60%),var(--ground);background-attachment:fixed}
+/* faint CRT scanlines over the whole HUD */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:30;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px);mix-blend-mode:overlay}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ground)}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
@@ -56,6 +60,59 @@ button,input,select{font:inherit;color:inherit}
 .field select{width:auto}
 .verdict{display:flex;align-items:center;gap:8px;font:600 14px/1.2 var(--f-display);letter-spacing:.04em}
 .verdict svg{flex:none}
+
+/* HUD panel treatment: bevel, inner light, corner brackets */
+.deckhud>div,.side>.hud,.bay,.panel,details.more,.check{position:relative;background:linear-gradient(180deg,#13202700,#0b1317) , var(--plate);
+  border:1px solid var(--seam);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),inset 0 0 0 1px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.35)}
+.bay::before,.panel::before,.hud::before{content:"";position:absolute;top:-1px;left:-1px;width:18px;height:18px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);border-top-left-radius:var(--r);pointer-events:none;opacity:.8}
+.bay::after,.panel::after,.hud::after{content:"";position:absolute;bottom:-1px;right:-1px;width:18px;height:18px;border-bottom:2px solid var(--brass);border-right:2px solid var(--brass);border-bottom-right-radius:var(--r);pointer-events:none;opacity:.7}
+.bay[aria-current="true"]{box-shadow:inset 0 0 0 1px var(--brass),0 0 24px rgba(255,138,61,.18),0 10px 30px rgba(0,0,0,.35)}
+.top{background:linear-gradient(180deg,rgba(8,14,17,.95),rgba(8,14,17,.82))!important;overflow:hidden}
+.top::after{content:"";position:absolute;left:-30%;bottom:0;width:30%;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:sweep 6s linear infinite}
+@keyframes sweep{to{left:100%}}
+.brand h1{text-shadow:var(--glow-c)} .brand h1 b{text-shadow:var(--glow-o)}
+.btn.primary{box-shadow:var(--glow-o)}
+.chip.live .dot{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(69,211,230,0)} 0%{box-shadow:0 0 0 0 rgba(69,211,230,.6)}}
+
+/* ring gauges */
+.ring{display:block;overflow:visible}
+.ring .track{fill:none;stroke:var(--seam);}
+.ring .ticks{fill:none;stroke:var(--seam-hi);stroke-dasharray:1 3.2;opacity:.7}
+.ring .arc{fill:none;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+.ring .arc.anim{animation:arcIn 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes arcIn{from{stroke-dashoffset:var(--from)}}
+.ring.o .arc{stroke:var(--brass);filter:drop-shadow(0 0 4px rgba(255,138,61,.7))}
+.ring.c .arc{stroke:var(--cyan);filter:drop-shadow(0 0 4px rgba(69,211,230,.7))}
+.ring.v .arc{stroke:var(--arm);filter:drop-shadow(0 0 4px rgba(183,145,255,.6))}
+.gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:12px 10px 6px}
+.g{display:grid;justify-items:center;gap:4px;position:relative}
+.g .ring{width:100%;max-width:64px}
+.g .in{position:absolute;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:64px;aspect-ratio:1;display:grid;place-items:center;font:700 10px/1 var(--f-display);letter-spacing:.1em}
+.g .val{font:600 11.5px/1 var(--f-num);color:var(--ink)}
+
+/* command deck: big gauge + campaign curve */
+.deckhud{display:grid;grid-template-columns:260px minmax(0,1fr) 300px;gap:14px;margin-top:16px}
+.deckhud>div{border-radius:var(--r);padding:14px 16px;min-width:0}
+.biggauge{display:grid;place-items:center;position:relative}
+.biggauge .ring{width:210px;height:210px}
+.biggauge .center{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;gap:4px}
+.biggauge .center .label{font-size:9.5px;max-width:120px;line-height:1.3}
+.biggauge .center .sub{font-size:12px}
+.biggauge .power-big{font-size:30px;text-shadow:var(--glow-o)}
+.curve svg{width:100%;height:170px;display:block}
+.curve .axis{stroke:var(--seam);stroke-width:1}
+.curve text{fill:var(--ink-faint);font:500 10px var(--f-num)}
+.curve .need{fill:url(#needFill);stroke:var(--brass);stroke-width:1.5;filter:drop-shadow(0 0 4px rgba(255,138,61,.5))}
+.curve .you{stroke:var(--cyan);stroke-width:1.5;stroke-dasharray:5 4;filter:drop-shadow(0 0 4px rgba(69,211,230,.6))}
+.curve .you-lbl{fill:var(--cyan);font:600 11px var(--f-display);letter-spacing:.06em}
+.curve .mark{fill:var(--cyan);filter:drop-shadow(0 0 6px var(--cyan))}
+.curve .draw{stroke-dasharray:2000;animation:drawIn 1.4s ease-out both}
+@keyframes drawIn{from{stroke-dashoffset:2000}}
+.side{display:grid;gap:12px;align-content:start}
+@media (max-width:1180px){.deckhud{grid-template-columns:240px minmax(0,1fr)}.deckhud .side{grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.deckhud{grid-template-columns:minmax(0,1fr)}.deckhud .side{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.ring .arc.anim,.curve .draw,.top::after,.chip.live .dot{animation:none!important}}
 
 /* game check */
 .check{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--plate);border:1px solid var(--seam);border-radius:var(--r);padding:10px 14px}
@@ -197,32 +254,37 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
 </header>
 
 <main class="wrap">
-  <section class="strip" aria-label="Squad summary">
-    <div>
-      <span class="label" id="pow-label">Squad battle power</span>
-      <span class="power-big num" id="pow">0</span>
-      <span class="sub" id="pow-sub">Sum of all five machines</span>
-    </div>
-    <div>
-      <span class="label">Engineer</span>
-      <div class="inline">
-        <label class="field"><span class="label">Lv</span><input id="eng" type="number" min="1" max="999"></label>
-        <span class="sub" id="crewcap"></span>
+  <section class="deckhud" aria-label="Squad summary">
+    <div class="hud biggauge" id="gauge-box">
+      <svg class="ring o" id="gauge" viewBox="0 0 100 100" aria-hidden="true"></svg>
+      <div class="center">
+        <span class="label" id="pow-label">Squad battle power</span>
+        <span class="power-big num" id="pow">0</span>
+        <span class="sub" id="pow-sub">vs mission requirement</span>
       </div>
-      <span class="sub" id="raritysum"></span>
     </div>
-    <div>
-      <span class="label">Campaign target</span>
-      <div class="inline">
-        <label class="field"><select id="diff"></select></label>
-        <label class="field"><span class="label">#</span><input id="mission" type="number" min="1" max="90"></label>
+    <div class="hud curve">
+      <div class="inline" style="justify-content:space-between"><span class="label">Campaign power curve</span><span class="sub num" id="req"></span></div>
+      <svg id="curve" viewBox="0 0 640 170" preserveAspectRatio="none" aria-label="Power needed per mission"></svg>
+    </div>
+    <div class="side">
+      <div class="hud" style="border-radius:var(--r);padding:12px 14px;display:grid;gap:6px">
+        <span class="label">Campaign target</span>
+        <div class="inline">
+          <label class="field"><select id="diff"></select></label>
+          <label class="field"><span class="label">#</span><input id="mission" type="number" min="1" max="90"></label>
+        </div>
+        <div class="verdict" id="verdict"></div>
+        <span class="sub" id="best"></span>
       </div>
-      <span class="sub num" id="req"></span>
-    </div>
-    <div>
-      <span class="label">Verdict</span>
-      <div class="verdict" id="verdict"></div>
-      <span class="sub" id="best"></span>
+      <div class="hud" style="border-radius:var(--r);padding:12px 14px;display:grid;gap:6px">
+        <span class="label">Engineer</span>
+        <div class="inline">
+          <label class="field"><span class="label">Lv</span><input id="eng" type="number" min="1" max="999"></label>
+          <span class="sub" id="crewcap"></span>
+        </div>
+        <span class="sub" id="raritysum"></span>
+      </div>
     </div>
   </section>
 
@@ -667,6 +729,66 @@ function runAuto() {
 }
 if (!LIVE && !S.squad.length) { const r = E.optimize(account(), { requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = r.squad[0]; }
 
+// ---------- HUD helpers: animated rings, count-up numbers, campaign curve ----------
+const MOTION = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lastArc = new Map(), lastNum = new Map();
+const NS = 'http://www.w3.org/2000/svg';
+const sv = (t, a = {}) => { const n = document.createElementNS(NS, t); for (const [k, v] of Object.entries(a)) n.setAttribute(k, v); return n; };
+// A ring gauge. It sweeps from its last value to the new one, and stays still when nothing changed.
+function ring(key, frac, tone, svg) {
+  svg = svg || sv('svg', { viewBox: '0 0 100 100' });
+  svg.setAttribute('class', 'ring ' + tone); svg.replaceChildren();
+  frac = Math.max(0, Math.min(1, frac || 0));
+  svg.append(sv('circle', { class: 'ticks', cx: 50, cy: 50, r: 47, 'stroke-width': 2 }));
+  svg.append(sv('circle', { class: 'track', cx: 50, cy: 50, r: 40, 'stroke-width': 7 }));
+  const off = 100 - frac * 100;
+  const arc = sv('circle', { class: 'arc', cx: 50, cy: 50, r: 40, 'stroke-width': 7, pathLength: 100, 'stroke-dasharray': 100, 'stroke-dashoffset': off });
+  const prev = lastArc.get(key);
+  if (MOTION && (prev === undefined || Math.abs(prev - off) > 0.4)) { arc.style.setProperty('--from', prev ?? 100); arc.classList.add('anim'); }
+  lastArc.set(key, off);
+  svg.append(arc);
+  return svg;
+}
+// Numbers count up to their new value.
+function countTo(node, key, value) {
+  const prev = lastNum.get(key); lastNum.set(key, value);
+  if (!MOTION || prev === undefined || prev === value || !isFinite(prev) || !isFinite(value)) { node.textContent = fmt(value); return; }
+  const t0 = performance.now(), dur = 700, lp = Math.log10(Math.max(prev, 1)), lv = Math.log10(Math.max(value, 1));
+  const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    node.textContent = fmt(Math.pow(10, lp + (lv - lp) * e)); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+let lastCurveKey = '';
+function drawCurve(bp) {
+  const svg = $('#curve'); const W = 640, H = 170, L = 64, R = 10, T = 10, B = 22;
+  const diff = S.difficulty, pts = [];
+  for (let m = 1; m <= 90; m++) pts.push([m, Math.log10(Math.max(1, E.requiredPower(diff, m)))]);
+  const ys = pts.map(p => p[1]).concat(Math.log10(Math.max(1, bp)));
+  const y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
+  const X = m => L + (m - 1) / 89 * (W - L - R), Y = v => T + (1 - (v - y0) / Math.max(1, y1 - y0)) * (H - T - B);
+  const key = diff + '|' + y0 + '|' + y1;
+  svg.replaceChildren();
+  const defs = sv('defs'); const g = sv('linearGradient', { id: 'needFill', x1: 0, y1: 0, x2: 0, y2: 1 });
+  g.append(sv('stop', { offset: '0%', 'stop-color': 'rgba(255,138,61,.45)' }), sv('stop', { offset: '100%', 'stop-color': 'rgba(255,138,61,0)' }));
+  defs.append(g); svg.append(defs);
+  for (let v = y0; v <= y1; v += Math.max(1, Math.round((y1 - y0) / 4))) {
+    svg.append(sv('line', { class: 'axis', x1: L, x2: W - R, y1: Y(v), y2: Y(v), 'stroke-dasharray': '2 4' }));
+    const t = sv('text', { x: L - 6, y: Y(v) + 3, 'text-anchor': 'end' }); t.textContent = fmt(Math.pow(10, v)); svg.append(t);
+  }
+  for (const m of [1, 30, 60, 90]) { const t = sv('text', { x: X(m), y: H - 6, 'text-anchor': 'middle' }); t.textContent = '#' + m; svg.append(t); }
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ');
+  const area = sv('path', { class: 'need' + (MOTION && key !== lastCurveKey ? ' draw' : ''), d: d + ` L${X(90)} ${H - B} L${X(1)} ${H - B} Z` });
+  svg.append(area);
+  const yy = Y(Math.log10(Math.max(1, bp)));
+  svg.append(sv('line', { class: 'you', x1: L, x2: W - R, y1: yy, y2: yy }));
+  const lbl = sv('text', { class: 'you-lbl', x: W - R - 4, y: yy - 6, 'text-anchor': 'end' }); lbl.textContent = 'YOUR SQUAD ' + fmt(bp); svg.append(lbl);
+  let best = 0; for (let m = 1; m <= 90; m++) if (E.requiredPower(diff, m) <= bp) best = m;
+  if (best) svg.append(sv('circle', { class: 'mark', cx: X(best), cy: Y(pts[best - 1][1]), r: 4 }));
+  const tgt = Math.min(90, Math.max(1, S.mission));
+  svg.append(sv('line', { x1: X(tgt), x2: X(tgt), y1: T, y2: H - B, stroke: 'var(--brass)', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: .7 }));
+  lastCurveKey = key;
+}
+
 let picked = null;
 // Faces come from the game via the bot; a miss is retried after a while (the face appears once seen in game).
 const faceMiss = new Map();
@@ -760,9 +882,9 @@ function render() {
   const acct = account();
   const all = S.squad.map(id => statsFor(id));
   const total = all.reduce((a, st) => a + scoreOf(st), 0);
-  $('#pow').textContent = fmt(total);
+  countTo($('#pow'), 'squad', total);
   $('#pow-label').textContent = S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power';
-  $('#pow-sub').textContent = S.mode === 'arena' ? 'Arena stats: log-scaled, plus Mechanical Fury' : 'What the Warfront Campaign checks';
+  $('#pow-sub').textContent = S.mode === 'arena' ? 'Arena stats, log-scaled' : 'vs ' + cap1(S.difficulty) + ' #' + S.mission;
   $('#m-campaign').setAttribute('aria-pressed', S.mode === 'campaign');
   $('#m-arena').setAttribute('aria-pressed', S.mode === 'arena');
   $('#eng').value = S.engineerLevel;
@@ -772,7 +894,9 @@ function render() {
   // campaign verdict (battle power vs requirement)
   const bp = all.reduce((a, st) => a + st.battlePower, 0);
   const need = E.requiredPower(S.difficulty, S.mission);
-  $('#req').textContent = `Needs ${fmt(need)} power`;
+  $('#req').textContent = `${cap1(S.difficulty)} #${S.mission} needs ${fmt(need)}`;
+  ring('gauge', need > 0 ? bp / need : 0, bp >= need ? 'c' : 'o', $('#gauge'));
+  drawCurve(bp);
   const v = $('#verdict'); v.replaceChildren();
   if (bp >= need) { v.append(svgUse('g-ok', ''), 'Meets requirement'); v.style.color = 'var(--ok)'; }
   else { v.append(svgUse('g-bad', ''), `Short ${fmt(need - bp)}`); v.style.color = 'var(--bad)'; }
@@ -803,12 +927,15 @@ function render() {
       onchange: (e) => { const nid = e.target.value; const crew = S.crews[id] || []; delete S.crews[id]; S.squad[idx] = nid; S.crews[nid] = crew.slice(0, cap()); S.selected = nid; save(); render(); } },
       ...owned.filter(m => m.id === id || !S.squad.includes(m.id)).map(m => el('option', { value: m.id, selected: m.id === id }, (m.id === id ? 'Swap: ' : '') + E.WAR_MACHINES[m.id].name)));
     head.append(sw);
-    const rows = el('div', { class: 'stats' },
-      ...[['damage', 'DMG', 'dmg'], ['health', 'HP', 'hp'], ['armor', 'ARM', 'arm']].map(([a, k, c]) =>
-        el('div', { class: 'stat' }, el('span', { class: 'k k-' + c }, k),
-          el('div', { class: 'bar' }, (() => { const i = el('i', { class: 'b-' + c }); i.style.width = Math.max(3, 100 * vals[a] / maxV[a]) + '%'; return i; })()),
-          el('span', { class: 'v num' }, fmt(vals[a])))));
-    const pw = el('div', { class: 'bay-pow' }, el('span', { class: 'label' }, 'Power'), el('b', { class: 'num' }, fmt(scoreOf(st))));
+    const rows = el('div', { class: 'gauges' },
+      ...[['damage', 'DMG', 'dmg', 'o'], ['health', 'HP', 'hp', 'c'], ['armor', 'ARM', 'arm', 'v']].map(([a, k, c, tone]) =>
+        el('div', { class: 'g', title: `${k} ${fmt(vals[a])} (bar = share of the squad's best)` },
+          ring(id + ':' + a, vals[a] / maxV[a], tone),
+          el('span', { class: 'in k-' + c }, k),
+          el('span', { class: 'val' }, fmt(vals[a])))));
+    const pwNum = el('b', { class: 'num' });
+    countTo(pwNum, 'bay:' + id, scoreOf(st));
+    const pw = el('div', { class: 'bay-pow' }, el('span', { class: 'label' }, 'Power'), pwNum);
     const crew = el('div', { class: 'crew' });
     const members = S.crews[id] || [];
     for (let i = 0; i < 6; i++) {
