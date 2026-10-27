@@ -4,7 +4,7 @@ namespace Firebot.Core;
 public static class Brand
 {
     public const string Name = "Zdbrus Bot";
-    public const string Version = "0.6.4";
+    public const string Version = "0.6.5";
     public const string Author = "Zdbrus";
     public const string ConfigFile = "ZdbrusBotPreferences.cfg";
 }

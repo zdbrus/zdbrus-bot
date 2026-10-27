@@ -55,8 +55,13 @@ public class MapMissionsTask : BotTask
                     yield return speedupBtn.Click();
                 else
                 {
+                    // Come back 3 minutes early for the free speed-up, unless this mission is already inside those
+                    // 3 minutes and its speed-up still isn't free (new accounts): then wait for the real end, or the
+                    // map is reopened on every scan until the timer runs out.
                     var progress = MissionPreview.NextRunTime;
-                    if (!earliest.HasValue || progress < earliest.Value) earliest = progress;
+                    var inWindow = (progress - DateTime.Now).TotalSeconds <= BotSettings.FreeSpeedupSeconds;
+                    var when = inWindow ? progress.AddSeconds(5) : progress.AddSeconds(-BotSettings.FreeSpeedupSeconds);
+                    if (progress != DateTime.MinValue && (!earliest.HasValue || when < earliest.Value)) earliest = when;
                 }
             }
 
@@ -83,7 +88,9 @@ public class MapMissionsTask : BotTask
 
                 var endsAt = mission.TimeRequired;
                 yield return MissionPreview.StartMission;
-                if (endsAt > DateTime.Now && (!earliest.HasValue || endsAt < earliest.Value)) earliest = endsAt;
+                var due = endsAt.AddSeconds(-BotSettings.FreeSpeedupSeconds);
+                if (due < DateTime.Now) due = endsAt;
+                if (endsAt > DateTime.Now && (!earliest.HasValue || due < earliest.Value)) earliest = due;
             }
         }
         else
@@ -91,7 +98,8 @@ public class MapMissionsTask : BotTask
 
         // The earliest end among running and just-started missions decides the next run. With nothing
         // running, fall back to the map's own refresh time.
-        NextRunTime = earliest?.AddSeconds(-BotSettings.FreeSpeedupSeconds) ?? MapMission.NextRunTime;
+        NextRunTime = earliest ?? MapMission.NextRunTime;
+        if (NextRunTime < DateTime.Now.AddSeconds(20)) NextRunTime = DateTime.Now.AddSeconds(20);
 
         yield return MapMission.Close;
     }

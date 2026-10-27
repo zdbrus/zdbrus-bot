@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.5 (2026-10-26)
+- Fixed new accounts getting stuck reopening Firestone research, the alchemist or map missions. The bot used to come back 3 minutes early for a free speed-up that new accounts don't have yet, then kept reopening the menu until the timer ran out. Now it checks whether the speed-up is really free and otherwise waits for the timer.
+- Fixed a crash in Firestone research when a slot is empty or locked (it now looks again in 15 minutes).
+
 ## 0.6.4 (2026-10-26)
 - Hero auto-upgrade no longer keeps the upgrades menu open. It opens the menu, buys up to the next milestone, closes it again and waits a minute (adjustable). Every other task, the notification bubbles and the miner/dragon collector keep working, with no more toggling F6 on and off.
 - It also steps aside the moment a task is about to run.

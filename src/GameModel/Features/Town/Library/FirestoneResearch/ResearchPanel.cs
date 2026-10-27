@@ -39,19 +39,37 @@ public class ResearchPanel : GameElement
             }
     }
 
+    /// <summary>
+    ///     When to come back: shortly before the earliest research ends. The visit is moved 3 minutes earlier only
+    ///     when that slot's speed-up is actually free; new accounts don't have free speed-ups yet, and coming back
+    ///     early there only reopened the library on every scan until the timer ran out.
+    /// </summary>
     public DateTime NextRunTime()
     {
+        var now = DateTime.Now;
         var minTime = DateTime.MaxValue;
         foreach (var child in GetChildren())
-            if (child.IsVisible() && child.Name.StartsWith("researchSlot"))
-            {
-                var time = new GameText(
-                        Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.NextRunTimeTxt, child).Time
-                    .AddSeconds(-BotSettings.FreeSpeedupSeconds);
+        {
+            if (!child.IsVisible() || !child.Name.StartsWith("researchSlot")) continue;
 
-                if (time < minTime) minTime = time;
-            }
+            var end = new GameText(Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.NextRunTimeTxt, child).Time;
+            if (end == DateTime.MinValue) continue; // empty or locked slot: no timer to read
 
-        return minTime == DateTime.MaxValue ? DateTime.MinValue : minTime;
+            var costText = new GameText(
+                Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.SpeedupBtn + "/costText", child).GetParsedText();
+            var isFreeNow = costText.Trim().Equals("Free", StringComparison.OrdinalIgnoreCase);
+            var remaining = (end - now).TotalSeconds;
+
+            DateTime when;
+            if (remaining <= BotSettings.FreeSpeedupSeconds)
+                when = isFreeNow ? now : end.AddSeconds(5); // no free speed-up: wait for the timer itself
+            else
+                when = end.AddSeconds(-BotSettings.FreeSpeedupSeconds);
+
+            if (when < minTime) minTime = when;
+        }
+
+        // Nothing running (slots locked, nothing left to research): look again later instead of on every scan.
+        return minTime == DateTime.MaxValue ? now.AddMinutes(15) : minTime;
     }
 }

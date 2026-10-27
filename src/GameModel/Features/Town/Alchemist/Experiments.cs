@@ -76,7 +76,10 @@ public class Experiments : GameElement
             var time = TimeParser.ParseExpectedTime(timerText);
             if (time == DateTime.MinValue) continue;
 
-            time = time.AddSeconds(-BotSettings.FreeSpeedupSeconds);
+            // 3 minutes early for the free speed-up; once inside that window (no free speed-up on this account,
+            // or it wasn't taken) wait for the real end instead of reopening the alchemist on every scan.
+            var early = time.AddSeconds(-BotSettings.FreeSpeedupSeconds);
+            time = early > DateTime.Now ? early : time.AddSeconds(5);
             if (time < minTime) minTime = time;
         }
 
