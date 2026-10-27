@@ -27,7 +27,7 @@ public static class RosterExport
     private static string _lastError;
 
     /// <summary>Latest snapshot as JSON, or null before the first good read.</summary>
-    public static volatile string Json;
+    public static string Json;
 
     /// <summary>When the snapshot was taken (UTC), for the page's "live" indicator.</summary>
     public static DateTime TakenUtc;
@@ -74,20 +74,6 @@ public static class RosterExport
             Num(w, "engineerEffect", eng?.engineerEffect ?? 0);
             Num(w, "formationBattlePower", wmh.myFormationBattlePower);
             Num(w, "formationArenaPower", wmh.myFormationArenaPower);
-            Num(w, "allMachinesRarityBuff", Safe(() => wmh.CalculateAllWarmachinesRarityBuff()));
-
-            // ---- artifacts: the game's own totals for the war machine attributes ----
-            w.WriteStartObject("artifacts");
-            var arts = loader.ancientArtifactHandler?.allArtifactAttributes;
-            if (arts != null)
-                foreach (var kv in arts)
-                {
-                    var key = kv.Key.ToString();
-                    if (key.Contains("WarMachine") || key is "MechanicalFury" or "Overdrive")
-                        Num(w, key, kv.Value.ToDouble());
-                }
-            w.WriteEndObject();
-
             // ---- war machines (owned) ----
             w.WriteStartArray("machines");
             var data = wmh.warMachineData;
@@ -233,8 +219,4 @@ public static class RosterExport
         else w.WriteNumber(name, v);
     }
 
-    private static double Safe(Func<double> f)
-    {
-        try { return f(); } catch { return double.NaN; }
-    }
 }

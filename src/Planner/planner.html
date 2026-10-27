@@ -105,6 +105,10 @@ button,input,select{font:inherit;color:inherit}
 .hero .x{background:none;border:0;color:var(--ink-faint);cursor:pointer;padding:2px 4px;font-size:15px;line-height:1}
 .hero .x:hover{color:var(--ink)}
 .spec{width:18px;height:18px;display:block}
+.hero.has-face{grid-template-columns:34px minmax(0,1fr) auto}
+.av{position:relative;width:34px;height:34px;flex:none}
+.av img{width:34px;height:34px;border-radius:6px;object-fit:cover;display:block;background:var(--plate);border:1px solid var(--seam-hi)}
+.av .spec{position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;background:var(--plate-2);border-radius:50%;padding:1px}
 
 /* lower deck */
 .deck{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:start}
@@ -228,7 +232,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       </div>
       <div class="panel-b">
         <div class="bench" id="bench"></div>
-        <p class="note">Drag a hero into a bay, or tap a hero then tap an empty slot. The gold number is how much that hero would add to the selected machine's power. Tap a hero's name to edit their jewels.</p>
+        <p class="note">Drag a hero into a bay, or tap a hero then tap an empty slot. The gold number is how much that hero would add to the selected machine's power. Tap a hero's name to edit their jewels.<span id="face-tip" hidden> Hero faces fill in after you open Engineer, then Select crew, once in game.</span></p>
       </div>
     </div>
     <div class="panel">
@@ -639,6 +643,9 @@ function runAuto() {
 if (!LIVE && !S.squad.length) { const r = E.optimize(account(), { requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = r.squad[0]; }
 
 let picked = null;
+// Faces come from the game via the bot; a miss is retried after a while (the face appears once seen in game).
+const faceMiss = new Map();
+const faceOk = (code) => !faceMiss.has(code) || Date.now() - faceMiss.get(code) > 20000;
 function assign(heroId, wmId) {
   for (const k of Object.keys(S.crews)) S.crews[k] = S.crews[k].filter(x => x !== heroId);
   if (wmId) { S.crews[wmId] = S.crews[wmId] || []; if (S.crews[wmId].length < cap()) S.crews[wmId].push(heroId); }
@@ -651,7 +658,12 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 function heroChip(h, { wmId, gain } = {}) {
   const c = el('div', { class: 'hero' + (picked === h.id ? ' picked' : ''), draggable: 'true', tabindex: '0', 'data-hero': h.id,
     'aria-label': `${h.name}, ${SPEC_NAME[h.spec]}` });
-  c.append(svgUse('g-' + h.spec));
+  if (LIVE && G && faceOk(h.name)) {
+    c.classList.add('has-face');
+    const img = el('img', { src: '/hero/' + encodeURIComponent(h.name) + '.png', alt: '', loading: 'lazy' });
+    img.onerror = () => { faceMiss.set(h.name, Date.now()); img.closest('.av')?.replaceWith(svgUse('g-' + h.spec)); c.classList.remove('has-face'); };
+    c.append(el('span', { class: 'av' }, img, svgUse('g-' + h.spec)));
+  } else c.append(svgUse('g-' + h.spec));
   const jewelCount = Object.keys(h.jewels).length;
   const nm = el('div', { class: 'nm' }, h.name, el('small', {}, `${SPEC_NAME[h.spec]} · ${jewelCount}/6 jewels`));
   nm.addEventListener('click', (e) => { e.stopPropagation(); openHero(h.id); });
@@ -691,6 +703,7 @@ function renderLive() {
   chip.replaceChildren(el('span', { class: 'dot' }), txt);
   $('#use-game').hidden = !(LIVE && G);
   $('#reset-edits').hidden = !(LIVE && (Object.keys(O.machines).length || Object.keys(O.heroes).length));
+  const tip = $('#face-tip'); if (tip) tip.hidden = !(LIVE && G && faceMiss.size);
   const box = $('#check');
   box.hidden = !(LIVE && G);
   if (box.hidden) return;

@@ -55,6 +55,9 @@
         <Reference Include="UnityEngine.UIModule">
             <HintPath>$(Il2CppAssembliesDir)\UnityEngine.UIModule.dll</HintPath>
         </Reference>
+        <Reference Include="UnityEngine.ImageConversionModule">
+            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.ImageConversionModule.dll</HintPath>
+        </Reference>
         <Reference Include="Il2CppSharedASM">
             <HintPath>$(Il2CppAssembliesDir)\Il2CppSharedASM.dll</HintPath>
         </Reference>

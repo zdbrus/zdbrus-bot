@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
-using System.Threading;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Firebot.Planner;
@@ -25,12 +25,19 @@ public static class PlannerServer
     public static string Url => $"http://localhost:{Port}/";
 
     private static TcpListener _listener;
-    private static Thread _thread;
     private static byte[] _page;
     private static long _lastRequestTicks;
+    private static readonly List<Pending> Open = new();
+
+    private sealed class Pending
+    {
+        public TcpClient Client;
+        public float Since;
+        public readonly MemoryStream Head = new();
+    }
 
     /// <summary>True while a planner tab has asked for data in the last 20 seconds.</summary>
-    public static bool HasClients => DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastRequestTicks) < TimeSpan.FromSeconds(20).Ticks;
+    public static bool HasClients => DateTime.UtcNow.Ticks - _lastRequestTicks < TimeSpan.FromSeconds(20).Ticks;
 
     public static void Start()
     {
@@ -40,8 +47,6 @@ public static class PlannerServer
             _page = LoadPage();
             _listener = new TcpListener(IPAddress.Loopback, Port);
             _listener.Start();
-            _thread = new Thread(Loop) { IsBackground = true, Name = "ZdbrusPlanner" };
-            _thread.Start();
             Core.Logger.Info($"[Planner] Ready at {Url} (F4 opens it).");
         }
         catch (Exception e)
@@ -51,47 +56,67 @@ public static class PlannerServer
         }
     }
 
+    /// <summary>
+    ///     Everything runs here, on the game's main thread, with no background thread at all (a background web
+    ///     thread is what crashed the game before). Each call only does work that is already waiting: it never
+    ///     blocks, so a quiet planner costs nothing.
+    /// </summary>
     public static void Tick()
     {
         if (Input.GetKeyDown(Key))
         {
-            Interlocked.Exchange(ref _lastRequestTicks, DateTime.UtcNow.Ticks); // start reading right away
+            _lastRequestTicks = DateTime.UtcNow.Ticks; // start reading right away
             Application.OpenURL(Url);
         }
         RosterExport.Tick();
-    }
+        HeroPortraits.Tick();
+        if (_listener == null) return;
 
-    private static void Loop()
-    {
-        while (true)
+        try
         {
-            TcpClient client;
-            try { client = _listener.AcceptTcpClient(); }
-            catch { return; } // listener stopped
-            try { Handle(client); }
-            catch { /* one bad request must not stop the server */ }
-            finally { client.Close(); }
+            while (_listener.Pending() && Open.Count < 8)
+            {
+                var c = _listener.AcceptTcpClient();
+                c.NoDelay = true;
+                c.SendTimeout = 1000;
+                Open.Add(new Pending { Client = c, Since = Time.unscaledTime });
+            }
+        }
+        catch (Exception e) { Core.Logger.Debug($"[Planner] accept: {e.Message}"); }
+
+        for (var i = Open.Count - 1; i >= 0; i--)
+        {
+            var p = Open[i];
+            var done = true;
+            try { done = Serve(p); }
+            catch { /* a bad request is simply dropped */ }
+            if (!done && Time.unscaledTime - p.Since < 3f) continue;
+            try { p.Client.Close(); } catch { }
+            Open.RemoveAt(i);
         }
     }
 
-    private static void Handle(TcpClient client)
+    /// <summary>Reads what has arrived; answers once the request head is complete. True when finished with it.</summary>
+    private static bool Serve(Pending p)
     {
-        client.ReceiveTimeout = 3000;
-        client.SendTimeout = 3000;
-        var stream = client.GetStream();
-        var reader = new StreamReader(stream, Encoding.ASCII);
-        var first = reader.ReadLine();
-        if (string.IsNullOrEmpty(first)) return;
-        string line;
-        while (!string.IsNullOrEmpty(line = reader.ReadLine())) { } // skip headers
+        var stream = p.Client.GetStream();
+        var buf = new byte[2048];
+        while (stream.DataAvailable && p.Head.Length < 16384)
+        {
+            var n = stream.Read(buf, 0, buf.Length);
+            if (n <= 0) return true;
+            p.Head.Write(buf, 0, n);
+        }
+        var text = Encoding.ASCII.GetString(p.Head.GetBuffer(), 0, (int)p.Head.Length);
+        if (!text.Contains("\r\n\r\n")) return false; // wait for the rest
 
+        var first = text.Substring(0, text.IndexOf("\r\n", StringComparison.Ordinal));
         var parts = first.Split(' ');
         var path = parts.Length > 1 ? parts[1] : "/";
         var q = path.IndexOf('?');
         if (q >= 0) path = path[..q];
 
-        if (parts[0] != "GET") { Send(stream, 405, "text/plain", Encoding.ASCII.GetBytes("GET only")); return; }
-
+        if (parts[0] != "GET") { Send(stream, 405, "text/plain", Encoding.ASCII.GetBytes("GET only")); return true; }
         switch (path)
         {
             case "/":
@@ -99,15 +124,21 @@ public static class PlannerServer
                 Send(stream, 200, "text/html; charset=utf-8", _page);
                 break;
             case "/roster.json":
-                Interlocked.Exchange(ref _lastRequestTicks, DateTime.UtcNow.Ticks);
+                _lastRequestTicks = DateTime.UtcNow.Ticks;
                 var json = RosterExport.Json;
                 if (json == null) Send(stream, 503, "application/json", Encoding.UTF8.GetBytes("{\"waiting\":true}"));
                 else Send(stream, 200, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(json));
+                break;
+            case var face when face.StartsWith("/hero/", StringComparison.Ordinal) && face.EndsWith(".png", StringComparison.Ordinal):
+                var png = HeroPortraits.Get(face.Substring(6, face.Length - 10));
+                if (png == null) Send(stream, 404, "text/plain", Encoding.ASCII.GetBytes("No face yet"));
+                else Send(stream, 200, "image/png", png);
                 break;
             default:
                 Send(stream, 404, "text/plain", Encoding.ASCII.GetBytes("Not found"));
                 break;
         }
+        return true;
     }
 
     private static void Send(Stream s, int code, string type, byte[] body)
