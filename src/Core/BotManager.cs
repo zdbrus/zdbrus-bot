@@ -41,6 +41,9 @@ public static class BotManager
     internal static IReadOnlyList<BotTask> AllTasks => Tasks;
     private static bool IsTaskExecuting { get; set; }
 
+    /// <summary>True while a task is in the middle of running (the planner waits for this before it clicks).</summary>
+    public static bool IsBusy => IsRunning && IsTaskExecuting;
+
     public static bool ShouldPauseAutoUpgrade() => IsRunning && (_shouldPauseAutoUpgrade || IsTaskExecuting);
 
     /// <summary>
@@ -209,6 +212,9 @@ public static class BotManager
                 IsRunning = false;
                 yield break;
             }
+
+            // The planner is applying a squad: let it finish its clicks before the next job starts.
+            if (Planner.SquadApplier.Busy) readyTask = null;
 
             if (readyTask != null)
             {

@@ -63,6 +63,10 @@ button,input,select{font:inherit;color:inherit}
 .check .pill{font:600 11.5px/1 var(--f-num);padding:5px 8px;border-radius:99px;border:1px solid var(--seam-hi);color:var(--ink-dim);display:inline-flex;gap:6px;align-items:center}
 .check .pill b{color:var(--ink);font-weight:600}
 .check .pill.off{border-color:var(--bad);color:var(--bad)}
+.applybar{display:flex;align-items:center;gap:10px;flex-basis:100%;font-size:13px;color:var(--ink-dim)}
+.applybar b{color:var(--ink);font-weight:600}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--seam-hi);border-top-color:var(--brass);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
 .chip.live .dot{border-color:var(--ok);background:var(--ok)}
 .chip.bad .dot{border-color:var(--bad)}
 .ledger tr.game td{color:var(--hp)}
@@ -186,6 +190,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       <button id="m-arena" aria-pressed="false">Arena</button>
     </div>
     <button class="btn" id="use-game" hidden>Use in-game squad</button>
+    <button class="btn primary" id="apply" hidden>Apply to game</button>
     <button class="btn" id="reset-edits" hidden>Undo my edits</button>
     <button class="btn primary" id="auto">Auto-build squad</button>
   </div>
@@ -616,6 +621,26 @@ function loadGameSquad(g) {
   S.crews = Object.fromEntries(sq.map(s => [WM_ID(s.code), s.crew.slice()]));
   if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
 }
+let applying = false;
+// Game code for each machine as the bot knows it (Earthshatter, FireCracker…).
+const gameCode = (id) => (G && G.machines.find(m => WM_ID(m.code) === id)?.code) || id;
+async function applyToGame() {
+  if (!G || applying) return;
+  const plan = S.squad.map(id => gameCode(id) + ':' + (S.crews[id] || []).join('.')).join(',');
+  applying = true; render();
+  try {
+    const r = await fetch('/apply?plan=' + encodeURIComponent(plan), { cache: 'no-store' });
+    const j = await r.json();
+    toast(j.result === 'Applying' ? 'Sent to the game' : j.result);
+  } catch { toast('The bot did not answer'); }
+  setTimeout(() => { applying = false; }, 3000);
+  fastPoll();
+}
+// Poll quickly while the bot is applying, so progress shows as it happens.
+function fastPoll() {
+  let n = 0;
+  const t = setInterval(async () => { await poll(); n++; if (n > 150 || (!applying && !(G && G.apply && G.apply.busy))) clearInterval(t); }, 1200);
+}
 async function poll() {
   try {
     const r = await fetch('/roster.json', { cache: 'no-store' });
@@ -702,6 +727,9 @@ function renderLive() {
     offline: 'Game closed or bot off', live: 'Live from game' }[liveState];
   chip.replaceChildren(el('span', { class: 'dot' }), txt);
   $('#use-game').hidden = !(LIVE && G);
+  const ap = G && G.apply; const busy = !!(ap && ap.busy) || applying;
+  $('#apply').hidden = !(LIVE && G); $('#apply').disabled = busy;
+  $('#apply').textContent = busy ? 'Applying…' : 'Apply to game';
   $('#reset-edits').hidden = !(LIVE && (Object.keys(O.machines).length || Object.keys(O.heroes).length));
   const tip = $('#face-tip'); if (tip) tip.hidden = !(LIVE && G && faceMiss.size);
   const box = $('#check');
@@ -714,6 +742,14 @@ function renderLive() {
   else if (!bad.length) { v.append(svgUse('g-ok', ''), `Planner matches the game on all ${res.length} machines`); v.style.color = 'var(--ok)'; }
   else { v.append(svgUse('g-bad', ''), `Planner is off on ${bad.length} of ${res.length} machines`); v.style.color = 'var(--bad)'; }
   v.querySelectorAll('svg').forEach(x => { x.setAttribute('width', 18); x.setAttribute('height', 18); });
+  if (ap && (ap.busy || applying || ap.status)) {
+    const bar = el('div', { class: 'applybar' });
+    if (ap.busy || applying) bar.append(el('span', { class: 'spin' }));
+    else bar.append(svgUse(ap.ok ? 'g-ok' : 'g-bad', ''));
+    bar.append(el('b', {}, 'Apply to game: '), ap.status || 'Sending your plan to the bot…');
+    bar.querySelectorAll('svg').forEach(x => { x.setAttribute('width', 16); x.setAttribute('height', 16); });
+    box.append(bar);
+  }
   box.append(el('span', { class: 'label' }, 'Game check'), v,
     ...res.map(r => el('span', { class: 'pill' + (r.worst > 0.005 ? ' off' : ''), title: 'Largest gap between planner and game' },
       E.WAR_MACHINES[r.id].name, el('b', {}, r.worst < 0.0001 ? 'exact' : (r.worst * 100).toFixed(2) + '%'))));
@@ -922,6 +958,7 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 
 // controls
 $('#auto').onclick = runAuto;
+$('#apply').onclick = applyToGame;
 $('#use-game').onclick = () => { if (G) { loadGameSquad(G); save(); render(); toast('Loaded your in-game squad'); } };
 $('#reset-edits').onclick = () => { O = { machines: {}, heroes: {} }; saveO(); if (G) applyGame(G); save(); render(); toast('Back to your game numbers'); };
 $('#m-campaign').onclick = () => { S.mode = 'campaign'; save(); render(); };

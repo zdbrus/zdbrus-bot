@@ -74,6 +74,12 @@ public static class RosterExport
             Num(w, "engineerEffect", eng?.engineerEffect ?? 0);
             Num(w, "formationBattlePower", wmh.myFormationBattlePower);
             Num(w, "formationArenaPower", wmh.myFormationArenaPower);
+            w.WriteStartObject("apply");
+            w.WriteBoolean("busy", SquadApplier.Busy);
+            w.WriteBoolean("ok", SquadApplier.Ok);
+            w.WriteString("status", SquadApplier.Status ?? "");
+            w.WriteEndObject();
+
             // ---- war machines (owned) ----
             w.WriteStartArray("machines");
             var data = wmh.warMachineData;

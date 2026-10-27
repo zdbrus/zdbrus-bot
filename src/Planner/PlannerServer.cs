@@ -138,6 +138,12 @@ public static class PlannerServer
                 if (json == null) Send(stream, 503, "application/json", Encoding.UTF8.GetBytes("{\"waiting\":true}"));
                 else Send(stream, 200, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(json));
                 break;
+            case "/apply":
+                var plan = SquadApplier.Parse(Query(text, "plan"));
+                var answer = SquadApplier.Request(plan);
+                Send(stream, 200, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(
+                    "{\"result\":\"" + answer.Replace("\"", "'") + "\"}"));
+                break;
             case var face when face.StartsWith("/hero/", StringComparison.Ordinal) && face.EndsWith(".png", StringComparison.Ordinal):
                 var png = HeroPortraits.Get(face.Substring(6, face.Length - 10));
                 if (png == null) Send(stream, 404, "text/plain", Encoding.ASCII.GetBytes("No face yet"));
@@ -148,6 +154,22 @@ public static class PlannerServer
                 break;
         }
         return true;
+    }
+
+    /// <summary>One value from the request line's query string, URL-decoded.</summary>
+    private static string Query(string request, string key)
+    {
+        var line = request.Substring(0, Math.Max(0, request.IndexOf("\r\n", StringComparison.Ordinal)));
+        var q = line.IndexOf('?');
+        if (q < 0) return null;
+        var end = line.IndexOf(' ', q);
+        var query = end > q ? line.Substring(q + 1, end - q - 1) : line.Substring(q + 1);
+        foreach (var pair in query.Split('&'))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq > 0 && pair.Substring(0, eq) == key) return Uri.UnescapeDataString(pair.Substring(eq + 1).Replace('+', ' '));
+        }
+        return null;
     }
 
     private static void Send(Stream s, int code, string type, byte[] body)
