@@ -440,7 +440,7 @@ public class ScarabMilestonesTask : BotTask
 public class BubbleRewardsTask : BotTask
 {
     private static readonly Regex FreeButton =
-        new(@"^(claim|collect|free|getfree|claimall|claimbutton|collectbutton|claimallbutton|collectall)", RegexOptions.IgnoreCase);
+        new(@"^(claim|collect|free|getfree|claimall|claimbutton|collectbutton|claimallbutton|collectall|purchasefreebutton)", RegexOptions.IgnoreCase);
 
     private MelonPreferences_Entry<string> _bubbles;
     // A bubble that opened nothing free is left alone for a while instead of being reopened every 10 minutes.
@@ -747,5 +747,84 @@ public class OpenChestsTask : BotTask
         }
 
         if (Ui.Visible(Inv)) yield return Ui.Click(Inv + "/closeButton");
+    }
+}
+
+/// <summary>
+///     Spends free talent points (earned by character level) in the Character > Talents tree. Talents are upgraded in
+///     the priority order you set, then any other talent. Talent points are the only thing this can spend.
+/// </summary>
+public class TalentsTask : BotTask
+{
+    protected override string NotificationPath => P.Notifications + "/TalentAvailable";
+    protected override bool EnabledByDefault => true;
+
+    private const string C = P.Popups + "/Character/bg";
+    private const string Tree = C + "/submenus/talents/bg/talentTreeScroll/Viewport/content/talentTree";
+    private const string Preview = P.Popups + "/TalentPreview/bg";
+    private MelonPreferences_Entry<string> _priority;
+
+    protected override void OnConfigure(MelonPreferences_Category c)
+    {
+        _priority = c.CreateEntry("priority", "All main attributes,Attribute damage,Attribute health,Attribute armor",
+            "Priority", "Talent names to fill first, comma-separated. Others are filled after, in tree order.");
+    }
+
+    public override IEnumerator Execute()
+    {
+        BubbleQuietUntil = DateTime.Now.AddMinutes(30);
+        NextRunTime = DateTime.Now.AddHours(6);
+        if (!Ui.Visible(C)) yield return Ui.Click(P.Battle + "/topLeftSideUI/playerAvatar", 1.5f);
+        if (!Ui.Visible(C)) yield break;
+        yield return Ui.Click(C + "/submenuButtons/talents", 1.5f);
+        if (!Ui.Visible(Tree)) { yield return Ui.Click(C + "/closeButton"); yield break; }
+
+        var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
+        var nodes = Ui.VisibleChildren(Tree).Where(t => t.name.StartsWith("talentInteraction") && Ui.Clickable(t)).ToList();
+        var names = new Dictionary<Transform, string>();
+        var spent = 0;
+
+        // First pass reads each talent's name so the priority order can be applied.
+        foreach (var n in nodes)
+        {
+            yield return Ui.Click(n, 0.8f);
+            if (!Ui.Visible(Preview)) continue;
+            names[n] = (Ui.Text(Preview + "/talentName") ?? "").Trim();
+            yield return TryUpgrade(n, names[n], order.Count == 0, v => spent += v);
+            if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.5f);
+        }
+
+        if (order.Count > 0)
+        {
+            var sorted = nodes.Where(names.ContainsKey).OrderBy(n =>
+            {
+                var i = order.IndexOf(names[n].ToLowerInvariant());
+                return i < 0 ? 1000 : i;
+            }).ToList();
+            foreach (var n in sorted)
+            {
+                yield return Ui.Click(n, 0.8f);
+                if (!Ui.Visible(Preview)) continue;
+                yield return TryUpgrade(n, names[n], true, v => spent += v);
+                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.5f);
+            }
+        }
+
+        Logger.Info($"[Talents] spent {spent} point(s)");
+        if (Ui.Visible(C)) yield return Ui.Click(C + "/closeButton");
+    }
+
+    private static IEnumerator TryUpgrade(Transform node, string name, bool spend, Action<int> add)
+    {
+        if (!spend) yield break;
+        for (var i = 0; i < 60; i++)
+        {
+            var up = Ui.Find(Preview + "/talentUpgrades/upgradeTalentButton");
+            if (!Ui.Clickable(up)) yield break;
+            var before = Ui.Text(Preview + "/talentLevelText");
+            yield return Ui.Click(up, 0.4f, $"talent {name}");
+            if (Ui.MissingCurrency || Ui.Text(Preview + "/talentLevelText") == before) yield break;
+            add(1);
+        }
     }
 }

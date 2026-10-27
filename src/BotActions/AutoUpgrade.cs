@@ -83,9 +83,7 @@ public static class AutoUpgrade
             "every_seconds",
             60,
             "Upgrade Every (seconds)",
-            "AutoUpgrade opens the upgrades menu, buys what it can, closes the menu again and waits this long. " +
-            "Keeping the menu closed in between is what lets every other task, the bubbles and the miner/dragon " +
-            "collector keep working."
+            "Seconds between upgrade bursts. Each burst opens upgrades, buys, and closes the menu so other tasks keep working."
         );
 
         _upgradeTargetSlots = section.CreateEntry(

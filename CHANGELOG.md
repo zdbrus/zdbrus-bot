@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.6 (2026-10-26)
+- New: spends talent points as soon as the "talent available" bubble shows up (Character > Talents), filling the talents you list first. Only talent points are spent.
+- Pirate's prize free rewards are now claimed (the game names that button differently).
+- Tasks that finish without a next time (for example expeditions with nothing running) now look again in 15 minutes instead of logging a failure.
 ## 0.6.5 (2026-10-26)
 - Fixed new accounts getting stuck reopening Firestone research, the alchemist or map missions. The bot used to come back 3 minutes early for a free speed-up that new accounts don't have yet, then kept reopening the menu until the timer ran out. Now it checks whether the speed-up is really free and otherwise waits for the timer.
 - Fixed a crash in Firestone research when a slot is empty or locked (it now looks again in 15 minutes).

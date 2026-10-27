@@ -71,7 +71,7 @@ public abstract class BotTask
 
         // Named after the task rather than a generic "Enable Task": the row can then be read on its own,
         // without the section header above it.
-        _enabledEntry = _category.CreateEntry("enabled", false, $"Enable {SectionTitle}",
+        _enabledEntry = _category.CreateEntry("enabled", EnabledByDefault, $"Enable {SectionTitle}",
             $"Enables or disables the {SectionTitle} automation task." +
             $"\nWhen disabled, this task will be ignored during the execution loop." +
             LevelRequirementNote);
@@ -79,6 +79,9 @@ public abstract class BotTask
         OnConfigure(_category);
         _category.SaveToFile();
     }
+
+    /// <summary>On for a task that only spends free, earned resources, so it works without visiting the panel.</summary>
+    protected virtual bool EnabledByDefault => false;
 
     protected virtual void OnConfigure(MelonPreferences_Category category) { }
 
@@ -170,16 +173,22 @@ public abstract class BotTask
     /// </summary>
     public void EnsureScheduled()
     {
-        if (NextRunTime != DateTime.MinValue) return;
+        // A time already in the past (a timer that just ran out) is retried shortly, not on every scan.
+        if (NextRunTime != DateTime.MinValue)
+        {
+            if (NextRunTime < DateTime.Now.AddSeconds(20)) NextRunTime = DateTime.Now.AddSeconds(20);
+            return;
+        }
 
-        var backoff = BotSettings.ScanInterval;
+        // Nothing to schedule from (no timer on screen, e.g. no expeditions left today): look again in 15 minutes.
+        // The task's notification bubble still brings it back sooner when something becomes available.
+        var backoff = 15 * 60;
         NextRunTime = DateTime.Now.AddSeconds(backoff);
 
         if (_unscheduledRunReported) return;
 
         _unscheduledRunReported = true;
-        Logger.Warning($"[FAILED] {SectionTitle} finished without scheduling its next run; " +
-                       $"backing off {backoff:0}s instead of running on every scan.");
+        Logger.Debug($"{SectionTitle} had no timer to schedule from; checking again in {backoff / 60:0} minutes.");
     }
 
     protected void Debug(string message, [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
