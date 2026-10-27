@@ -10,11 +10,12 @@ namespace Firebot.Planner;
 
 /// <summary>
 ///     Hero faces for the War Machine Planner, taken from your own game: whenever a hero tile is on screen (for
-///     example the Engineer's "Select crew" list) and the planner is open, its picture is saved once to
+///     example the Engineer's "Select crew" list), its picture is saved once to
 ///     UserData/planner/heroes/HeroName.png and served to the page. No game art ships with the mod.
 /// </summary>
 public static class HeroPortraits
 {
+    private const string CrewPicker = "menusRoot/menuCanvasParent/SafeArea/menuCanvas/popups/SelectWarMachineHeroes";
     private static readonly string Dir = Path.Combine("UserData", "planner", "heroes");
     private static readonly HashSet<string> Have = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Regex SafeName = new("^[A-Za-z0-9_]{1,40}$");
@@ -24,8 +25,11 @@ public static class HeroPortraits
 
     public static void Tick()
     {
-        if (!PlannerServer.HasClients || Time.unscaledTime < _next) return;
-        _next = Time.unscaledTime + 4f;
+        if (Time.unscaledTime < _next) return;
+        _next = Time.unscaledTime + 2f;
+        // Only look while a hero list is actually on screen (the crew picker), so this costs nothing otherwise.
+        var picker = GameObject.Find(CrewPicker);
+        if (picker == null || !picker.activeInHierarchy) return;
         Index();
 
         try
