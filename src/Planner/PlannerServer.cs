@@ -56,6 +56,15 @@ public static class PlannerServer
         }
     }
 
+    /// <summary>Closes the port and any open requests so nothing keeps the game process alive after quitting.</summary>
+    public static void Stop()
+    {
+        foreach (var p in Open) { try { p.Client.Close(); } catch { } }
+        Open.Clear();
+        try { _listener?.Stop(); } catch { }
+        _listener = null;
+    }
+
     /// <summary>
     ///     Everything runs here, on the game's main thread, with no background thread at all (a background web
     ///     thread is what crashed the game before). Each call only does work that is already waiting: it never

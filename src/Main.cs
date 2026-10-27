@@ -38,6 +38,11 @@ public class Main : MelonMod
         LoggerInstance.Msg($"{Brand.Name} ready. F1 settings, F2 status, F7 start/stop, F9 screen map, F4 war machine planner.");
     }
 
+    public override void OnApplicationQuit()
+    {
+        Planner.PlannerServer.Stop();
+    }
+
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)
     {
         BotPanel.OnSceneChanged();
