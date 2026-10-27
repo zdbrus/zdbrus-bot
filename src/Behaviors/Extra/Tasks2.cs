@@ -839,3 +839,26 @@ public class TalentsTask : BotTask
         }
     }
 }
+
+/// <summary>
+///     After a lost boss fight the game keeps farming the stage until someone presses "Boss". This presses it again
+///     every few minutes, once the heroes have had time to level. Losing costs nothing.
+/// </summary>
+public class BossRetryTask : BotTask
+{
+    private const string Fight = P.Battle + "/rightSideUI/fightBossButton";
+    private MelonPreferences_Entry<int> _minutes;
+    protected override bool EnabledByDefault => true;
+
+    protected override void OnConfigure(MelonPreferences_Category c)
+    {
+        _minutes = c.CreateEntry("every_minutes", 4, "Minutes Between Tries", "How long to farm before trying the boss again.");
+    }
+
+    public override IEnumerator Execute()
+    {
+        NextRunTime = DateTime.Now.AddMinutes(Math.Max(1, _minutes.Value));
+        if (!Ui.Clickable(Fight)) yield break;
+        yield return Ui.Click(Fight, 1f, $"fight boss at stage {Ui.Text(P.Battle + "/topSideUI/stageProgression/currentStage/stageNum")}");
+    }
+}

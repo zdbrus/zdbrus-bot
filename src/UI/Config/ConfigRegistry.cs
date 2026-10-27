@@ -83,7 +83,8 @@ internal static class ConfigRegistry
         ["temple_prestige/stall_hours"] = new NumberRange(1f, 48f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
         ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true),
-        ["auto_upgrade/every_seconds"] = new NumberRange(10f, 600f, true)
+        ["auto_upgrade/every_seconds"] = new NumberRange(10f, 600f, true),
+        ["boss_retry/every_minutes"] = new NumberRange(1f, 60f, true)
     };
 
     /// <summary>

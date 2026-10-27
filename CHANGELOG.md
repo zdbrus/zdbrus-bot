@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.6.8 (2026-10-27)
+- New: retries the stage boss. After a lost boss fight the game keeps farming the same stage until "Boss" is pressed; the bot now presses it every 4 minutes (adjustable), so the run keeps climbing. On by default.
 ## 0.6.7 (2026-10-27)
 - Talent points now really stick: the game only keeps talent changes after "Save changes", which the bot now presses.
 - The talents task checks your free points first and skips the whole tree when there are none (it used to walk every talent and time out).
