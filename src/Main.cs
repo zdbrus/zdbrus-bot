@@ -32,9 +32,10 @@ public class Main : MelonMod
         AutoUpgrade.Initialize();
         BotPanel.Initialize();
         BotStatusScreen.Initialize();
+        Planner.PlannerServer.Start();
         // UpdateCheck.Start(); // off: the background web request is suspected of crashing the game
 
-        LoggerInstance.Msg($"{Brand.Name} ready. F1 settings, F2 status, F7 start/stop, F9 screen map.");
+        LoggerInstance.Msg($"{Brand.Name} ready. F1 settings, F2 status, F7 start/stop, F9 screen map, F4 war machine planner.");
     }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)
@@ -72,7 +73,11 @@ public class Main : MelonMod
             // stopped instead of as busy for one more refresh.
             BotManager.WatchForStall();
 
-            if (!HotkeyGate.IsCapturing) ScreenMap.Tick();
+            if (!HotkeyGate.IsCapturing)
+            {
+                ScreenMap.Tick();
+                Planner.PlannerServer.Tick();
+            }
             DropCollector.Tick();
             BubbleWatcher.Tick();
             BotPanel.Tick();

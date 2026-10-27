@@ -55,9 +55,19 @@
         <Reference Include="UnityEngine.UIModule">
             <HintPath>$(Il2CppAssembliesDir)\UnityEngine.UIModule.dll</HintPath>
         </Reference>
+        <Reference Include="Il2CppSharedASM">
+            <HintPath>$(Il2CppAssembliesDir)\Il2CppSharedASM.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppUtilitiesASM">
+            <HintPath>$(Il2CppAssembliesDir)\Il2CppUtilitiesASM.dll</HintPath>
+        </Reference>
         <Reference Include="Il2CppCoreASM">
             <HintPath>$(Il2CppAssembliesDir)\Il2CppCoreASM.dll</HintPath>
         </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Planner\planner.html" LogicalName="planner.html" />
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="Build">

@@ -1,0 +1,925 @@
+<meta charset="utf-8">
+<title>Zdbrus Garage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: engineer's bay. Command strip on top, five machine bays in a row, crew bench + math ledger below. */
+:root{
+  --ground:#11151b; --plate:#181e26; --plate-2:#1f2731; --seam:#2c3643; --seam-hi:#3a4757;
+  --ink:#ebe6da; --ink-dim:#97a1ae; --ink-faint:#66707d;
+  --brass:#d9a441; --brass-hi:#f0bf5c; --brass-ink:#1a1408;
+  /* colorblind-safe stat hues (Okabe-Ito), always paired with a text label */
+  --dmg:#ef7f3c; --hp:#56b4e9; --arm:#cc79a7;
+  --ok:#56b4e9; --warn:#f0e442; --bad:#ef7f3c;
+  --f-display:"Chakra Petch","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --r:6px; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--ground);color:var(--ink)}
+body{font:14px/1.45 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px;
+  background-image:linear-gradient(var(--plate) 1px,transparent 1px),linear-gradient(90deg,var(--plate) 1px,transparent 1px);background-size:28px 28px;background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ground)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
+.wrap{max-width:1440px;margin:0 auto;display:grid;gap:16px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.label{font:600 11px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:12px max(16px,env(safe-area-inset-left,0px));
+  background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--seam)}
+.top-in{max-width:1440px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand h1{font:700 22px/1 var(--f-display);letter-spacing:.06em;margin:0;text-transform:uppercase}
+.brand h1 b{color:var(--brass)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--seam-hi);border-radius:99px;font:600 11px/1.2 var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+.chip .dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--warn)}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--seam-hi);background:var(--plate-2);padding:8px 14px;border-radius:var(--r);cursor:pointer;font:600 13px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+.btn:hover{border-color:var(--brass)}
+.btn.primary{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.primary:hover{background:var(--brass-hi)}
+.seg{display:inline-flex;border:1px solid var(--seam-hi);border-radius:var(--r);overflow:hidden}
+.seg button{background:none;border:0;padding:8px 12px;cursor:pointer;font:600 12px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+.seg button[aria-pressed="true"]{background:var(--seam-hi);color:var(--ink)}
+
+/* command strip */
+.strip{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));gap:1px;background:var(--seam);border:1px solid var(--seam);border-radius:var(--r);overflow:hidden;margin-top:16px}
+.strip>div{background:var(--plate);padding:14px 16px;display:grid;gap:6px;align-content:start;min-width:0}
+.power-big{font:700 34px/1 var(--f-num);color:var(--brass-hi);letter-spacing:-.01em}
+.sub{color:var(--ink-dim);font-size:12.5px}
+.inline{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.field{display:flex;align-items:center;gap:6px;background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:4px 8px}
+.field input,.field select{background:none;border:0;width:64px;font-family:var(--f-num)}
+.field select{width:auto}
+.verdict{display:flex;align-items:center;gap:8px;font:600 14px/1.2 var(--f-display);letter-spacing:.04em}
+.verdict svg{flex:none}
+
+/* game check */
+.check{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--plate);border:1px solid var(--seam);border-radius:var(--r);padding:10px 14px}
+.check .verdict{font-size:13.5px}
+.check .pill{font:600 11.5px/1 var(--f-num);padding:5px 8px;border-radius:99px;border:1px solid var(--seam-hi);color:var(--ink-dim);display:inline-flex;gap:6px;align-items:center}
+.check .pill b{color:var(--ink);font-weight:600}
+.check .pill.off{border-color:var(--bad);color:var(--bad)}
+.chip.live .dot{border-color:var(--ok);background:var(--ok)}
+.chip.bad .dot{border-color:var(--bad)}
+.ledger tr.game td{color:var(--hp)}
+
+/* bays */
+.bays{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.bay{background:var(--plate);border:1px solid var(--seam);border-radius:var(--r);display:grid;grid-template-rows:auto auto auto 1fr;min-width:0;cursor:pointer;transition:border-color .15s}
+.bay:hover{border-color:var(--seam-hi)}
+.bay[aria-current="true"]{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset}
+.bay-head{padding:12px 12px 10px;display:grid;gap:8px;border-bottom:1px dashed var(--seam)}
+.bay-name{display:flex;align-items:center;gap:8px;min-width:0}
+.bay-name h3{font:700 17px/1.1 var(--f-display);letter-spacing:.04em;margin:0;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slotno{font:600 11px/1 var(--f-num);color:var(--ink-faint);margin-left:auto}
+.meta{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font:600 10.5px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:4px;background:var(--plate-2);border:1px solid var(--seam);color:var(--ink-dim);display:inline-flex;gap:4px;align-items:center}
+.tag.r{color:var(--brass);border-color:var(--brass-dim,#6b5426)}
+.stats{padding:10px 12px;display:grid;gap:7px}
+.stat{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px}
+.stat .k{font:700 10.5px/1 var(--f-display);letter-spacing:.1em}
+.bar{height:6px;background:var(--plate-2);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.stat .v{font:600 12.5px/1 var(--f-num)}
+.k-dmg{color:var(--dmg)} .k-hp{color:var(--hp)} .k-arm{color:var(--arm)}
+.b-dmg{background:var(--dmg)} .b-hp{background:repeating-linear-gradient(90deg,var(--hp) 0 6px,color-mix(in srgb,var(--hp) 70%,#000) 6px 8px)} .b-arm{background:repeating-linear-gradient(135deg,var(--arm) 0 4px,color-mix(in srgb,var(--arm) 65%,#000) 4px 6px)}
+.bay-pow{padding:0 12px 10px;display:flex;justify-content:space-between;align-items:baseline}
+.bay-pow b{font:700 18px/1 var(--f-num);color:var(--ink)}
+.crew{padding:10px;border-top:1px solid var(--seam);display:grid;gap:6px;align-content:start;background:color-mix(in srgb,var(--plate) 60%,var(--ground))}
+.slot{min-height:38px;border:1px dashed var(--seam-hi);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font:600 11px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase}
+.slot.drop{border-color:var(--brass);color:var(--brass);background:color-mix(in srgb,var(--brass) 10%,transparent)}
+.slot.locked{opacity:.45;border-style:solid}
+.swap{width:100%;background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:5px 6px;font:500 12px/1.2 var(--f-body);color:var(--ink-dim)}
+
+/* hero chip */
+.hero{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);background:var(--plate-2);border:1px solid var(--seam);cursor:grab;min-height:38px;user-select:none}
+.hero:hover{border-color:var(--seam-hi)}
+.hero.picked{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset}
+.hero .nm{font:600 13px/1.15 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero .nm small{display:block;font:500 10.5px/1.2 var(--f-num);color:var(--ink-faint)}
+.hero .gain{font:600 11.5px/1 var(--f-num);color:var(--brass)}
+.hero .x{background:none;border:0;color:var(--ink-faint);cursor:pointer;padding:2px 4px;font-size:15px;line-height:1}
+.hero .x:hover{color:var(--ink)}
+.spec{width:18px;height:18px;display:block}
+
+/* lower deck */
+.deck{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:start}
+.panel{background:var(--plate);border:1px solid var(--seam);border-radius:var(--r);min-width:0}
+.panel-h{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--seam)}
+.panel-h h2{font:700 15px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;margin:0 auto 0 0}
+.panel-b{padding:12px 14px}
+.bench{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.search{background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:6px 10px;width:160px}
+.ledger-wrap{overflow-x:auto}
+table.ledger{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+.ledger th,.ledger td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--seam);white-space:nowrap}
+.ledger th:first-child,.ledger td:first-child{text-align:left}
+.ledger thead th{font:600 11px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.ledger td.f{font-family:var(--f-num);color:var(--ink-faint);text-align:left;font-size:11.5px}
+.ledger tr.tot td{font-weight:600;color:var(--ink);border-bottom:0}
+.ledger tr.tot td.num{color:var(--brass-hi)}
+.edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.edit-grid label{display:grid;gap:4px}
+.edit-grid input,.edit-grid select{background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:6px 8px;font-family:var(--f-num);width:100%}
+.note{font-size:12px;color:var(--ink-dim);margin:10px 0 0}
+.note b{color:var(--warn);font-weight:600}
+
+/* garage + artifacts */
+details.more{background:var(--plate);border:1px solid var(--seam);border-radius:var(--r)}
+details.more summary{cursor:pointer;padding:12px 14px;font:700 15px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;list-style:none;display:flex;gap:10px;align-items:center}
+details.more summary::after{content:"+";margin-left:auto;color:var(--ink-faint);font:600 18px/1 var(--f-num)}
+details.more[open] summary::after{content:"–"}
+.garage{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:0 14px 14px}
+.gm{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:8px 10px}
+.gm input[type=checkbox]{accent-color:var(--brass);width:16px;height:16px}
+.gm .n{font:600 13px/1.2 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.gm .n small{display:block;font:500 11px/1.2 var(--f-num);color:var(--ink-faint);text-transform:none;letter-spacing:0}
+.gm.off{opacity:.5}
+
+/* hero editor dialog */
+dialog{background:var(--plate);color:var(--ink);border:1px solid var(--brass);border-radius:var(--r);padding:0;width:min(560px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(5,7,10,.7)}
+.dlg-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--seam)}
+.dlg-h h2{margin:0 auto 0 0;font:700 18px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+.jw{display:grid;grid-template-columns:minmax(0,1.1fr) auto minmax(0,1fr) 72px auto;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--seam)}
+.jw select,.jw input{background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:5px 6px;font-family:var(--f-num);width:100%}
+.jw .eff{font:600 12px/1 var(--f-num);color:var(--brass);min-width:70px;text-align:right}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--brass);color:var(--brass-ink);font:700 13px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;border-radius:var(--r);opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.on{opacity:1}
+
+@media (max-width:1180px){.bays{grid-template-columns:repeat(3,minmax(0,1fr))}.deck{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.bays{grid-template-columns:repeat(2,minmax(0,1fr))}.strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.strip>div:first-child{grid-column:1/-1}}
+@media (max-width:460px){.bays{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:minmax(0,1fr)}.jw{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 64px;}.jw .jt{grid-column:1/-1}.jw .eff{grid-column:1/-1;text-align:left}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- spec glyphs: shape carries the meaning, color is secondary -->
+    <symbol id="g-damage" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" fill="none" stroke="var(--dmg)" stroke-width="2"/><path d="M10 1v5M10 14v5M1 10h5M14 10h5" stroke="var(--dmg)" stroke-width="2" fill="none"/></symbol>
+    <symbol id="g-tank" viewBox="0 0 20 20"><path d="M10 1.5 17 4v6c0 4.2-3 7.2-7 8.5C6 17.2 3 14.2 3 10V4z" fill="none" stroke="var(--arm)" stroke-width="2"/></symbol>
+    <symbol id="g-healer" viewBox="0 0 20 20"><path d="M7.5 2h5v5.5H18v5h-5.5V18h-5v-5.5H2v-5h5.5z" fill="none" stroke="var(--hp)" stroke-width="2"/></symbol>
+    <symbol id="g-ok" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="var(--ok)" stroke-width="2"/><path d="m6 10 3 3 5-6" fill="none" stroke="var(--ok)" stroke-width="2"/></symbol>
+    <symbol id="g-bad" viewBox="0 0 20 20"><path d="M10 2 18.5 17h-17z" fill="none" stroke="var(--bad)" stroke-width="2"/><path d="M10 8v4M10 14v1.5" stroke="var(--bad)" stroke-width="2"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="9" fill="none" stroke="var(--brass)" stroke-width="2.5" stroke-dasharray="4 2.6"/><circle cx="13" cy="13" r="3.5" fill="var(--brass)"/></svg>
+      <h1>Zdbrus <b>Garage</b></h1>
+    </div>
+    <span class="chip" id="source"><span class="dot"></span>Sample roster · not linked to game</span>
+    <div class="seg" role="group" aria-label="Score for">
+      <button id="m-campaign" aria-pressed="true">Campaign</button>
+      <button id="m-arena" aria-pressed="false">Arena</button>
+    </div>
+    <button class="btn" id="use-game" hidden>Use in-game squad</button>
+    <button class="btn" id="reset-edits" hidden>Undo my edits</button>
+    <button class="btn primary" id="auto">Auto-build squad</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="strip" aria-label="Squad summary">
+    <div>
+      <span class="label" id="pow-label">Squad battle power</span>
+      <span class="power-big num" id="pow">0</span>
+      <span class="sub" id="pow-sub">Sum of all five machines</span>
+    </div>
+    <div>
+      <span class="label">Engineer</span>
+      <div class="inline">
+        <label class="field"><span class="label">Lv</span><input id="eng" type="number" min="1" max="999"></label>
+        <span class="sub" id="crewcap"></span>
+      </div>
+      <span class="sub" id="raritysum"></span>
+    </div>
+    <div>
+      <span class="label">Campaign target</span>
+      <div class="inline">
+        <label class="field"><select id="diff"></select></label>
+        <label class="field"><span class="label">#</span><input id="mission" type="number" min="1" max="90"></label>
+      </div>
+      <span class="sub num" id="req"></span>
+    </div>
+    <div>
+      <span class="label">Verdict</span>
+      <div class="verdict" id="verdict"></div>
+      <span class="sub" id="best"></span>
+    </div>
+  </section>
+
+  <section class="check" id="check" hidden aria-live="polite"></section>
+  <section class="bays" id="bays" aria-label="Squad"></section>
+
+  <section class="deck">
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Crew bench</h2>
+        <input class="search" id="q" placeholder="Find hero" aria-label="Find hero">
+      </div>
+      <div class="panel-b">
+        <div class="bench" id="bench"></div>
+        <p class="note">Drag a hero into a bay, or tap a hero then tap an empty slot. The gold number is how much that hero would add to the selected machine's power. Tap a hero's name to edit their jewels.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2 id="led-title">Machine math</h2></div>
+      <div class="panel-b">
+        <div class="edit-grid" id="wm-edit"></div>
+        <div class="ledger-wrap"><table class="ledger" id="ledger"></table></div>
+        <p class="note">Every multiplier stacks: base × (1+level) × (1+engineer) × (1+blueprint) × (1+rarity) × (1+card) × (1+inscription) × (1+artifact) × (1+crew). Source: Firestone wiki, game version 9.1.3. <b>Celestial jewel levels 17 and 18 are estimated</b> until we confirm them from your game.</p>
+      </div>
+    </div>
+  </section>
+
+  <details class="more">
+    <summary>Garage · owned machines</summary>
+    <div class="garage" id="garage"></div>
+  </details>
+  <details class="more">
+    <summary>War machine artifacts &amp; inscriptions</summary>
+    <div class="panel-b" id="arts"></div>
+  </details>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <div class="dlg-h"><svg class="spec" id="dlg-spec"><use href="#g-damage"/></svg><h2 id="dlg-title">Hero</h2><span class="label" id="dlg-specname"></span></div>
+  <div id="dlg-jewels"></div>
+  <div class="dlg-f"><button class="btn" id="dlg-close">Done</button></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// Zdbrus War Machine Planner: math engine
+// Every formula below is sourced from the Firestone Idle RPG wiki (current through game 9.1.3, Oct 2026).
+// Items marked INFERRED are extrapolated and must be confirmed against in-game numbers.
+
+const SPEC = { DAMAGE: 'damage', TANK: 'tank', HEALER: 'healer' };
+const ATTRS = ['damage', 'health', 'armor'];
+
+// Base attributes: wiki War Machines page
+const WAR_MACHINES = {
+  aegis:          { name: 'Aegis',          damage: 890,  health: 5100,  armor: 115, spec: SPEC.DAMAGE, target: 'single', ability: 'Beam 160% dmg' },
+  cloudfist:      { name: 'Cloudfist',      damage: 880,  health: 6500,  armor: 125, spec: SPEC.DAMAGE, target: 'single', ability: 'Rocket 200% dmg' },
+  firecracker:    { name: 'FireCracker',    damage: 910,  health: 4900,  armor: 110, spec: SPEC.DAMAGE, target: 'single', ability: 'Fireball 150% dmg' },
+  talos:          { name: 'Talos',          damage: 860,  health: 6000,  armor: 130, spec: SPEC.DAMAGE, target: 'single', ability: 'Rocket 200% dmg' },
+  harvester:      { name: 'Harvester',      damage: 960,  health: 5500,  armor: 125, spec: SPEC.DAMAGE, target: 'multi',  ability: 'Last 2 enemies 130% dmg' },
+  judgement:      { name: 'Judgement',      damage: 1080, health: 4700,  armor: 90,  spec: SPEC.DAMAGE, target: 'multi',  ability: 'All enemies 60% dmg' },
+  thunderclap:    { name: 'Thunderclap',    damage: 1050, health: 5200,  armor: 100, spec: SPEC.DAMAGE, target: 'multi',  ability: '3 random 120% dmg' },
+  curator:        { name: 'Curator',        damage: 380,  health: 4100,  armor: 150, spec: SPEC.HEALER, target: 'heal',   ability: 'Heal lowest 300% dmg' },
+  hunter:         { name: 'Hunter',         damage: 400,  health: 4900,  armor: 130, spec: SPEC.HEALER, target: 'heal',   ability: 'Heal 2 random 350% dmg' },
+  sentinel:       { name: 'Sentinel',       damage: 390,  health: 4400,  armor: 170, spec: SPEC.HEALER, target: 'heal',   ability: 'Heal all 150% dmg' },
+  earthshatterer: { name: 'Earthshatterer', damage: 510,  health: 10500, armor: 270, spec: SPEC.TANK,   target: 'multi',  ability: 'Quake all 80% dmg' },
+  fortress:       { name: 'Fortress',       damage: 460,  health: 11000, armor: 300, spec: SPEC.TANK,   target: 'multi',  ability: '2 random 60% dmg' },
+  goliath:        { name: 'Goliath',        damage: 430,  health: 12000, armor: 280, spec: SPEC.TANK,   target: 'self',   ability: 'Restore 10% max HP' },
+};
+
+// ---- Multipliers (each returns the "bonus", i.e. multiplier minus 1) ----
+const levelBonus     = (lvl) => Math.pow(1.05, Math.max(1, lvl) - 1) - 1;
+const engineerBonus  = (lvl) => Math.pow(1.05, Math.max(1, lvl) - 1) - 1;
+const blueprintBonus = (lvl) => Math.pow(1.05, lvl) - 1;
+// rarity: this machine's own rarity counts twice (own effect + all-machines effect)
+const rarityBonus    = (ownRarity, sumAllRarities) => Math.pow(1.05, ownRarity + sumAllRarities) - 1;
+const sacredCardBonus = (stars, base = 0.05) => Math.pow(1 + base, stars) - 1;
+const mechanicalFury = (sumAllRarities) => Math.pow(1.05, sumAllRarities) - 1;
+const overdrive      = (rarity) => 0.25 + 0.03 * rarity;
+const blueprintCap   = (wmLevel) => 5 + 5 * Math.floor(wmLevel / 5);
+const milestoneEffect = (totalBlueprints) => Math.pow(1.3, Math.floor(totalBlueprints / 5)) - 1;
+
+// Artifacts: 3rd gen artifacts give +30% to one WM attribute at Epic, +5% per rarity step.
+// Multiplicative across artifacts. rarity index: 0 Epic .. 7 Primordial
+const ARTIFACT_RARITIES = ['Epic', 'Legendary', 'Mythic', 'Titan', 'Angel', 'Celestial', 'Immortal', 'Primordial'];
+const artifactValue = (rarityIdx) => 0.30 + 0.05 * rarityIdx;
+function artifactBonus(artifacts, attr) {
+  let m = 1;
+  for (const a of artifacts || []) if (a.attr === attr) m *= 1 + artifactValue(a.rarity);
+  return m - 1;
+}
+
+// ---- Jewels ----
+// rarity index: 0 none, 1 Common .. 9 Celestial. Rarity effect 200% at Common, doubling.
+const JEWEL_RARITIES = ['None', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Titan', 'Angel', 'Celestial'];
+const JEWEL_MAX_LEVEL = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18];
+// Level effect (as fraction). Levels 0-16 from wiki. 17-18 INFERRED (pattern x1.5 / x1.333 continues).
+const JEWEL_LEVEL_EFFECT = [0, 1.5, 2, 3, 4, 6, 8, 12, 16, 22, 32, 48, 64, 96, 128, 192, 256, 384, 512];
+const JEWEL_LEVEL_INFERRED_FROM = 17;
+const JEWEL_TYPES = {
+  ankh:     { tier: 1, damage: 1, health: 0, armor: 0 },
+  rune:     { tier: 1, damage: 0, health: 1, armor: 0 },
+  idol:     { tier: 1, damage: 0, health: 0, armor: 1 },
+  talisman: { tier: 2, damage: 1, health: 1, armor: 0 },
+  necklace: { tier: 2, damage: 1, health: 0, armor: 1 },
+  trinket:  { tier: 2, damage: 0, health: 1, armor: 1 },
+};
+function jewelEffect(rarity, level) {
+  if (!rarity) return 0;
+  const lvl = Math.min(level || 0, JEWEL_MAX_LEVEL[rarity]);
+  return 2 * Math.pow(2, rarity - 1) + JEWEL_LEVEL_EFFECT[lvl];
+}
+
+// ---- Crew ----
+// crew member bonus = (1 + spec bonus) * jewel bonus
+// spec bonus 40% when hero spec matches attr (damage->damage, healer->health, tank->armor)
+// jewel bonus = sum of the hero's jewel effects on that attr; 40% if the hero has none for that attr
+const SPEC_ATTR = { damage: 'damage', healer: 'health', tank: 'armor' };
+function crewMemberBonus(hero, attr) {
+  let sum = 0;
+  for (const [type, j] of Object.entries(hero.jewels || {})) {
+    if (JEWEL_TYPES[type] && JEWEL_TYPES[type][attr]) sum += jewelEffect(j.rarity, j.level);
+  }
+  if (sum === 0) sum = 0.4;
+  const specBonus = SPEC_ATTR[hero.spec] === attr ? 0.4 : 0;
+  return (1 + specBonus) * sum;
+}
+function crewBonus(crew, attr) {
+  return (crew || []).reduce((s, h) => s + crewMemberBonus(h, attr), 0);
+}
+const maxCrew = (engineerLevel) => engineerLevel >= 60 ? 6 : engineerLevel >= 30 ? 5 : 4;
+
+// ---- Attributes ----
+// basic = base * (1+level) * (1+engineer) * (1+blueprint) * (1+rarity) * (1+card) * (1+inscription) * (1+artifact)
+// battle = basic * (1+crew)
+function machineStats(wm, account, crew = []) {
+  const base = WAR_MACHINES[wm.id];
+  if (!base) throw new Error('Unknown war machine ' + wm.id);
+  const sumRarity = account.sumAllRarities ?? 0;
+  const out = { id: wm.id, name: base.name, spec: base.spec, basic: {}, battle: {}, arena: {}, breakdown: {} };
+  for (const attr of ATTRS) {
+    const parts = {
+      level: levelBonus(wm.level),
+      engineer: engineerBonus(account.engineerLevel),
+      blueprint: blueprintBonus(wm.blueprints?.[attr] ?? 0),
+      rarity: rarityBonus(wm.rarity ?? 0, sumRarity),
+      sacredCard: sacredCardBonus(wm.cardStars ?? 0),
+      inscription: (account.inscriptionBonus?.[attr] ?? 0),
+      artifact: artifactBonus(account.artifacts, attr),
+    };
+    let basic = base[attr];
+    for (const v of Object.values(parts)) basic *= 1 + v;
+    // Live mode: the game's own pre-crew number is the truth. When the player edits a level or rarity in the
+    // planner, that truth is scaled by how much our formula says the edit changes it.
+    if (wm.basicOverride && wm.basicOverride[attr] > 0) {
+      const ratio = wm.basicFormulaRef && wm.basicFormulaRef[attr] > 0 ? basic / wm.basicFormulaRef[attr] : 1;
+      basic = wm.basicOverride[attr] * ratio;
+      parts.fromGame = true;
+    }
+    const crewB = crewBonus(crew, attr);
+    const battle = basic * (1 + crewB);
+    const arena = arenaAttribute(base[attr], battle, sumRarity, 0);
+    out.basic[attr] = basic; out.battle[attr] = battle; out.arena[attr] = arena;
+    out.breakdown[attr] = { ...parts, crew: crewB };
+  }
+  out.overdrive = overdrive(wm.rarity ?? 0);
+  out.battlePower = power(out.battle);
+  out.arenaPower = power(out.arena);
+  return out;
+}
+
+// arena = base * (1 + log10(battle/base))^2 * (1 + fury) * (1 + battle card)
+function arenaAttribute(base, battle, sumAllRarities, cardBonus = 0) {
+  return base * Math.pow(1 + Math.log10(battle / base), 2) * (1 + mechanicalFury(sumAllRarities)) * (1 + cardBonus);
+}
+
+// power = (10*dmg)^0.7 + (hp)^0.7 + (10*armor)^0.7
+const power = (s) => Math.pow(10 * s.damage, 0.7) + Math.pow(s.health, 0.7) + Math.pow(10 * s.armor, 0.7);
+
+// ---- Campaign ----
+const DIFFICULTY = { easy: 1, normal: 360, hard: 2478600, insane: 5.8e12, nightmare: 2.92e18, merciless: 7.69e29 };
+const ENEMY_BASE = { damage: 260, health: 1560, armor: 30 };
+function enemyStats(difficulty, mission, step = 3) {
+  const m = DIFFICULTY[difficulty] * Math.pow(1.2, mission - 1) * Math.pow(step, Math.floor((mission - 1) / 10));
+  return { damage: ENEMY_BASE.damage * m, health: ENEMY_BASE.health * m, armor: ENEMY_BASE.armor * m };
+}
+function requiredPower(difficulty, mission) {
+  const e = enemyStats(difficulty, mission, 2);
+  const enemyPower = 5 * power(e);
+  let pct = 0.8;
+  if (difficulty === 'easy' && mission <= 10) pct = 0.3;
+  else if (difficulty === 'easy' && mission <= 30) pct = 0.5;
+  return Math.floor((enemyPower * pct) / 100) * 100;
+}
+
+const cloneCrews = (c) => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v.slice()]));
+
+// ---- Optimizer ----
+// Picks the 5 machines and assigns heroes (each hero used once) to maximize squad battle power.
+// Greedy fill then pairwise-swap hill climb until no swap improves.
+function optimize(account, opts = {}) {
+  const machines = account.machines.filter(m => m.owned !== false);
+  const heroes = account.heroes.slice();
+  const cap = account.crewSlots || maxCrew(account.engineerLevel);
+  const squadSize = Math.min(5, machines.length);
+  const locked = opts.locked || {}; // { heroId: machineId }
+
+  const score = (assign) => {
+    let total = 0; const detail = [];
+    for (const wm of assign.squad) {
+      const crew = assign.crews[wm.id].map(id => heroes.find(h => h.id === id));
+      const st = machineStats(wm, account, crew);
+      total += opts.mode === 'arena' ? st.arenaPower : st.battlePower;
+      detail.push(st);
+    }
+    return { total, detail };
+  };
+
+  // 1. machine selection by solo power with an average crew
+  const ranked = machines
+    .map(wm => ({ wm, p: machineStats(wm, account, []).battlePower }))
+    .sort((a, b) => b.p - a.p);
+  let squad = ranked.slice(0, squadSize).map(r => r.wm);
+  if (opts.requireTank) {
+    const hasTank = squad.some(w => WAR_MACHINES[w.id].spec === SPEC.TANK);
+    const bestTank = ranked.find(r => WAR_MACHINES[r.wm.id].spec === SPEC.TANK);
+    if (!hasTank && bestTank) squad[squad.length - 1] = bestTank.wm;
+  }
+
+  // 2. greedy crew fill: each slot takes the hero with the biggest marginal power gain
+  const crews = Object.fromEntries(squad.map(w => [w.id, []]));
+  const used = new Set();
+  for (const [hid, mid] of Object.entries(locked)) if (crews[mid]) { crews[mid].push(hid); used.add(hid); }
+  let improved = true;
+  while (improved) {
+    improved = false; let best = null;
+    for (const wm of squad) {
+      if (crews[wm.id].length >= cap) continue;
+      const cur = machineStats(wm, account, crews[wm.id].map(id => heroes.find(h => h.id === id))).battlePower;
+      for (const h of heroes) {
+        if (used.has(h.id)) continue;
+        const next = machineStats(wm, account, [...crews[wm.id], h.id].map(id => heroes.find(x => x.id === id))).battlePower;
+        const gain = next - cur;
+        if (!best || gain > best.gain) best = { gain, wm: wm.id, h: h.id };
+      }
+    }
+    if (best) { crews[best.wm].push(best.h); used.add(best.h); improved = true; }
+  }
+
+  // 3. hill climb: swap heroes between machines / with the bench
+  let state = { squad, crews };
+  let cur = score(state).total;
+  const bench = () => heroes.filter(h => !Object.values(state.crews).flat().includes(h.id)).map(h => h.id);
+  for (let iter = 0; iter < 50; iter++) {
+    let bestMove = null;
+    const ids = squad.map(w => w.id);
+    for (let a = 0; a < ids.length; a++) for (const ha of state.crews[ids[a]]) {
+      if (locked[ha]) continue;
+      for (let b = a + 1; b < ids.length; b++) for (const hb of state.crews[ids[b]]) {
+        if (locked[hb]) continue;
+        const t = cloneCrews(state.crews);
+        t[ids[a]] = t[ids[a]].map(x => x === ha ? hb : x);
+        t[ids[b]] = t[ids[b]].map(x => x === hb ? ha : x);
+        const s = score({ squad, crews: t }).total;
+        if (s > cur + 1e-9 && (!bestMove || s > bestMove.s)) bestMove = { s, t };
+      }
+      for (const hb of bench()) {
+        const t = cloneCrews(state.crews);
+        t[ids[a]] = t[ids[a]].map(x => x === ha ? hb : x);
+        const s = score({ squad, crews: t }).total;
+        if (s > cur + 1e-9 && (!bestMove || s > bestMove.s)) bestMove = { s, t };
+      }
+    }
+    if (!bestMove) break;
+    state = { squad, crews: bestMove.t }; cur = bestMove.s;
+  }
+  const result = score(state);
+  return { squad: squad.map(w => w.id), crews: state.crews, squadPower: result.total, machines: result.detail };
+}
+
+const WMEngineAPI = {
+  WAR_MACHINES, SPEC, ATTRS, JEWEL_TYPES, JEWEL_RARITIES, JEWEL_MAX_LEVEL, JEWEL_LEVEL_EFFECT, JEWEL_LEVEL_INFERRED_FROM,
+  ARTIFACT_RARITIES, DIFFICULTY,
+  levelBonus, engineerBonus, blueprintBonus, rarityBonus, sacredCardBonus, mechanicalFury, overdrive, blueprintCap,
+  milestoneEffect, artifactBonus, jewelEffect, crewMemberBonus, crewBonus, maxCrew, machineStats, arenaAttribute,
+  power, enemyStats, requiredPower, optimize,
+};
+if (typeof module !== 'undefined' && module.exports) module.exports = WMEngineAPI; else globalThis.WMEngine = WMEngineAPI;
+
+</script>
+<script>
+(() => {
+const E = globalThis.WMEngine;
+const $ = (s, r = document) => r.querySelector(s);
+const el = (t, a = {}, ...kids) => { const n = document.createElement(t); for (const [k, v] of Object.entries(a)) { if (k === 'class') n.className = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else if (v !== false && v != null) n.setAttribute(k, v === true ? '' : v); } for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c)); return n; };
+const svgUse = (id, cls = 'spec') => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('class', cls); s.setAttribute('aria-hidden', 'true'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#' + id); s.append(u); return s; };
+
+const SUFFIX = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
+function fmt(n) {
+  if (!isFinite(n)) return '∞';
+  const a = Math.abs(n);
+  if (a < 1000) return n.toFixed(a < 10 ? 2 : a < 100 ? 1 : 0);
+  const e = Math.floor(Math.log10(a) / 3);
+  if (e < SUFFIX.length) return (n / Math.pow(1000, e)).toFixed(2) + SUFFIX[e];
+  return n.toExponential(2).replace('e+', 'e');
+}
+const pct = (x) => (x * 100 >= 1e6 ? fmt(x * 100) : (x * 100).toLocaleString(undefined, { maximumFractionDigits: 1 })) + '%';
+const SPEC_NAME = { damage: 'Damage', tank: 'Tank', healer: 'Healer' };
+// war machine rarity index: 0 Common .. 8 Celestial
+const RARITY = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Titan', 'Angel', 'Celestial'];
+
+// ---------- sample roster (EXAMPLE DATA, not the user's account) ----------
+function sample() {
+  const heroes = [
+    ['talia','Talia','damage'],['burt','Burt','damage'],['solaine','Solaine','damage'],['boris','Boris','tank'],
+    ['benedictus','Benedictus','healer'],['leo','Leo','tank'],['muriel','Muriel','damage'],['blaze','Blaze','damage'],
+    ['luana','Luana','healer'],['valerius','Valerius','tank'],['astrid','Astrid','damage'],['ina','Ina','damage'],
+    ['fini','Fini','damage'],['asmondai','Asmondai','tank'],['danysa','Danysa','tank'],['iseris','Iseris','damage'],
+    ['belien','Belien','healer'],['sely','Sely','damage'],['randal','Randal','tank'],['molly','Molly','damage'],
+    ['layla','Layla','healer'],['joe','Joe','damage'],['hongyu','Hongyu','damage'],['amun','Amun','damage'],
+    ['panko','Panko','tank'],['yavo','Yavo','healer'],['zoruk','Zoruk','healer'],['rickie','Rickie','damage'],
+    ['ledra','Ledra','healer'],['yamanoth','Yamanoth','tank'],['kramatak','Kramatak','damage'],
+  ];
+  let seed = 42; const r = (n) => (seed = (seed * 16807) % 2147483647) % n;
+  const types = Object.keys(E.JEWEL_TYPES);
+  return {
+    engineerLevel: 64, mode: 'campaign', difficulty: 'hard', mission: 54,
+    artifacts: [{ attr: 'damage', rarity: 3 }, { attr: 'health', rarity: 1 }, { attr: 'armor', rarity: 2 }],
+    inscriptionBonus: { damage: 0, health: 0, armor: 0 },
+    machines: Object.keys(E.WAR_MACHINES).map((id, i) => ({
+      id, owned: i !== 3 && i !== 9 && i !== 12,
+      level: 140 + ((i * 37) % 120), rarity: 2 + (i % 3), cardStars: 3 + (i % 5),
+      blueprints: { damage: 60 + (i * 7) % 40, health: 50 + (i * 11) % 40, armor: 45 + (i * 5) % 40 },
+    })),
+    heroes: heroes.map(([id, name, spec], i) => {
+      const jewels = {};
+      for (const t of types) { if (r(10) < 2) continue; const rar = 3 + r(4); jewels[t] = { rarity: rar, level: r(E.JEWEL_MAX_LEVEL[rar] + 1) }; }
+      return { id, name, spec, jewels };
+    }),
+    squad: [], crews: {}, selected: null,
+  };
+}
+
+// ---------- live link: Zdbrus Bot serves this page at localhost:5577 with /roster.json ----------
+const LIVE = /^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const KEY = LIVE ? 'zdbrus-garage-live-v1' : 'zdbrus-garage-v1';
+const OKEY = 'zdbrus-garage-edits-v1';
+let S, G = null, liveState = LIVE ? 'connecting' : 'sample', liveAt = 0;
+try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { S = null; }
+if (!S || !S.heroes) S = sample();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+let O; try { O = JSON.parse(localStorage.getItem(OKEY) || 'null'); } catch { O = null; }
+O = O || { machines: {}, heroes: {} };
+const saveO = () => { try { localStorage.setItem(OKEY, JSON.stringify(O)); } catch {} };
+const WM_ID = (c) => { const k = String(c).toLowerCase(); return k === 'earthshatter' ? 'earthshatterer' : k; };
+const SPEC_OF = { Damage: 'damage', Tank: 'tank', Healer: 'healer' };
+
+// Build planner state from the game snapshot plus any edits made in the planner.
+function applyGame(g) {
+  const prevSquad = S.squad, prevCrews = S.crews, prevSel = S.selected, mode = S.mode, diff = S.difficulty, mission = S.mission;
+  const machines = Object.keys(E.WAR_MACHINES).map(id => ({ id, owned: false, level: 1, rarity: 0, cardStars: 0, blueprints: { damage: 0, health: 0, armor: 0 } }));
+  for (const m of g.machines) {
+    const t = machines.find(x => x.id === WM_ID(m.code)); if (!t) continue;
+    Object.assign(t, { owned: true, level: m.level, rarity: m.rarity, cardStars: m.sacredCards, inscriptions: m.lostInscriptions,
+      blueprints: { damage: m.blueprints.damage || 0, health: m.blueprints.health || 0, armor: m.blueprints.armor || 0 },
+      game: m.game, gameCrew: m.crew || [] });
+  }
+  const heroes = g.heroes.filter(h => h.owned).map(h => {
+    const jewels = {};
+    for (const j of h.jewels) jewels[j.slot.toLowerCase()] = { rarity: j.rarity, level: j.level };
+    const o = O.heroes[h.id];
+    return { id: h.id, name: h.code, spec: SPEC_OF[h.spec] || 'damage', jewels: o ? structuredClone(o.jewels) : jewels, gameJewels: jewels, game: h.game, edited: !!o };
+  });
+  S = { ...S, engineerLevel: g.engineerLevel, crewSlots: g.crewSlots, artifacts: [], inscriptionBonus: { damage: 0, health: 0, armor: 0 },
+    machines, heroes, mode, difficulty: diff, mission };
+  // The game's pre-crew numbers are the base; remember what our formula says for the unedited machine so edits scale it.
+  const acct0 = account();
+  for (const t of machines.filter(m => m.owned && m.game)) {
+    t.basicOverride = { damage: t.game.damageNoCrew, health: t.game.healthNoCrew, armor: t.game.armorNoCrew };
+    const ref = E.machineStats({ ...t, basicOverride: null }, acct0, []);
+    t.basicFormulaRef = { ...ref.basic };
+    const o = O.machines[t.id];
+    if (o) { Object.assign(t, o, { blueprints: { ...t.blueprints, ...(o.blueprints || {}) } }); t.edited = true; }
+  }
+  // Keep the plan the player is working on; start from the in-game squad the first time or if it no longer fits.
+  const owned = new Set(machines.filter(m => m.owned).map(m => m.id));
+  const plan = (prevSquad || []).filter(id => owned.has(id));
+  if (!G || plan.length !== Math.min(5, owned.size) || !S.planFromLive) loadGameSquad(g);
+  else { S.squad = plan; S.crews = prevCrews; S.selected = prevSel; }
+  const heroIds = new Set(heroes.map(h => h.id));
+  for (const k of Object.keys(S.crews)) S.crews[k] = (S.crews[k] || []).filter(id => heroIds.has(id)).slice(0, cap());
+  S.planFromLive = true;
+}
+function loadGameSquad(g) {
+  const sq = [...g.squad].sort((a, b) => a.spot - b.spot);
+  S.squad = sq.map(s => WM_ID(s.code)).filter(id => wmById(id)?.owned);
+  S.crews = Object.fromEntries(sq.map(s => [WM_ID(s.code), s.crew.slice()]));
+  if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
+}
+async function poll() {
+  try {
+    const r = await fetch('/roster.json', { cache: 'no-store' });
+    if (r.status === 503) { liveState = 'waiting'; }
+    else if (r.ok) { const g = await r.json(); applyGame(g); G = g; liveState = 'live'; liveAt = Date.now(); save(); }
+    else liveState = 'offline';
+  } catch { liveState = 'offline'; }
+  render();
+}
+
+const sumRarity = () => S.machines.filter(m => m.owned).reduce((a, m) => a + (m.rarity || 0), 0);
+const account = () => ({ engineerLevel: S.engineerLevel, crewSlots: S.crewSlots || 0, sumAllRarities: sumRarity(), artifacts: S.artifacts, inscriptionBonus: S.inscriptionBonus,
+  machines: S.machines.filter(m => m.owned), heroes: S.heroes });
+const heroById = (id) => S.heroes.find(h => h.id === id);
+const wmById = (id) => S.machines.find(m => m.id === id);
+const cap = () => S.crewSlots || E.maxCrew(S.engineerLevel);
+const statsFor = (id, extra) => E.machineStats(wmById(id), account(), [...(S.crews[id] || []).map(heroById), ...(extra ? [extra] : [])]);
+const scoreOf = (st) => S.mode === 'arena' ? st.arenaPower : st.battlePower;
+
+function runAuto() {
+  const r = E.optimize(account(), { mode: S.mode, requireTank: true });
+  S.squad = r.squad; S.crews = r.crews; if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
+  save(); render(); toast('Squad rebuilt');
+}
+if (!LIVE && !S.squad.length) { const r = E.optimize(account(), { requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = r.squad[0]; }
+
+let picked = null;
+function assign(heroId, wmId) {
+  for (const k of Object.keys(S.crews)) S.crews[k] = S.crews[k].filter(x => x !== heroId);
+  if (wmId) { S.crews[wmId] = S.crews[wmId] || []; if (S.crews[wmId].length < cap()) S.crews[wmId].push(heroId); }
+  picked = null; save(); render();
+}
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1600); }
+
+// ---------- render ----------
+function heroChip(h, { wmId, gain } = {}) {
+  const c = el('div', { class: 'hero' + (picked === h.id ? ' picked' : ''), draggable: 'true', tabindex: '0', 'data-hero': h.id,
+    'aria-label': `${h.name}, ${SPEC_NAME[h.spec]}` });
+  c.append(svgUse('g-' + h.spec));
+  const jewelCount = Object.keys(h.jewels).length;
+  const nm = el('div', { class: 'nm' }, h.name, el('small', {}, `${SPEC_NAME[h.spec]} · ${jewelCount}/6 jewels`));
+  nm.addEventListener('click', (e) => { e.stopPropagation(); openHero(h.id); });
+  nm.style.cursor = 'pointer';
+  c.append(nm);
+  if (wmId) c.append(el('button', { class: 'x', title: 'Remove from crew', 'aria-label': `Remove ${h.name}`, onclick: (e) => { e.stopPropagation(); assign(h.id, null); } }, '×'));
+  else c.append(el('span', { class: 'gain', title: 'Power added to selected machine' }, gain != null ? '+' + fmt(gain) : ''));
+  c.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', h.id); e.dataTransfer.effectAllowed = 'move'; });
+  c.addEventListener('click', (e) => { e.stopPropagation(); picked = picked === h.id ? null : h.id; render(); });
+  c.addEventListener('keydown', (e) => { if (e.key === 'Enter') { picked = picked === h.id ? null : h.id; render(); } });
+  return c;
+}
+
+function sameCrew(id) {
+  const wm = wmById(id); if (!wm?.gameCrew) return false;
+  const a = [...(S.crews[id] || [])].sort((x, y) => x - y).join(','), b = [...wm.gameCrew].sort((x, y) => x - y).join(',');
+  return a === b;
+}
+// Compare the planner with the game, machine by machine, using the crew each machine has in the game right now.
+function gameCheck() {
+  const acct = account(); const out = [];
+  for (const wm of S.machines.filter(m => m.owned && m.game && !m.edited)) {
+    const crew = wm.gameCrew.map(heroById).filter(Boolean);
+    if (crew.length !== wm.gameCrew.length || crew.some(h => h.edited)) continue;
+    const st = E.machineStats(wm, acct, crew);
+    let worst = 0;
+    for (const a of E.ATTRS) if (wm.game[a] > 0) worst = Math.max(worst, Math.abs(st.battle[a] / wm.game[a] - 1));
+    const pw = wm.game.power > 0 ? Math.abs(st.battlePower / wm.game.power - 1) : 0;
+    out.push({ id: wm.id, worst: Math.max(worst, pw) });
+  }
+  return out;
+}
+function renderLive() {
+  const chip = $('#source'); chip.className = 'chip' + (liveState === 'live' ? ' live' : liveState === 'offline' ? ' bad' : '');
+  const txt = { sample: 'Sample roster · not linked to game', connecting: 'Connecting to the game…', waiting: 'Game is loading your roster…',
+    offline: 'Game closed or bot off', live: 'Live from game' }[liveState];
+  chip.replaceChildren(el('span', { class: 'dot' }), txt);
+  $('#use-game').hidden = !(LIVE && G);
+  $('#reset-edits').hidden = !(LIVE && (Object.keys(O.machines).length || Object.keys(O.heroes).length));
+  const box = $('#check');
+  box.hidden = !(LIVE && G);
+  if (box.hidden) return;
+  const res = gameCheck(); box.replaceChildren();
+  const bad = res.filter(r => r.worst > 0.005);
+  const v = el('div', { class: 'verdict' });
+  if (!res.length) v.append('Game check: nothing to compare yet');
+  else if (!bad.length) { v.append(svgUse('g-ok', ''), `Planner matches the game on all ${res.length} machines`); v.style.color = 'var(--ok)'; }
+  else { v.append(svgUse('g-bad', ''), `Planner is off on ${bad.length} of ${res.length} machines`); v.style.color = 'var(--bad)'; }
+  v.querySelectorAll('svg').forEach(x => { x.setAttribute('width', 18); x.setAttribute('height', 18); });
+  box.append(el('span', { class: 'label' }, 'Game check'), v,
+    ...res.map(r => el('span', { class: 'pill' + (r.worst > 0.005 ? ' off' : ''), title: 'Largest gap between planner and game' },
+      E.WAR_MACHINES[r.id].name, el('b', {}, r.worst < 0.0001 ? 'exact' : (r.worst * 100).toFixed(2) + '%'))));
+}
+
+function render() {
+  renderLive();
+  const acct = account();
+  const all = S.squad.map(id => statsFor(id));
+  const total = all.reduce((a, st) => a + scoreOf(st), 0);
+  $('#pow').textContent = fmt(total);
+  $('#pow-label').textContent = S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power';
+  $('#pow-sub').textContent = S.mode === 'arena' ? 'Arena stats: log-scaled, plus Mechanical Fury' : 'What the Warfront Campaign checks';
+  $('#m-campaign').setAttribute('aria-pressed', S.mode === 'campaign');
+  $('#m-arena').setAttribute('aria-pressed', S.mode === 'arena');
+  $('#eng').value = S.engineerLevel;
+  $('#crewcap').textContent = `${cap()} crew per machine`;
+  $('#raritysum').textContent = `Total machine rarity ${sumRarity()} · +${pct(E.mechanicalFury(sumRarity()))} fury`;
+
+  // campaign verdict (battle power vs requirement)
+  const bp = all.reduce((a, st) => a + st.battlePower, 0);
+  const need = E.requiredPower(S.difficulty, S.mission);
+  $('#req').textContent = `Needs ${fmt(need)} power`;
+  const v = $('#verdict'); v.replaceChildren();
+  if (bp >= need) { v.append(svgUse('g-ok', ''), 'Meets requirement'); v.style.color = 'var(--ok)'; }
+  else { v.append(svgUse('g-bad', ''), `Short ${fmt(need - bp)}`); v.style.color = 'var(--bad)'; }
+  v.querySelector('svg').setAttribute('width', 20); v.querySelector('svg').setAttribute('height', 20);
+  let bestM = 0;
+  for (let m = 1; m <= 90; m++) if (E.requiredPower(S.difficulty, m) <= bp) bestM = m;
+  $('#best').textContent = bestM ? `Power covers up to ${cap1(S.difficulty)} #${bestM}` : `Below ${cap1(S.difficulty)} #1`;
+
+  // bays
+  const maxV = { damage: 1, health: 1, armor: 1 };
+  for (const st of all) for (const a of E.ATTRS) maxV[a] = Math.max(maxV[a], (S.mode === 'arena' ? st.arena : st.battle)[a]);
+  const bays = $('#bays'); bays.replaceChildren();
+  const owned = S.machines.filter(m => m.owned);
+  S.squad.forEach((id, idx) => {
+    const st = all[idx]; const base = E.WAR_MACHINES[id]; const wm = wmById(id);
+    const vals = S.mode === 'arena' ? st.arena : st.battle;
+    const bay = el('article', { class: 'bay', 'aria-current': S.selected === id ? 'true' : 'false', tabindex: '0', 'aria-label': `${base.name} bay ${idx + 1}`,
+      onclick: () => { if (picked) { assign(picked, id); return; } S.selected = id; save(); render(); },
+      onkeydown: (e) => { if (e.key === 'Enter' && e.target === bay) { S.selected = id; render(); } } });
+    const head = el('div', { class: 'bay-head' },
+      el('div', { class: 'bay-name' }, svgUse('g-' + base.spec), el('h3', {}, base.name), el('span', { class: 'slotno' }, '0' + (idx + 1))),
+      el('div', { class: 'meta' },
+        el('span', { class: 'tag' }, SPEC_NAME[base.spec] + (base.target === 'multi' ? ' · AoE' : '')),
+        el('span', { class: 'tag' }, 'Lv ' + wm.level),
+        el('span', { class: 'tag r' }, RARITY[wm.rarity] || 'Common'),
+        el('span', { class: 'tag' }, 'OD ' + Math.round(st.overdrive * 100) + '%')));
+    const sw = el('select', { class: 'swap', 'aria-label': 'Swap machine', onclick: (e) => e.stopPropagation(),
+      onchange: (e) => { const nid = e.target.value; const crew = S.crews[id] || []; delete S.crews[id]; S.squad[idx] = nid; S.crews[nid] = crew.slice(0, cap()); S.selected = nid; save(); render(); } },
+      ...owned.filter(m => m.id === id || !S.squad.includes(m.id)).map(m => el('option', { value: m.id, selected: m.id === id }, (m.id === id ? 'Swap: ' : '') + E.WAR_MACHINES[m.id].name)));
+    head.append(sw);
+    const rows = el('div', { class: 'stats' },
+      ...[['damage', 'DMG', 'dmg'], ['health', 'HP', 'hp'], ['armor', 'ARM', 'arm']].map(([a, k, c]) =>
+        el('div', { class: 'stat' }, el('span', { class: 'k k-' + c }, k),
+          el('div', { class: 'bar' }, (() => { const i = el('i', { class: 'b-' + c }); i.style.width = Math.max(3, 100 * vals[a] / maxV[a]) + '%'; return i; })()),
+          el('span', { class: 'v num' }, fmt(vals[a])))));
+    const pw = el('div', { class: 'bay-pow' }, el('span', { class: 'label' }, 'Power'), el('b', { class: 'num' }, fmt(scoreOf(st))));
+    const crew = el('div', { class: 'crew' });
+    const members = S.crews[id] || [];
+    for (let i = 0; i < 6; i++) {
+      if (i < members.length) crew.append(heroChip(heroById(members[i]), { wmId: id }));
+      else if (i < cap()) {
+        const s = el('div', { class: 'slot' }, picked ? 'Tap to place' : 'Empty slot');
+        s.addEventListener('dragover', (e) => { e.preventDefault(); s.classList.add('drop'); });
+        s.addEventListener('dragleave', () => s.classList.remove('drop'));
+        s.addEventListener('drop', (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), id); });
+        s.addEventListener('click', (e) => { if (picked) { e.stopPropagation(); assign(picked, id); } });
+        crew.append(s);
+      } else crew.append(el('div', { class: 'slot locked', title: i === 4 ? 'Engineer 30' : 'Engineer 60' }, i === 4 ? 'Eng 30' : 'Eng 60'));
+    }
+    crew.addEventListener('dragover', (e) => e.preventDefault());
+    crew.addEventListener('drop', (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), id); });
+    bay.append(head, rows, pw, crew);
+    bays.append(bay);
+  });
+
+  // bench sorted by gain on selected machine
+  const q = $('#q').value.trim().toLowerCase();
+  const used = new Set(Object.values(S.crews).flat());
+  const selStats = S.selected ? statsFor(S.selected) : null;
+  const bench = S.heroes.filter(h => !used.has(h.id) && (!q || h.name.toLowerCase().includes(q)))
+    .map(h => ({ h, gain: selStats ? scoreOf(statsFor(S.selected, h)) - scoreOf(selStats) : 0 }))
+    .sort((a, b) => b.gain - a.gain);
+  const b = $('#bench'); b.replaceChildren(...bench.map(({ h, gain }) => heroChip(h, { gain })));
+  if (!bench.length) b.append(el('p', { class: 'sub' }, q ? 'No hero by that name on the bench.' : 'Every hero is crewed.'));
+  b.ondragover = (e) => e.preventDefault();
+  b.ondrop = (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), null); };
+
+  renderLedger(); renderGarage(); renderArts();
+}
+const cap1 = (s) => s[0].toUpperCase() + s.slice(1);
+
+function rememberMachine(wm) {
+  if (!LIVE || !wm.game) return;
+  O.machines[wm.id] = { level: wm.level, rarity: wm.rarity, cardStars: wm.cardStars, blueprints: { ...wm.blueprints } };
+  wm.edited = true; saveO();
+}
+
+function renderLedger() {
+  const id = S.selected; if (!id) return;
+  const wm = wmById(id); const st = statsFor(id); const base = E.WAR_MACHINES[id];
+  $('#led-title').textContent = base.name + ' · math';
+  const ed = $('#wm-edit'); ed.replaceChildren();
+  const bpCap = E.blueprintCap(wm.level);
+  const num = (label, key, max, sub) => {
+    const inp = el('input', { type: 'number', min: 0, max, value: sub ? wm[key][sub] : wm[key], id: `ed-${key}${sub || ''}` });
+    inp.addEventListener('change', () => { let v = Math.max(0, Math.min(max, parseInt(inp.value) || 0)); if (key === 'level') v = Math.max(1, v); if (sub) wm[key][sub] = v; else wm[key] = v; rememberMachine(wm); save(); render(); });
+    return el('label', {}, el('span', { class: 'label' }, label), inp);
+  };
+  const rs = el('select', { id: 'ed-rarity' }, ...RARITY.map((n, i) => el('option', { value: i, selected: i === wm.rarity }, n)));
+  rs.addEventListener('change', () => { wm.rarity = +rs.value; rememberMachine(wm); save(); render(); });
+  ed.append(num('Level', 'level', 999), el('label', {}, el('span', { class: 'label' }, 'Rarity'), rs), num('Card stars', 'cardStars', 99),
+    num(`BP dmg ≤${bpCap}`, 'blueprints', bpCap, 'damage'), num(`BP hp ≤${bpCap}`, 'blueprints', bpCap, 'health'), num(`BP arm ≤${bpCap}`, 'blueprints', bpCap, 'armor'));
+
+  const rows = [
+    ['Base', a => fmt(base[a]), 'wiki'],
+    ['Level', a => '×' + (1 + st.breakdown[a].level).toFixed(2), `1.05^(${wm.level}−1)`],
+    ['Engineer', a => '×' + (1 + st.breakdown[a].engineer).toFixed(2), `1.05^(${S.engineerLevel}−1)`],
+    ['Blueprint', a => '×' + (1 + st.breakdown[a].blueprint).toFixed(2), '1.05^bp'],
+    ['Rarity', a => '×' + (1 + st.breakdown[a].rarity).toFixed(2), `1.05^(${wm.rarity}+${sumRarity()})`],
+    ['Sacred card', a => '×' + (1 + st.breakdown[a].sacredCard).toFixed(3), `1.05^${wm.cardStars}`],
+    ['Inscription', a => '×' + (1 + st.breakdown[a].inscription).toFixed(2), 'manual'],
+    ['Artifacts', a => '×' + (1 + st.breakdown[a].artifact).toFixed(2), '∏(1.30+0.05r)'],
+    ['Crew', a => '×' + fmt(1 + st.breakdown[a].crew), 'Σ(1+spec)·jewels'],
+  ];
+  if (wm.basicOverride) {
+    rows.length = 0;
+    rows.push(['Pre-crew', a => fmt(st.basic[a]), wm.edited ? 'game × your edits' : 'from the game']);
+    rows.push(['Crew', a => '×' + fmt(1 + st.breakdown[a].crew), 'Σ(1+spec)·jewels']);
+  }
+  const t = $('#ledger'); t.replaceChildren();
+  t.append(el('thead', {}, el('tr', {}, el('th', {}, 'Step'), el('th', {}, 'Formula'), el('th', { class: 'k-dmg' }, 'DMG'), el('th', { class: 'k-hp' }, 'HP'), el('th', { class: 'k-arm' }, 'ARM'))));
+  const tb = el('tbody');
+  for (const [n, f, form] of rows) tb.append(el('tr', {}, el('td', {}, n), el('td', { class: 'f' }, form), ...E.ATTRS.map(a => el('td', { class: 'num' }, f(a)))));
+  tb.append(el('tr', { class: 'tot' }, el('td', {}, 'Battle'), el('td', { class: 'f' }, ''), ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(st.battle[a])))));
+  tb.append(el('tr', { class: 'tot' }, el('td', {}, 'Arena'), el('td', { class: 'f' }, 'log-scaled'), ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(st.arena[a])))));
+  if (wm.game) {
+    const same = sameCrew(id);
+    tb.append(el('tr', { class: 'game' }, el('td', {}, 'Game now'), el('td', { class: 'f' }, same ? 'same crew as planner' : 'your in-game crew'),
+      ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(wm.game[a])))));
+  }
+  t.append(tb);
+}
+
+function renderGarage() {
+  const g = $('#garage'); g.replaceChildren();
+  for (const m of S.machines) {
+    const b = E.WAR_MACHINES[m.id];
+    const cb = el('input', { type: 'checkbox', checked: m.owned, id: 'own-' + m.id, 'aria-label': 'Owned ' + b.name, disabled: LIVE && !!G, title: LIVE && G ? 'Read from your game' : '' });
+    cb.addEventListener('change', () => { m.owned = cb.checked; if (!m.owned && S.squad.includes(m.id)) { toast(b.name + ' left the squad'); const r = E.optimize(account(), { mode: S.mode, requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = S.squad[0]; } save(); render(); });
+    g.append(el('label', { class: 'gm' + (m.owned ? '' : ' off'), for: 'own-' + m.id }, cb,
+      el('span', { class: 'n' }, b.name, el('small', {}, `${SPEC_NAME[b.spec]} · ${b.ability}`)), svgUse('g-' + b.spec)));
+  }
+}
+
+function renderArts() {
+  const box = $('#arts'); box.replaceChildren();
+  const list = el('div', { class: 'edit-grid' });
+  S.artifacts.forEach((a, i) => {
+    const at = el('select', { id: 'art-a' + i }, ...E.ATTRS.map(x => el('option', { value: x, selected: x === a.attr }, 'WM ' + x)));
+    const rr = el('select', { id: 'art-r' + i }, ...E.ARTIFACT_RARITIES.map((n, j) => el('option', { value: j, selected: j === a.rarity }, `${n} +${30 + 5 * j}%`)));
+    at.onchange = () => { a.attr = at.value; save(); render(); };
+    rr.onchange = () => { a.rarity = +rr.value; save(); render(); };
+    list.append(el('label', {}, el('span', { class: 'label' }, 'Artifact ' + (i + 1)), at, rr,
+      el('button', { class: 'btn', onclick: () => { S.artifacts.splice(i, 1); save(); render(); } }, 'Remove')));
+  });
+  const insc = E.ATTRS.map(a => {
+    const inp = el('input', { type: 'number', step: '1', min: 0, value: Math.round((S.inscriptionBonus[a] || 0) * 100), id: 'ins-' + a });
+    inp.onchange = () => { S.inscriptionBonus[a] = (parseFloat(inp.value) || 0) / 100; save(); render(); };
+    return el('label', {}, el('span', { class: 'label' }, 'Inscription ' + a + ' %'), inp);
+  });
+  box.append(list, el('button', { class: 'btn', onclick: () => { S.artifacts.push({ attr: 'damage', rarity: 0 }); save(); render(); } }, 'Add artifact'),
+    el('div', { class: 'edit-grid', style: 'margin-top:14px' }, ...insc),
+    el('p', { class: 'note' }, 'Third-generation artifacts each add 30% to one war machine stat at Epic, plus 5% per rarity. Lost Inscriptions are entered by hand for now.'));
+}
+
+// hero editor
+function openHero(id) {
+  const h = heroById(id); const d = $('#dlg');
+  $('#dlg-title').textContent = h.name; $('#dlg-specname').textContent = SPEC_NAME[h.spec];
+  $('#dlg-spec').querySelector('use').setAttribute('href', '#g-' + h.spec);
+  const box = $('#dlg-jewels'); box.replaceChildren();
+  for (const [t, def] of Object.entries(E.JEWEL_TYPES)) {
+    const j = h.jewels[t] || { rarity: 0, level: 0 };
+    const stats = E.ATTRS.filter(a => def[a]).map(a => ({ damage: 'DMG', health: 'HP', armor: 'ARM' })[a]).join(' + ');
+    const rs = el('select', { id: `j-${t}-r`, 'aria-label': t + ' rarity' }, ...E.JEWEL_RARITIES.map((n, i) => el('option', { value: i, selected: i === j.rarity }, i ? n : 'None')));
+    const lv = el('input', { type: 'number', min: 0, max: E.JEWEL_MAX_LEVEL[j.rarity], value: j.level, id: `j-${t}-l`, 'aria-label': t + ' level', disabled: !j.rarity });
+    const eff = el('span', { class: 'eff' });
+    const upd = () => {
+      const r = +rs.value; lv.max = E.JEWEL_MAX_LEVEL[r]; lv.disabled = !r;
+      const l = Math.max(0, Math.min(E.JEWEL_MAX_LEVEL[r], parseInt(lv.value) || 0)); lv.value = l;
+      if (r) h.jewels[t] = { rarity: r, level: l }; else delete h.jewels[t];
+      if (LIVE && h.gameJewels) { O.heroes[h.id] = { jewels: structuredClone(h.jewels) }; h.edited = true; saveO(); }
+      eff.textContent = r ? pct(E.jewelEffect(r, l)) + (l >= E.JEWEL_LEVEL_INFERRED_FROM ? ' est.' : '') : '–';
+      save(); render();
+    };
+    rs.onchange = upd; lv.onchange = upd;
+    eff.textContent = j.rarity ? pct(E.jewelEffect(j.rarity, j.level)) : '–';
+    box.append(el('div', { class: 'jw' }, el('span', { class: 'jt' }, el('b', {}, cap1(t)), ' ', el('span', { class: 'sub' }, `T${def.tier} · ${stats}`)), el('span'), rs, lv, eff));
+  }
+  d.showModal();
+}
+$('#dlg-close').onclick = () => $('#dlg').close();
+
+// controls
+$('#auto').onclick = runAuto;
+$('#use-game').onclick = () => { if (G) { loadGameSquad(G); save(); render(); toast('Loaded your in-game squad'); } };
+$('#reset-edits').onclick = () => { O = { machines: {}, heroes: {} }; saveO(); if (G) applyGame(G); save(); render(); toast('Back to your game numbers'); };
+$('#m-campaign').onclick = () => { S.mode = 'campaign'; save(); render(); };
+$('#m-arena').onclick = () => { S.mode = 'arena'; save(); render(); };
+$('#eng').onchange = (e) => { S.engineerLevel = Math.max(1, parseInt(e.target.value) || 1); for (const k of Object.keys(S.crews)) S.crews[k] = S.crews[k].slice(0, cap()); save(); render(); };
+const ds = $('#diff'); ds.append(...Object.keys(E.DIFFICULTY).map(d => el('option', { value: d, selected: d === S.difficulty }, cap1(d))));
+ds.onchange = () => { S.difficulty = ds.value; save(); render(); };
+const mi = $('#mission'); mi.value = S.mission; mi.onchange = () => { S.mission = Math.max(1, Math.min(90, parseInt(mi.value) || 1)); mi.value = S.mission; save(); render(); };
+$('#q').oninput = render;
+document.addEventListener('click', () => { if (picked) { picked = null; render(); } });
+render();
+if (LIVE) { poll(); setInterval(poll, 4000); }
+})();
+</script>
