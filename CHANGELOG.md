@@ -2,6 +2,7 @@
 
 ## 0.7.5 (2026-10-27)
 - The bot now starts by itself when the game loads (Auto Start is on by default for new installs). If it is off, the log says clearly that nothing will run until you press F7. A stopped bot is why bubbles, boss retries and tasks never got done.
+- Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) now only run when that icon shows, instead of opening their screens on a timer to look. A 6-hour safety check still runs them in case a bubble is missed. Fewer wasted screens, more time farming.
 - Auto upgrade: new "Max" option buys as many levels as you can afford with each press.
 
 ## 0.7.4 (2026-10-27)

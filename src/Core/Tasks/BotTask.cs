@@ -143,8 +143,14 @@ public abstract class BotTask
         ? string.Empty
         : $"\nHeld back until the character is level {MinimumLevel}.";
 
+    /// <summary>
+    ///     Tasks with a bubble or bell run when it shows, not on a loop: no bubble means nothing to do, so the bot
+    ///     does not open the screen to look. As a safety net (a bubble the game hides, or a path that changed) the
+    ///     timer still runs it, but only 6 hours after it was due.
+    /// </summary>
     public bool IsReady()
-        => !IsLevelLocked && (IsNotificationVisibleCore() || (IsEnabled && DateTime.Now >= NextRunTime));
+        => !IsLevelLocked && (IsNotificationVisibleCore() ||
+                              (IsEnabled && DateTime.Now >= (string.IsNullOrEmpty(NotificationPath) ? NextRunTime : NextRunTime.AddHours(6))));
 
     /// <summary>
     ///     The check the scheduler makes before it even looks at readiness: a popup can be clicked from here,
