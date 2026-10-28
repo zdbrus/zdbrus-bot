@@ -140,7 +140,8 @@ public static class PlannerServer
                 break;
             case "/apply":
                 var plan = SquadApplier.Parse(Query(text, "plan"));
-                var answer = SquadApplier.Request(plan);
+                int.TryParse(Query(text, "slot"), out var slot);
+                var answer = SquadApplier.Request(plan, slot);
                 Send(stream, 200, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(
                     "{\"result\":\"" + answer.Replace("\"", "'") + "\"}"));
                 break;

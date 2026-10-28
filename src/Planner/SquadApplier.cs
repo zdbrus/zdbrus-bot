@@ -43,6 +43,9 @@ public static class SquadApplier
 
     public static bool Ok { get; private set; }
 
+    /// <summary>Which of the 3 squads the plan goes to (1-3, the game's own order).</summary>
+    private static int _slot = 1;
+
     /// <summary>Parses "Judgement:2.3.5,Goliath:0.8" (machine code, then hero ids) from the planner page.</summary>
     public static List<PlannedMachine> Parse(string plan)
     {
@@ -62,10 +65,11 @@ public static class SquadApplier
         return result;
     }
 
-    public static string Request(List<PlannedMachine> plan)
+    public static string Request(List<PlannedMachine> plan, int slot = 1)
     {
         if (Busy) return "Already applying a squad.";
         if (plan.Count == 0) return "The plan is empty.";
+        _slot = slot is >= 1 and <= 3 ? slot : 1;
         Busy = true;
         Ok = false;
         Status = "Waiting for the bot to finish its current job…";
@@ -82,7 +86,7 @@ public static class SquadApplier
         yield return Open();
         if (!Ui.Visible(Builder))
         {
-            Finish(false, "Could not open the squad editor (Engineer, Squads, Edit). Nothing was changed.");
+            Finish(false, $"Could not open squad {_slot} for editing (Engineer, Squads, Edit). Nothing was changed.");
             yield break;
         }
 
@@ -139,18 +143,33 @@ public static class SquadApplier
         yield return Ui.WaitFor(Engineer);
         yield return Ui.Click(SquadsTab, 1f);
         yield return Ui.WaitFor(Squads, 3f);
+        if (!Ui.Visible(Squads))
+        {
+            try { GameInitialize.MenuLoader?.SelectWarMachineFormationPopup?.Open(null); }
+            catch (Exception e) { Logger.Debug($"[Planner] squads open: {e.Message}"); }
+            yield return Ui.WaitFor(Squads, 3f);
+        }
         // The Squads popup slides in; a click during that animation is ignored, so wait it out and retry
         // the Edit button until the editor shows instead of sitting on a fixed timeout.
         yield return new WaitForSeconds(0.8f);
         for (var attempt = 0; attempt < 4 && !Ui.Visible(Builder); attempt++)
         {
-            if (Ui.Visible(EditActive)) yield return Ui.Click(EditActive, 0.2f);
+            var target = SquadInteraction(_slot);
+            if (target != null)
+            {
+                try { target.EditFormation(); }
+                catch (Exception e) { Logger.Debug($"[Planner] edit squad {_slot}: {e.Message}"); }
+                yield return new WaitForSeconds(0.2f);
+            }
+            else if (_slot == 1 && Ui.Visible(EditActive)) yield return Ui.Click(EditActive, 0.2f);
             var until = Time.unscaledTime + 1.5f;
             while (!Ui.Visible(Builder) && Time.unscaledTime < until) yield return new WaitForSeconds(0.1f);
         }
         if (!Ui.Visible(Builder))
             Logger.Info($"[Planner] Edit did not open the editor (squads popup shown: {Ui.Visible(Squads)}, edit shown: {Ui.Visible(EditActive)}).");
         if (Ui.Visible(Builder)) yield break;
+        // The direct way in below only edits the active squad, so it is not used for another squad.
+        if (_slot != 1 && !IsActiveSlot(_slot)) yield break;
 
         // The click route missed a step (a slow screen, a popup in the way): open the squad editor directly.
         Logger.Info("[Planner] Opening the squad editor directly.");
@@ -233,8 +252,8 @@ public static class SquadApplier
             if (planned == null) continue;
 
             var current = new List<int>();
-            if (spot.warMachine.crewHeroIds != null)
-                for (var i = 0; i < spot.warMachine.crewHeroIds.Count; i++) current.Add(spot.warMachine.crewHeroIds[i]);
+            var src = spot.tempCrewHeroIds ?? spot.warMachine.crewHeroIds;
+            for (var i = 0; src != null && i < src.Count; i++) current.Add(src[i]);
             if (removeOnly && current.All(planned.Crew.Contains)) continue;
             if (!removeOnly && planned.Crew.All(current.Contains) && current.All(planned.Crew.Contains)) continue;
 
@@ -300,6 +319,52 @@ public static class SquadApplier
         }
     }
 
+    private static WarMachineFormation Formation(int slot)
+    {
+        try
+        {
+            var list = GameInitialize.HandlerLoader?.warMachineFormationsHandler?.formations;
+            return list != null && slot >= 1 && slot <= list.Count ? list[slot - 1] : null;
+        }
+        catch { return null; }
+    }
+
+    private static bool IsActiveSlot(int slot)
+    {
+        var f = Formation(slot);
+        try { return f == null ? slot == 1 : f.selected; }
+        catch { return slot == 1; }
+    }
+
+    /// <summary>The saved machines of squad N (1-3).</summary>
+    private static Il2CppSystem.Collections.Generic.List<WarMachineSpotData> SavedSquad(int slot)
+    {
+        try
+        {
+            var f = Formation(slot)?.warMachinesData?.formationList;
+            if (f != null && f.Count > 0) return f;
+        }
+        catch { }
+        return IsActiveSlot(slot) ? GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList : null;
+    }
+
+    /// <summary>The squad card for squad N on the Squads popup.</summary>
+    private static WarMachineFormationInteraction SquadInteraction(int slot)
+    {
+        var formation = Formation(slot);
+        var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachineFormationViewController>();
+        if (vc == null) return null;
+        var all = new List<WarMachineFormationInteraction>();
+        if (vc.ActiveSquadFormationInteraction != null) all.Add(vc.ActiveSquadFormationInteraction);
+        var rest = vc.Interactions;
+        for (var i = 0; rest != null && i < rest.Count; i++) if (rest[i] != null) all.Add(rest[i]);
+        if (formation != null)
+            foreach (var x in all)
+                if (x.formation != null && x.formation.Pointer == formation.Pointer) return x;
+        // Unknown formation list: squad 1 means the active card.
+        return slot == 1 ? vc.ActiveSquadFormationInteraction : null;
+    }
+
     private static SelectWarMachinesMech Mech()
     {
         try { return GameInitialize.MenuLoader?.SelectWarMachinesMech; }
@@ -352,7 +417,7 @@ public static class SquadApplier
     /// <summary>True when every planned machine is in the saved squad.</summary>
     private static bool Matches(List<PlannedMachine> plan)
     {
-        var data = GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList;
+        var data = SavedSquad(_slot);
         if (data == null) return false;
         var codes = new List<string>();
         for (var i = 0; i < data.Count; i++) if (data[i] != null) codes.Add(data[i].code);
@@ -468,7 +533,7 @@ public static class SquadApplier
     {
         try
         {
-            var data = GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList;
+            var data = SavedSquad(_slot);
             if (data == null) { Finish(false, "Saved, but the squad could not be read back to check it."); return; }
 
             var problems = new List<string>();
@@ -484,7 +549,13 @@ public static class SquadApplier
                 if (missing > 0) problems.Add($"{p.Code} is missing {missing} crew");
             }
 
-            if (problems.Count == 0) { Finish(true, "Squad applied. The game now runs your planned machines and crews."); return; }
+            if (problems.Count == 0)
+            {
+                Finish(true, IsActiveSlot(_slot)
+                    ? $"Squad {_slot} applied (your active squad). The game now runs your planned machines and crews."
+                    : $"Squad {_slot} applied. It is saved as one of your other squads; set it active in Engineer, Squads when you want to use it.");
+                return;
+            }
             var saved = new List<string>();
             for (var i = 0; i < data.Count; i++)
                 if (data[i] != null && !string.IsNullOrEmpty(data[i].code)) saved.Add(NameOf(data[i].code));

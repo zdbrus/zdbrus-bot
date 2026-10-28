@@ -247,6 +247,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       <button id="m-arena" aria-pressed="false">Arena</button>
     </div>
     <button class="btn" id="use-game" hidden>Use in-game squad</button>
+    <label class="field" id="slot-wrap" hidden title="Which of your 3 squads to write this plan to. Each mode remembers its own squad, so campaign and arena never overwrite each other."><span class="label">Squad</span><select id="slot" aria-label="Squad to apply to"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
     <button class="btn primary" id="apply" hidden>Apply to game</button>
     <button class="btn" id="reset-edits" hidden>Undo my edits</button>
     <button class="btn primary" id="auto">Auto-build squad</button>
@@ -686,12 +687,14 @@ function loadGameSquad(g) {
 let applying = false;
 // Game code for each machine as the bot knows it (Earthshatter, FireCracker…).
 const gameCode = (id) => (G && G.machines.find(m => WM_ID(m.code) === id)?.code) || id;
+// Squad slot (1-3) to write to, remembered per mode: campaign defaults to squad 1, arena to squad 2.
+const slotFor = (mode) => ((S.slots || {})[mode]) || (mode === 'arena' ? 2 : 1);
 async function applyToGame() {
   if (!G || applying) return;
   const plan = S.squad.map(id => gameCode(id) + ':' + (S.crews[id] || []).join('.')).join(',');
   applying = true; render();
   try {
-    const r = await fetch('/apply?plan=' + encodeURIComponent(plan), { cache: 'no-store' });
+    const r = await fetch('/apply?slot=' + slotFor(S.mode) + '&plan=' + encodeURIComponent(plan), { cache: 'no-store' });
     const j = await r.json();
     toast(j.result === 'Applying' ? 'Sent to the game' : j.result);
   } catch { toast('The bot did not answer'); }
@@ -851,6 +854,7 @@ function renderLive() {
   $('#use-game').hidden = !(LIVE && G);
   const ap = G && G.apply; const busy = !!(ap && ap.busy) || applying;
   $('#apply').hidden = !(LIVE && G); $('#apply').disabled = busy;
+  $('#slot-wrap').hidden = !(LIVE && G); $('#slot').value = String(slotFor(S.mode)); $('#slot').disabled = busy;
   $('#apply').textContent = busy ? 'Applying…' : 'Apply to game';
   $('#reset-edits').hidden = !(LIVE && (Object.keys(O.machines).length || Object.keys(O.heroes).length));
   const tip = $('#face-tip'); if (tip) tip.hidden = !(LIVE && G && faceMiss.size);
@@ -1086,6 +1090,7 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 // controls
 $('#auto').onclick = runAuto;
 $('#apply').onclick = applyToGame;
+$('#slot').onchange = () => { S.slots = { ...(S.slots || {}), [S.mode]: +$('#slot').value }; save(); render(); };
 $('#use-game').onclick = () => { if (G) { loadGameSquad(G); save(); render(); toast('Loaded your in-game squad'); } };
 $('#reset-edits').onclick = () => { O = { machines: {}, heroes: {} }; saveO(); if (G) applyGame(G); save(); render(); toast('Back to your game numbers'); };
 $('#m-campaign').onclick = () => { S.mode = 'campaign'; save(); render(); };
