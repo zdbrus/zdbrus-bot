@@ -36,6 +36,7 @@ public static class Upgrades
         {
             var t = (text ?? string.Empty).ToLowerInvariant();
             if (want == "milestone") return t.Contains("milestone") || t.Contains("next");
+            if (want == "max") return t.Contains("max") || t.Contains("all");
             // "x1" must not match "x10"/"x100": compare the number after the x.
             var i = t.LastIndexOf('x');
             return i >= 0 && t[(i)..].Trim() == want;

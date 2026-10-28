@@ -76,7 +76,7 @@ public static class AutoUpgrade
             "upgrade_mode",
             "milestone",
             "Upgrade Mode",
-            "How many levels each press buys: milestone (up to the next milestone, the best value), x100, x25, x10 or x1."
+            "How many levels each press buys: milestone (up to the next milestone, the best value), max (as many as you can afford), x100, x25, x10 or x1."
         );
 
         _everySeconds = section.CreateEntry(

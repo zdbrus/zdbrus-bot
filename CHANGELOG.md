@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.5 (2026-10-27)
+- Auto upgrade: new "Max" option buys as many levels as you can afford with each press.
+
 ## 0.7.4 (2026-10-27)
 - Fixed: Apply to game could leave the tank out of the front spot. The tank now always goes in front.
 

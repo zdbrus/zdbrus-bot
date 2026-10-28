@@ -97,6 +97,7 @@ internal static class ConfigRegistry
         ["auto_upgrade/upgrade_mode"] = new[]
         {
             new ConfigChoice("milestone", "Next milestone"),
+            new ConfigChoice("max", "Max"),
             new ConfigChoice("x100", "x100"),
             new ConfigChoice("x25", "x25"),
             new ConfigChoice("x10", "x10"),
