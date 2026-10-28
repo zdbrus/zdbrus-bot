@@ -310,6 +310,8 @@ public static class SquadApplier
                 }
             Logger.Info($"[Planner] {code} crew after: [{string.Join(", ", Draft(pop))}]");
             if (!removeOnly) Confirmed[code] = Draft(pop);
+            // The first pass only takes heroes off, so only the second pass can report a hero that would not go on.
+            if (!removeOnly)
             foreach (var id in planned.Crew.Where(id => !Draft(pop).Contains(id)))
             {
                 var busy = false;
