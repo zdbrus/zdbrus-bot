@@ -177,6 +177,9 @@ button,input,select{font:inherit;color:inherit}
 .panel-h{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--seam)}
 .panel-h h2{font:700 15px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;margin:0 auto 0 0}
 .panel-b{padding:12px 14px}
+.shards{margin-top:16px;border-radius:var(--r)}
+.shards .panel-h{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.ledger td.best{color:var(--brass-hi);font-weight:600}
 .bench{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
 .search{background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:6px 10px;width:160px}
 .ledger-wrap{overflow-x:auto}
@@ -310,6 +313,14 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
         <div class="ledger-wrap"><table class="ledger" id="ledger"></table></div>
         <p class="note">Every multiplier stacks: base × (1+level) × (1+engineer) × (1+blueprint) × (1+rarity) × (1+card) × (1+inscription) × (1+artifact) × (1+crew). Source: Firestone wiki, game version 9.1.3. <b>Celestial jewel levels 17 and 18 are estimated</b> until we confirm them from your game.</p>
       </div>
+    </div>
+  </section>
+
+  <section class="panel shards" aria-label="Ethereal shard advisor">
+    <div class="panel-h"><h2>Ethereal shard advisor</h2><span class="note" id="shard-sub"></span></div>
+    <div class="panel-b">
+      <div class="ledger-wrap"><table class="ledger" id="shards"></table></div>
+      <p class="note">Ethereal shards enchant jewels, and jewels on crew heroes are what raise war machine stats. Each row is the next enchant for a hero in your current squad, ranked by squad power gained per 100 shards. Costs follow the game's pattern (60, 120, 240, 480, 960…); the first enchant of a jewel is estimated at 30. Gear (void crystals) and soulstones (soul shards) only raise hero stats, not war machines.</p>
     </div>
   </section>
 
@@ -887,11 +898,44 @@ function renderLive() {
       E.WAR_MACHINES[r.id].name, el('b', {}, r.worst < 0.0001 ? 'exact' : (r.worst * 100).toFixed(2) + '%'))));
 }
 
+// Next jewel enchant for every crew hero in the squad, ranked by squad power gained per shard.
+const JEWEL_NAME = { ankh: 'Damage', rune: 'Health', idol: 'Armor', talisman: 'Damage + health', necklace: 'Damage + armor', trinket: 'Health + armor' };
+const jewelCost = (level) => level >= 1 ? 60 * Math.pow(2, level - 1) : 30;
+function shardOptions(total) {
+  const out = [];
+  const squadScore = () => S.squad.reduce((a, id) => a + scoreOf(statsFor(id)), 0);
+  for (const id of S.squad) for (const hid of (S.crews[id] || [])) {
+    const h = heroById(hid); if (!h) continue;
+    for (const [type, j] of Object.entries(h.jewels || {})) {
+      if (!E.JEWEL_TYPES[type] || !j.rarity || (j.level || 0) >= E.JEWEL_MAX_LEVEL[j.rarity]) continue;
+      const lv = j.level || 0;
+      j.level = lv + 1;
+      let gain = 0; try { gain = squadScore() - total; } finally { j.level = lv; }
+      const cost = jewelCost(lv);
+      if (gain > 0) out.push({ hero: h.name, machine: E.WAR_MACHINES[id]?.name || id, jewel: JEWEL_NAME[type] || type, lv, cost, gain, per: gain / cost * 100 });
+    }
+  }
+  return out.sort((a, b) => b.per - a.per);
+}
+function renderShards(total) {
+  const t = $('#shards'); if (!t) return;
+  const rows = shardOptions(total).slice(0, 10);
+  $('#shard-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + ' · top ' + rows.length;
+  if (!rows.length) { t.replaceChildren(el('tr', {}, el('td', {}, 'No jewel enchants left on your squad\'s crews (or no jewels yet).'))); return; }
+  t.replaceChildren(
+    el('thead', {}, el('tr', {}, ...['Hero', 'Machine', 'Jewel', 'Level', 'Shards', 'Power gained', 'Per 100 shards'].map(x => el('th', {}, x)))),
+    el('tbody', {}, ...rows.map((r, i) => el('tr', {},
+      el('td', {}, r.hero), el('td', {}, r.machine), el('td', {}, r.jewel), el('td', {}, r.lv + ' → ' + (r.lv + 1)),
+      el('td', {}, (r.lv ? '' : '~') + r.cost.toLocaleString()), el('td', {}, '+' + fmt(r.gain)),
+      el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per))))));
+}
+
 function render() {
   renderLive();
   const acct = account();
   const all = S.squad.map(id => statsFor(id));
   const total = all.reduce((a, st) => a + scoreOf(st), 0);
+  renderShards(total);
   countTo($('#pow'), 'squad', total);
   $('#pow-label').textContent = S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power';
   $('#pow-sub').textContent = S.mode === 'arena' ? 'Arena stats, log-scaled' : 'vs ' + cap1(S.difficulty) + ' #' + S.mission;
