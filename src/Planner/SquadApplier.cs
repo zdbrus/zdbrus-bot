@@ -252,6 +252,24 @@ public static class SquadApplier
         // Heroes on a machine that just left the squad are free now; tell the screen before crews are set.
         try { mech?.SetHeroesInUse(); } catch (Exception e) { Logger.Debug($"[Planner] heroes in use: {e.Message}"); }
         Logger.Info($"[Planner] After adding: [{string.Join(", ", CurrentOrder(vc))}]");
+
+        // The tank always goes in the front spot (lowest spot number), whatever order machines were added in.
+        var all = vc.WarMachineFormationSettingSpots;
+        WarMachineFormationSettingSpot front = null, tank = null;
+        for (var i = 0; all != null && i < all.Count; i++)
+        {
+            var sp = all[i];
+            if (sp?.warMachine == null) continue;
+            if (front == null || sp.spotIndex < front.spotIndex) front = sp;
+            if (sp.warMachine.specialization.ToString() == "Tank" && (tank == null || sp.spotIndex < tank.spotIndex)) tank = sp;
+        }
+        if (mech != null && tank != null && front != null && tank.spotIndex != front.spotIndex)
+        {
+            try { mech.SwitchWarmachinesInSpots(tank.spotIndex, front.spotIndex); }
+            catch (Exception e) { Logger.Warning($"[Planner] Could not move the tank to the front: {e.Message}"); }
+            yield return new WaitForSeconds(Step);
+            Logger.Info($"[Planner] Tank moved to the front: [{string.Join(", ", CurrentOrder(vc))}]");
+        }
     }
 
     private static IEnumerator SetCrews(List<PlannedMachine> plan, bool removeOnly)
