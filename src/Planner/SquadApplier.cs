@@ -197,15 +197,25 @@ public static class SquadApplier
         foreach (var code in wanted)
         {
             if (CurrentOrder(vc).Any(c => Same(c, code))) continue;
-            for (var i = 0; deck != null && i < deck.Count; i++)
+            var tile = DeckTile(vc, mech, code);
+            if (tile != null)
             {
-                var tile = deck[i];
-                if (tile?.warMachine == null || !Same(tile.warMachine.machineCode.ToString(), code)) continue;
                 Press(tile);
                 yield return new WaitForSeconds(Step);
-                break;
+            }
+            if (CurrentOrder(vc).Any(c => Same(c, code))) continue;
+            // No usable deck tile (the deck only builds tiles as it scrolls): place the machine directly.
+            var wm = FindMachine(code);
+            Logger.Info($"[Planner] {code}: deck tile {(tile == null ? "not found" : "did not add it")}, placing it directly.");
+            if (wm != null && mech != null)
+            {
+                try { mech.AddWarMachineInSpotAuto(wm); }
+                catch (Exception e) { Logger.Debug($"[Planner] add {code}: {e.Message}"); }
+                yield return new WaitForSeconds(Step);
             }
         }
+        // Heroes on a machine that just left the squad are free now; tell the screen before crews are set.
+        try { mech?.SetHeroesInUse(); } catch (Exception e) { Logger.Debug($"[Planner] heroes in use: {e.Message}"); }
         Logger.Info($"[Planner] After adding: [{string.Join(", ", CurrentOrder(vc))}]");
     }
 
@@ -229,6 +239,7 @@ public static class SquadApplier
             if (!removeOnly && planned.Crew.All(current.Contains) && current.All(planned.Crew.Contains)) continue;
 
             var mech = Mech();
+            try { mech?.SetHeroesInUse(); } catch { }
             var opened = false;
             if (mech != null)
             {
@@ -267,6 +278,12 @@ public static class SquadApplier
                     yield return new WaitForSeconds(0.3f);
                 }
             Logger.Info($"[Planner] {code} crew after: [{string.Join(", ", Draft(pop))}]");
+            foreach (var id in planned.Crew.Where(id => !Draft(pop).Contains(id)))
+            {
+                var busy = false;
+                try { busy = pop != null && pop.HeroAlreadyInAnotherCrew(id); } catch { }
+                Logger.Info($"[Planner] {code}: hero {id} did not go on{(busy ? " (the game says it is in another crew)" : "")}.");
+            }
 
             var set = picker?.SetCrewButton;
             if (set != null && set.gameObject.activeInHierarchy && set.interactable)
@@ -340,6 +357,22 @@ public static class SquadApplier
         var codes = new List<string>();
         for (var i = 0; i < data.Count; i++) if (data[i] != null) codes.Add(data[i].code);
         return plan.All(p => codes.Any(c => IsMachine(c, p.Code)));
+    }
+
+    private static WarMachineSelectInteraction DeckTile(SelectWarMachinesViewController vc, SelectWarMachinesMech mech, string code)
+    {
+        var deck = vc?.WarMachineSelectInteractions;
+        for (var i = 0; deck != null && i < deck.Count; i++)
+            if (deck[i]?.warMachine != null && Same(deck[i].warMachine.machineCode.ToString(), code)) return deck[i];
+        try
+        {
+            var dict = mech?.warMachineInteractionsDict;
+            if (dict != null)
+                foreach (var kv in dict)
+                    if (kv.Value?.warMachine != null && Same(kv.Value.warMachine.machineCode.ToString(), code)) return kv.Value;
+        }
+        catch { }
+        return null;
     }
 
     /// <summary>The crew being edited in the open picker (its draft), as hero ids.</summary>
