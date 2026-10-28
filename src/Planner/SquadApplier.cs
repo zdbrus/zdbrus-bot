@@ -137,17 +137,27 @@ public static class SquadApplier
         yield return Ui.OpenTownBuilding("engineer");
         yield return Ui.Click(P.Popups + "/GarageSelection/bg/engineer", 1.5f);
         yield return Ui.WaitFor(Engineer);
-        yield return Ui.Click(SquadsTab, 1.5f);
-        yield return Ui.WaitFor(Squads);
-        yield return Ui.Click(EditActive, 2f);
-        yield return Ui.WaitFor(Builder);
+        yield return Ui.Click(SquadsTab, 1f);
+        yield return Ui.WaitFor(Squads, 3f);
+        // The Squads popup slides in; a click during that animation is ignored, so wait it out and retry
+        // the Edit button until the editor shows instead of sitting on a fixed timeout.
+        yield return new WaitForSeconds(0.8f);
+        for (var attempt = 0; attempt < 4 && !Ui.Visible(Builder); attempt++)
+        {
+            if (Ui.Visible(EditActive)) yield return Ui.Click(EditActive, 0.2f);
+            var until = Time.unscaledTime + 1.5f;
+            while (!Ui.Visible(Builder) && Time.unscaledTime < until) yield return new WaitForSeconds(0.1f);
+        }
+        if (!Ui.Visible(Builder))
+            Logger.Info($"[Planner] Edit did not open the editor (squads popup shown: {Ui.Visible(Squads)}, edit shown: {Ui.Visible(EditActive)}).");
         if (Ui.Visible(Builder)) yield break;
 
         // The click route missed a step (a slow screen, a popup in the way): open the squad editor directly.
         Logger.Info("[Planner] Opening the squad editor directly.");
         try { Mech()?.Open(null); }
         catch (Exception e) { Logger.Warning($"[Planner] Direct open failed: {e.Message}"); }
-        yield return Ui.WaitFor(Builder, 4f);
+        yield return Ui.WaitFor(Builder, 3f);
+        yield return new WaitForSeconds(0.5f); // let the deck fill in
     }
 
     private static IEnumerator SetMachines(List<PlannedMachine> plan)
