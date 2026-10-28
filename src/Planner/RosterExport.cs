@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Text;
@@ -113,13 +114,21 @@ public static class RosterExport
             // ---- heroes ----
             w.WriteStartArray("heroes");
             var unlocked = heroes.heroesUnlockState;
+            var party = UnlockedHeroCodes();
             foreach (var kv in heroes.heroesDict)
             {
                 var hero = kv.Value;
                 if (hero == null) continue;
-                var owned = unlocked != null && unlocked.ContainsKey(kv.Key) && unlocked[kv.Key];
-                if (!owned && heroes.mercenariesHired != null && heroes.mercenariesHired.Contains(kv.Key)) owned = true;
-                if (!owned && heroes.godsHired != null && heroes.godsHired.Contains(kv.Key)) owned = true;
+                bool owned;
+                if (party != null) owned = party.Contains((int)kv.Key);
+                else
+                {
+                    // Fallback when the hero deck is not loaded yet. heroesUnlockState alone also lists heroes
+                    // the account cannot use, which is why the deck is the first choice.
+                    owned = unlocked != null && unlocked.ContainsKey(kv.Key) && unlocked[kv.Key];
+                    if (!owned && heroes.mercenariesHired != null && heroes.mercenariesHired.Contains(kv.Key)) owned = true;
+                    if (!owned && heroes.godsHired != null && heroes.godsHired.Contains(kv.Key)) owned = true;
+                }
                 WriteHero(w, hero, owned);
             }
             w.WriteEndArray();
@@ -178,6 +187,30 @@ public static class RosterExport
         Num(w, "crewArmor", cm?.armorFinalMultiplier ?? 0);
         w.WriteEndObject();
         w.WriteEndObject();
+    }
+
+    /// <summary>
+    ///     Heroes the player has actually unlocked (the same check the game uses for the crew picker), by hero code.
+    ///     Null when the hero deck is not available yet.
+    /// </summary>
+    private static HashSet<int> UnlockedHeroCodes()
+    {
+        try
+        {
+            var deck = GameInitialize.HandlerLoader?.heroDeck?.heroes;
+            if (deck == null || deck.Length == 0) return null;
+            var set = new HashSet<int>();
+            for (var i = 0; i < deck.Length; i++)
+            {
+                var h = deck[i];
+                if (h != null && h.IsUnlocked().GetDecrypted()) set.Add(h.HeroCode);
+            }
+            return set.Count > 0 ? set : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     private static void WriteHero(Utf8JsonWriter w, HeroServer h, bool owned)
