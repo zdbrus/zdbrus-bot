@@ -1,5 +1,12 @@
 # Roadmap
 
+## Bugs reported 2026-10-27 (fix first)
+- **Boss retry doesn't work.** Check the Boss button path and whether the stage state is read right.
+- **Auto upgrade has no "x All / Max" option.** Add it to the multiplier choices (next to x100, x25, x10, x1).
+- **Left-side notification bubbles never get finished.** Arena tokens (10), war machine/engineer tools, Pharaoh's pyramid, map/treasure, and the one below. Rule: every bubble that shows must end with its task completed, not just opened. Start from UserData/screenmaps/unhandled_bubbles.txt and the log.
+- **"Christmas-treeing"**: the bot sometimes opens a menu, flips through it and leaves without doing anything. Every task should either act or log exactly why it did nothing (no tokens, timer running, nothing affordable).
+- **Verify in game:** 0.7.3 "start from the current screen", 0.7.4 tank-in-front, Spend for me via Town > Hall of Heroes.
+
 Ideas for the next updates. Nothing here is promised; it is the list we work from.
 
 ## Next up
