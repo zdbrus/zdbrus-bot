@@ -46,6 +46,9 @@ public static class SquadApplier
     /// <summary>Which of the 3 squads the plan goes to (1-3, the game's own order).</summary>
     private static int _slot = 1;
 
+    /// <summary>Crew each machine ended up with in the crew picker, which is what the game saves.</summary>
+    private static readonly Dictionary<string, List<int>> Confirmed = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Parses "Judgement:2.3.5,Goliath:0.8" (machine code, then hero ids) from the planner page.</summary>
     public static List<PlannedMachine> Parse(string plan)
     {
@@ -70,6 +73,7 @@ public static class SquadApplier
         if (Busy) return "Already applying a squad.";
         if (plan.Count == 0) return "The plan is empty.";
         _slot = slot is >= 1 and <= 3 ? slot : 1;
+        Confirmed.Clear();
         Busy = true;
         Ok = false;
         Status = "Waiting for the bot to finish its current job…";
@@ -155,6 +159,7 @@ public static class SquadApplier
         for (var attempt = 0; attempt < 4 && !Ui.Visible(Builder); attempt++)
         {
             var target = SquadInteraction(_slot);
+            if (attempt == 0) LogSquads(target);
             if (target != null)
             {
                 try { target.EditFormation(); }
@@ -254,8 +259,6 @@ public static class SquadApplier
             var current = new List<int>();
             var src = spot.tempCrewHeroIds ?? spot.warMachine.crewHeroIds;
             for (var i = 0; src != null && i < src.Count; i++) current.Add(src[i]);
-            if (removeOnly && current.All(planned.Crew.Contains)) continue;
-            if (!removeOnly && planned.Crew.All(current.Contains) && current.All(planned.Crew.Contains)) continue;
 
             var mech = Mech();
             try { mech?.SetHeroesInUse(); } catch { }
@@ -297,6 +300,7 @@ public static class SquadApplier
                     yield return new WaitForSeconds(0.3f);
                 }
             Logger.Info($"[Planner] {code} crew after: [{string.Join(", ", Draft(pop))}]");
+            if (!removeOnly) Confirmed[code] = Draft(pop);
             foreach (var id in planned.Crew.Where(id => !Draft(pop).Contains(id)))
             {
                 var busy = false;
@@ -346,6 +350,27 @@ public static class SquadApplier
         }
         catch { }
         return IsActiveSlot(slot) ? GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList : null;
+    }
+
+    private static void LogSquads(WarMachineFormationInteraction target)
+    {
+        try
+        {
+            var list = GameInitialize.HandlerLoader?.warMachineFormationsHandler?.formations;
+            var parts = new List<string>();
+            for (var i = 0; list != null && i < list.Count; i++)
+            {
+                var names = new List<string>();
+                var fl = list[i]?.warMachinesData?.formationList;
+                for (var j = 0; fl != null && j < fl.Count; j++) if (fl[j] != null) names.Add(NameOf(fl[j].code));
+                parts.Add($"squad {i + 1}{(list[i] != null && list[i].selected ? " (active)" : "")}: [{string.Join(", ", names)}]");
+            }
+            var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachineFormationViewController>();
+            var card = target == null ? "none" : vc != null && vc.ActiveSquadFormationInteraction != null &&
+                                                 target.Pointer == vc.ActiveSquadFormationInteraction.Pointer ? "the active card" : "an alternative card";
+            Logger.Info($"[Planner] Applying to squad {_slot}, editing {card}. {string.Join("; ", parts)}");
+        }
+        catch (Exception e) { Logger.Debug($"[Planner] squads log: {e.Message}"); }
     }
 
     /// <summary>The squad card for squad N on the Squads popup.</summary>
@@ -501,8 +526,12 @@ public static class SquadApplier
                 if (spots[s]?.warMachine != null && Same(spots[s].warMachine.machineCode.ToString(), p.Code)) { spot = spots[s]; break; }
             if (spot == null) { problems.Add($"{p.Code} did not go in"); continue; }
             var crew = new HashSet<int>();
-            var src = spot.tempCrewHeroIds ?? spot.warMachine.crewHeroIds;
-            for (var i = 0; src != null && i < src.Count; i++) crew.Add(src[i]);
+            if (Confirmed.TryGetValue(p.Code, out var seen)) foreach (var id in seen) crew.Add(id);
+            else
+            {
+                var src = spot.tempCrewHeroIds ?? spot.warMachine.crewHeroIds;
+                for (var i = 0; src != null && i < src.Count; i++) crew.Add(src[i]);
+            }
             var missing = p.Crew.Count(id => !crew.Contains(id));
             if (missing > 0) problems.Add($"{p.Code} is missing {missing} crew");
         }

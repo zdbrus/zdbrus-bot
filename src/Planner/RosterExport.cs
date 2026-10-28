@@ -102,13 +102,47 @@ public static class RosterExport
                     if (s == null || string.IsNullOrEmpty(s.code)) continue;
                     w.WriteStartObject();
                     w.WriteNumber("spot", s.spotIndex);
-                    w.WriteString("code", s.code);
+                    w.WriteString("code", MachineName(data, s.code));
+                    w.WriteString("id", s.code);
                     w.WriteStartArray("crew");
                     if (s.warMachineHeroCodes != null)
                         for (var h = 0; h < s.warMachineHeroCodes.Count; h++) w.WriteNumberValue(s.warMachineHeroCodes[h]);
                     w.WriteEndArray();
                     w.WriteEndObject();
                 }
+            w.WriteEndArray();
+
+            // ---- all 3 squads, in the game's order (squad 1, 2, 3) ----
+            w.WriteStartArray("squads");
+            try
+            {
+                var formations = loader.warMachineFormationsHandler?.formations;
+                for (var f = 0; formations != null && f < formations.Count; f++)
+                {
+                    var form = formations[f];
+                    w.WriteStartObject();
+                    w.WriteNumber("slot", f + 1);
+                    w.WriteBoolean("active", form != null && form.selected);
+                    w.WriteStartArray("machines");
+                    var list = form?.warMachinesData?.formationList;
+                    for (var i = 0; list != null && i < list.Count; i++)
+                    {
+                        var s = list[i];
+                        if (s == null || string.IsNullOrEmpty(s.code)) continue;
+                        w.WriteStartObject();
+                        w.WriteNumber("spot", s.spotIndex);
+                        w.WriteString("code", MachineName(data, s.code));
+                        w.WriteStartArray("crew");
+                        for (var h = 0; s.warMachineHeroCodes != null && h < s.warMachineHeroCodes.Count; h++)
+                            w.WriteNumberValue(s.warMachineHeroCodes[h]);
+                        w.WriteEndArray();
+                        w.WriteEndObject();
+                    }
+                    w.WriteEndArray();
+                    w.WriteEndObject();
+                }
+            }
+            catch (Exception) { /* squads list not loaded yet */ }
             w.WriteEndArray();
 
             // ---- heroes ----
@@ -193,6 +227,22 @@ public static class RosterExport
     ///     Heroes the player has actually unlocked (the same check the game uses for the crew picker), by hero code.
     ///     Null when the hero deck is not available yet.
     /// </summary>
+    /// <summary>Machine name (Cloudfist, FireCracker…) for a squad entry, which the game stores by internal code.</summary>
+    private static string MachineName(WarMachinesData data, string code)
+    {
+        var list = data?.warMachineList;
+        for (var i = 0; list != null && i < list.Count; i++)
+        {
+            var m = list[i];
+            if (m == null) continue;
+            if (string.Equals(m.code, code, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(m.id, code, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(m.machineCode.ToString(), code, StringComparison.OrdinalIgnoreCase))
+                return m.machineCode.ToString();
+        }
+        return code;
+    }
+
     private static HashSet<int> UnlockedHeroCodes()
     {
         try

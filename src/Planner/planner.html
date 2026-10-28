@@ -246,7 +246,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       <button id="m-campaign" aria-pressed="true">Campaign</button>
       <button id="m-arena" aria-pressed="false">Arena</button>
     </div>
-    <button class="btn" id="use-game" hidden>Use in-game squad</button>
+    <button class="btn" id="use-game" hidden title="Load the squad picked in the Squad box from your game">Use in-game squad</button>
     <label class="field" id="slot-wrap" hidden title="Which of your 3 squads to write this plan to. Each mode remembers its own squad, so campaign and arena never overwrite each other."><span class="label">Squad</span><select id="slot" aria-label="Squad to apply to"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
     <button class="btn primary" id="apply" hidden>Apply to game</button>
     <button class="btn" id="reset-edits" hidden>Undo my edits</button>
@@ -678,8 +678,14 @@ function applyGame(g) {
   for (const k of Object.keys(S.crews)) S.crews[k] = (S.crews[k] || []).filter(id => heroIds.has(id)).slice(0, cap());
   S.planFromLive = true;
 }
-function loadGameSquad(g) {
-  const sq = [...g.squad].sort((a, b) => a.spot - b.spot);
+// Squad N from the game (1-3); without a slot, the active squad.
+function gameSquad(g, slot) {
+  const all = g.squads || [];
+  const s = slot ? all.find(x => x.slot === slot) : all.find(x => x.active);
+  return s ? s.machines : (slot && slot !== 1 ? [] : g.squad || []);
+}
+function loadGameSquad(g, slot) {
+  const sq = [...gameSquad(g, slot)].sort((a, b) => a.spot - b.spot);
   S.squad = sq.map(s => WM_ID(s.code)).filter(id => wmById(id)?.owned);
   S.crews = Object.fromEntries(sq.map(s => [WM_ID(s.code), s.crew.slice()]));
   if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
@@ -1091,7 +1097,12 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 $('#auto').onclick = runAuto;
 $('#apply').onclick = applyToGame;
 $('#slot').onchange = () => { S.slots = { ...(S.slots || {}), [S.mode]: +$('#slot').value }; save(); render(); };
-$('#use-game').onclick = () => { if (G) { loadGameSquad(G); save(); render(); toast('Loaded your in-game squad'); } };
+$('#use-game').onclick = () => {
+  if (!G) return;
+  const slot = slotFor(S.mode);
+  if (!gameSquad(G, slot).length) { toast('Squad ' + slot + ' is empty in the game'); return; }
+  loadGameSquad(G, slot); save(); render(); toast('Loaded squad ' + slot + ' from the game');
+};
 $('#reset-edits').onclick = () => { O = { machines: {}, heroes: {} }; saveO(); if (G) applyGame(G); save(); render(); toast('Back to your game numbers'); };
 $('#m-campaign').onclick = () => { S.mode = 'campaign'; save(); render(); };
 $('#m-arena').onclick = () => { S.mode = 'arena'; save(); render(); };
