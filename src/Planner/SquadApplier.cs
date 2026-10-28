@@ -334,6 +334,69 @@ public static class SquadApplier
         }
     }
 
+    /// <summary>Which squad (1-3) the game is using right now, or 0 when unknown.</summary>
+    public static int ActiveSlot()
+    {
+        try
+        {
+            var list = GameInitialize.HandlerLoader?.warMachineFormationsHandler?.formations;
+            for (var i = 0; list != null && i < list.Count; i++)
+                if (list[i] != null && list[i].selected) return i + 1;
+        }
+        catch { }
+        return 0;
+    }
+
+    /// <summary>True when squad N has at least one machine saved.</summary>
+    public static bool HasMachines(int slot)
+    {
+        try { return Formation(slot)?.warMachinesData?.formationList?.Count > 0; }
+        catch { return false; }
+    }
+
+    /// <summary>
+    ///     Makes squad N the active squad (Engineer, Squads, "Set active"), the same as a player does. Does nothing
+    ///     when it already is, or when that squad is empty.
+    /// </summary>
+    public static IEnumerator SetActive(int slot, string why)
+    {
+        if (slot < 1 || slot > 3 || ActiveSlot() == slot) yield break;
+        if (!HasMachines(slot)) { Logger.Warning($"[Squads] Squad {slot} is empty, so it was not set active ({why})."); yield break; }
+
+        yield return Watchdog.ForceClearAll($"before switching to squad {slot}");
+        yield return Ui.OpenTownBuilding("engineer");
+        yield return Ui.Click(P.Popups + "/GarageSelection/bg/engineer", 1.5f);
+        yield return Ui.WaitFor(Engineer);
+        yield return Ui.Click(SquadsTab, 1f);
+        yield return Ui.WaitFor(Squads, 3f);
+        if (!Ui.Visible(Squads))
+        {
+            try { GameInitialize.MenuLoader?.SelectWarMachineFormationPopup?.Open(null); }
+            catch (Exception e) { Logger.Debug($"[Squads] open: {e.Message}"); }
+            yield return Ui.WaitFor(Squads, 3f);
+        }
+        yield return new WaitForSeconds(0.8f);
+
+        for (var attempt = 0; attempt < 3 && ActiveSlot() != slot; attempt++)
+        {
+            var card = SquadInteraction(slot);
+            if (card == null) break;
+            var button = card.activateFormationButton;
+            try
+            {
+                if (button != null && button.gameObject.activeInHierarchy && button.interactable) button.onClick.Invoke();
+                else card.ActivateFormation();
+            }
+            catch (Exception e) { Logger.Debug($"[Squads] activate: {e.Message}"); }
+            var until = Time.unscaledTime + 5f;
+            while (ActiveSlot() != slot && Time.unscaledTime < until) yield return new WaitForSeconds(0.25f);
+        }
+
+        if (ActiveSlot() == slot) Logger.Info($"[Squads] Squad {slot} is now active ({why}).");
+        else Logger.Warning($"[Squads] Could not set squad {slot} active ({why}).");
+        yield return Watchdog.ForceClearAll($"after switching to squad {slot}");
+    }
+
     private static WarMachineFormation Formation(int slot)
     {
         try
@@ -601,7 +664,7 @@ public static class SquadApplier
             {
                 Finish(true, IsActiveSlot(_slot)
                     ? $"Squad {_slot} applied (your active squad). The game now runs your planned machines and crews."
-                    : $"Squad {_slot} applied. It is saved as one of your other squads; set it active in Engineer, Squads when you want to use it.");
+                    : $"Squad {_slot} applied. It is saved as one of your other squads. For arena, set F1 > Battle > Arena > Arena Squad to {_slot} and the bot switches to it for arena fights and back afterwards.");
                 return;
             }
             var saved = new List<string>();

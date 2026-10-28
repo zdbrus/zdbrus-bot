@@ -586,9 +586,13 @@ public class ArenaTask : BotTask
     private MelonPreferences_Entry<int> _margin;
     private MelonPreferences_Entry<bool> _dailyFight;
     private MelonPreferences_Entry<string> _lastForced;
+    private MelonPreferences_Entry<int> _arenaSquad;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
+        _arenaSquad = c.CreateEntry("arena_squad", 0, "Arena Squad",
+            "Squad (1, 2 or 3) to fight the arena with. The bot sets it active before arena fights and switches " +
+            "back to your normal squad afterwards, so campaign keeps its own squad. 0 = don't switch.");
         _dailyFight = c.CreateEntry("one_fight_daily", true, "One Fight Per Day",
             "If no opponent is beatable all day, fights the weakest one once anyway so the daily ranking reward unlocks.");
         _lastForced = c.CreateEntry("last_forced_fight", "", "Last Forced Fight", "Internal: date of the last forced fight.", true);
@@ -598,6 +602,21 @@ public class ArenaTask : BotTask
     }
 
     public override IEnumerator Execute()
+    {
+        // Fight with the arena squad, then put the normal squad back.
+        var want = _arenaSquad.Value;
+        var before = Planner.SquadApplier.ActiveSlot();
+        var swap = want is >= 1 and <= 3 && before > 0 && before != want && Planner.SquadApplier.HasMachines(want);
+        if (swap) yield return Planner.SquadApplier.SetActive(want, "arena");
+        yield return Fight();
+        if (swap)
+        {
+            yield return Watchdog.ForceClearAll("after arena");
+            yield return Planner.SquadApplier.SetActive(before, "back from arena");
+        }
+    }
+
+    private IEnumerator Fight()
     {
         NextRunTime = DateTime.Now.AddHours(3);
         yield return Ui.OpenTownBuilding("battles");
@@ -614,6 +633,7 @@ public class ArenaTask : BotTask
         for (var w = 0; w < 20 && !Ui.VisibleChildren(Grid).Any(o => Ui.Clickable(o.Find("fightButton"))); w++)
             yield return new WaitForSeconds(0.5f);
         var myPower = Ui.NumberAt(A + "/battleFormation/totalPower");
+        Logger.Info($"[Arena] Arena squad power {myPower:N0}, active squad {Planner.SquadApplier.ActiveSlot()}.");
         var limit = myPower > 0 ? myPower * _margin.Value / 100.0 : double.MaxValue;
 
         for (var attempt = 0; attempt < 4; attempt++)
