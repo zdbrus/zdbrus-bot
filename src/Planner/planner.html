@@ -691,8 +691,8 @@ function loadGameSquad(g, slot) {
   if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
 }
 let applying = false;
-// Game code for each machine as the bot knows it (Earthshatter, FireCracker…).
-const gameCode = (id) => (G && G.machines.find(m => WM_ID(m.code) === id)?.code) || id;
+// The game's own number for each machine (sent to the bot, so names and spelling never matter).
+const gameCode = (id) => { const m = G && G.machines.find(x => WM_ID(x.code) === id); return m ? (m.num ?? m.code) : id; };
 // Squad slot (1-3) to write to, remembered per mode: campaign defaults to squad 1, arena to squad 2.
 const slotFor = (mode) => ((S.slots || {})[mode]) || (mode === 'arena' ? 2 : 1);
 async function applyToGame() {

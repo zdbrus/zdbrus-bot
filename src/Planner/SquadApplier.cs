@@ -49,7 +49,10 @@ public static class SquadApplier
     /// <summary>Crew each machine ended up with in the crew picker, which is what the game saves.</summary>
     private static readonly Dictionary<string, List<int>> Confirmed = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Parses "Judgement:2.3.5,Goliath:0.8" (machine code, then hero ids) from the planner page.</summary>
+    /// <summary>
+    ///     Parses "7:2.3.5,12:0.8" from the planner page: the game's machine number, then hero numbers. Both are the
+    ///     game's own ids, so spelling never matters. Machine names are still accepted.
+    /// </summary>
     public static List<PlannedMachine> Parse(string plan)
     {
         var result = new List<PlannedMachine>();
@@ -59,6 +62,12 @@ public static class SquadApplier
             var bits = part.Split(':');
             var code = bits[0].Trim();
             if (code.Length == 0 || code.Length > 30 || !code.All(char.IsLetterOrDigit)) continue;
+            if (code.All(char.IsDigit))
+            {
+                var wm = FindMachineByNumber(int.Parse(code));
+                if (wm == null) continue; // a machine number this account does not have
+                code = wm.machineCode.ToString();
+            }
             var pm = new PlannedMachine { Code = code };
             if (bits.Length > 1)
                 foreach (var id in bits[1].Split('.', StringSplitOptions.RemoveEmptyEntries).Take(6))
@@ -400,6 +409,14 @@ public static class SquadApplier
     {
         try { return mech.WaitingServerReply; }
         catch { return false; }
+    }
+
+    private static WarMachine FindMachineByNumber(int number)
+    {
+        var list = GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.warMachineList;
+        for (var i = 0; list != null && i < list.Count; i++)
+            if (list[i] != null && (int)list[i].machineCode == number) return list[i];
+        return null;
     }
 
     private static WarMachine FindMachine(string code)

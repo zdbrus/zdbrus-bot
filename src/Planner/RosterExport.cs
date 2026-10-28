@@ -176,6 +176,7 @@ public static class RosterExport
     {
         w.WriteStartObject();
         w.WriteString("code", m.machineCode.ToString());
+        w.WriteNumber("num", (int)m.machineCode); // the game's own machine number: what Apply sends back
         w.WriteString("id", m.code ?? "");
         w.WriteString("name", m.name ?? m.machineCode.ToString());
         w.WriteString("spec", m.specialization.ToString());
