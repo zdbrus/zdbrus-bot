@@ -76,7 +76,16 @@ public static class JewelSpender
         {
             if (currentHero != step.Hero)
             {
-                if (!SelectHero(mech, step.Hero)) { Logger.Info($"[Shards] Hero {step.Hero} is not in the hero list; skipped."); continue; }
+                if (!SelectHero(mech, step.Hero))
+                {
+                    // The hero list only builds tiles as it scrolls; step through heroes with the arrows instead.
+                    for (var n = 0; n < 80 && Selected(mech) != step.Hero; n++)
+                    {
+                        try { mech.GoForthHero(); } catch { break; }
+                        yield return new WaitForSeconds(0.15f);
+                    }
+                    if (Selected(mech) != step.Hero) { Logger.Info($"[Shards] Could not find hero {step.Hero}; skipped."); continue; }
+                }
                 currentHero = step.Hero;
                 yield return new WaitForSeconds(1.2f);
                 yield return Ui.Click(EnchantTab, 1f);
@@ -88,13 +97,15 @@ public static class JewelSpender
 
             var item = FindItem(step.Slot);
             var button = item?.enchantJewelItemButton;
+            var costText = "";
+            try { costText = item?.enchantJewelItemCostText?.text ?? ""; } catch { }
             var name = Enum.GetName(typeof(HeroCode), step.Hero) ?? step.Hero.ToString();
             if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
             {
                 // Out of shards or at max level: stop here instead of skipping ahead, so the order stays the plan's.
                 Finish(done > 0, done > 0
-                    ? $"Did {done} enchant(s), then {name}'s {step.Slot} jewel could not be enchanted (out of shards or at max level)."
-                    : $"{name}'s {step.Slot} jewel could not be enchanted (out of shards or at max level). No shards were spent.");
+                    ? $"Did {done} enchant(s), then stopped: the game would not enchant {name}'s {step.Slot} jewel{(costText.Length > 0 ? $" (costs {costText})" : "")}. Usually that means not enough shards left, or the jewel is at its max level."
+                    : $"The game would not enchant {name}'s {step.Slot} jewel{(costText.Length > 0 ? $" (costs {costText})" : "")}, so nothing was spent. Usually that means not enough shards, or the jewel is at its max level.");
                 yield return Watchdog.ForceClearAll("after spending ethereal shards");
                 yield break;
             }
@@ -130,6 +141,12 @@ public static class JewelSpender
         }
         catch (Exception e) { Logger.Debug($"[Shards] select: {e.Message}"); }
         return false;
+    }
+
+    private static int Selected(HallOfHeroesMech mech)
+    {
+        try { return mech.heroServerSelected?.code ?? -1; }
+        catch { return -1; }
     }
 
     private static EnchantJewelItemInteraction FindItem(JewelSlot slot)
