@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 (unreleased, testing)
+- Apply to game now works in game (tested with the campaign squad): it swaps only the machines that differ, sets crews through the crew picker, waits for the game's server to confirm the save, then checks the result.
+- Safety: Apply only saves when the squad screen matches the plan exactly. Otherwise it leaves without saving and says what did not go in, so a working squad is never replaced by a half-done one.
+- The planner only uses heroes you have unlocked (read the same way the game's crew picker does). It used to pick heroes you don't have yet, and the game refused them.
+- No more 10 second pause on the Squads screen when applying.
+- New look for the F1 settings panel: tabs (Bot, Daily, Town, Guild, Battle, Events, Progress) instead of one long list, in the same dark teal and cyan style as the planner.
+
 ## 0.7.0 (2026-10-27)
 - New: War Machine Planner. Press **F4** and your browser opens a planner at `localhost:5577` that reads your real war machines, crews, heroes and jewels straight from the game.
   - Auto-build picks the best 5 machines and crews (each hero used once, always keeps a tank), for the campaign or the arena.
