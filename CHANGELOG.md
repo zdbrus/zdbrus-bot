@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.2 (unreleased, testing)
+## 0.7.2 (2026-10-27)
 - New in the planner: **Ethereal shard advisor**. Lists the next jewel enchant for every hero in your squad, ranked by war machine power gained per shard, so you know exactly where your shards do the most.
 - **Spend for me**: set a shard budget and the bot does the enchants for you through the Hall of Heroes (hero, Enchanting, Jewels), best value first. It stops at the first enchant the game won't allow, so it never spends past your budget or your shards.
 
