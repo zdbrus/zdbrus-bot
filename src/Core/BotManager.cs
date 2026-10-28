@@ -223,8 +223,13 @@ public static class BotManager
                 _lastStepAt = DateTime.Now;
                 try
                 {
-                    yield return RunSafe(Watchdog.ForceClearAll($"before {readyTask.SectionTitle}"),
-                        $"Watchdog cleanup before {readyTask.SectionTitle}");
+                    // Already on this task's screen (the player or the last task left it open): keep it and let the
+                    // task carry on from there, instead of closing everything and walking back from town.
+                    if (Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle))
+                        Logger.Debug($"[Bot] {readyTask.SectionTitle}: already on its screen, starting from there.");
+                    else
+                        yield return RunSafe(Watchdog.ForceClearAll($"before {readyTask.SectionTitle}"),
+                            $"Watchdog cleanup before {readyTask.SectionTitle}");
 
                     // Stopwatch, completion line and table are all diagnostics: with debug off none of
                     // them is needed, and the console stays quiet in normal use. The guard is single for

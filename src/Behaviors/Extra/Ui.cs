@@ -203,8 +203,30 @@ internal static class Ui
         if (Visible(P.RewardsClose)) yield return Click(P.RewardsClose);
     }
 
+    /// <summary>
+    ///     True when a menu named like the task (for example "Alchemist" for the Alchemist task) is on screen with
+    ///     no popup over it, so the task can start right there.
+    /// </summary>
+    public static bool MenuOpenFor(string taskTitle)
+    {
+        var key = Norm(taskTitle);
+        if (key.Length < 4) return false;
+        try
+        {
+            if (VisibleChildren(P.Popups).Any()) return false;
+            return VisibleChildren(P.Menus).Any(m => { var n = Norm(m.name); return n.Length >= 4 && (n == key || n.Contains(key) || key.Contains(n)); });
+        }
+        catch { return false; }
+    }
+
+    private static string Norm(string s) => new string((s ?? "").Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+
     public static IEnumerator OpenTownBuilding(string building)
     {
+        // Already inside this building's screen: nothing to open.
+        var target = Norm(building);
+        if (VisibleChildren(P.Menus).Any(m => Norm(m.name) == target)) yield break;
+
         if (!Visible(P.Town))
         {
             yield return Click(P.TownButton, 1.5f);
