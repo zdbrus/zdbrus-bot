@@ -6,6 +6,8 @@
 - The planner only uses heroes you have unlocked (read the same way the game's crew picker does). It used to pick heroes you don't have yet, and the game refused them.
 - Apply to squad 1, 2 or 3: pick the squad next to Apply to game. Campaign and arena each remember their own squad (campaign starts on 1, arena on 2), so applying an arena squad never overwrites your campaign squad.
 - New Arena setting "Arena Squad" (1, 2 or 3): the bot sets that squad active before arena fights and switches back to your normal squad afterwards. Put your arena build in squad 2 with the planner, set Arena Squad to 2, and campaign keeps its own squad.
+- War machine upgrades: pick any number of machines, or "Active squad" to always upgrade the machines you fight with (it follows your squad). It used to upgrade one machine only.
+- Settings with many options wrap onto extra lines instead of being cut off (the war machine list showed only 4 of 13 machines).
 - No more 10 second pause on the Squads screen when applying.
 - New look for the F1 settings panel: tabs (Bot, Daily, Town, Guild, Battle, Events, Progress) instead of one long list, in the same dark teal and cyan style as the planner.
 

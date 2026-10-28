@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Firebot.Core;
 using Firebot.Core.Tasks;
+using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
@@ -412,40 +414,109 @@ public class WarMachineUpgradeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _machine = c.CreateEntry("war_machine", "Cloudfist", "War Machine",
-            "Name of the war machine to upgrade, as the garage shows it.");
+        _machine = c.CreateEntry("war_machine", "squad", "War Machines",
+            "Which war machines to upgrade. \"Active squad\" means whatever machines are in the squad you use right " +
+            "now, so it follows your squad when it changes. Squad machines go first, then the others.");
+        // Older versions stored one machine by name ("Cloudfist"); the panel now stores the game's machine numbers.
+        var old = _machine.Value ?? "";
+        if (old.Length > 0 && old.Split(',').Any(x => x.Trim().Length > 0 && x.Trim() != "squad" && !x.Trim().All(char.IsDigit)))
+        {
+            string[] names = { "goliath", "fortress", "thunderclap", "firecracker", "aegis", "judgement", "curator", "sentinel",
+                "harvester", "talos", "earthshatter", "cloudfist", "hunter" };
+            var converted = old.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0).Select(x =>
+            {
+                var n = Norm(x) == "earthshatterer" ? "earthshatter" : Norm(x);
+                var i = Array.IndexOf(names, n);
+                return i >= 0 ? i.ToString() : x;
+            });
+            _machine.Value = string.Join(",", converted);
+        }
         _levels = c.CreateEntry("upgrade_levels", true, "Upgrade Levels",
-            "Levels it up in the workshop with expedition tokens and components.");
+            "Levels them up in the workshop with expedition tokens and components.");
         _blueprints = c.CreateEntry("blueprints", "damage", "Blueprints",
             "Blueprint upgrades: none, damage, health, armor, or all.");
     }
 
+    /// <summary>The machines to work on, as the game's machine numbers, in the order chosen.</summary>
+    private List<int> Targets()
+    {
+        var owned = new Dictionary<int, WarMachine>();
+        var list = Il2Cpp.GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.warMachineList;
+        for (var i = 0; list != null && i < list.Count; i++)
+            if (list[i] != null) owned[(int)list[i].machineCode] = list[i];
+
+        var result = new List<int>();
+        foreach (var raw in (_machine.Value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pick = raw.Trim();
+            if (pick.Equals("squad", StringComparison.OrdinalIgnoreCase))
+            {
+                var squad = Il2Cpp.GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList;
+                for (var i = 0; squad != null && i < squad.Count; i++)
+                    foreach (var kv in owned)
+                        if (squad[i] != null && (kv.Value.code == squad[i].code || kv.Value.machineCode.ToString() == squad[i].code) &&
+                            !result.Contains(kv.Key))
+                            result.Add(kv.Key);
+                continue;
+            }
+            // Older settings stored names; numbers and names both work.
+            foreach (var kv in owned)
+                if ((pick == kv.Key.ToString() || Norm(pick) == Norm(kv.Value.machineCode.ToString()) ||
+                     (Norm(pick) == "earthshatterer" && kv.Value.machineCode.ToString() == "Earthshatter")) && !result.Contains(kv.Key))
+                    result.Add(kv.Key);
+        }
+        return result;
+    }
+
+    private static string Norm(string s) => new string((s ?? "").Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddHours(1);
+        var targets = Targets();
+        if (targets.Count == 0)
+        {
+            Logger.Info("[War Machine] No war machine picked (or none of the picked ones is unlocked yet).");
+            yield break;
+        }
+
         yield return Ui.OpenTownBuilding("engineer");
         yield return Ui.Click(P.Popups + "/GarageSelection/bg/garage", 2f);
         if (!Ui.Visible(W)) yield break;
 
-        var found = false;
-        foreach (var square in Ui.VisibleChildren(Grid).Where(s => s.name.StartsWith("warMachineSquare")).ToList())
+        foreach (var number in targets)
         {
+            var square = FindSquare(number);
+            if (square == null)
+            {
+                Logger.Debug($"[War Machine] Machine {number} is not in the garage list.");
+                continue;
+            }
             yield return Ui.Click(square, 1f);
-            if (!Ui.Text(Name).Equals(_machine.Value.Trim(), StringComparison.OrdinalIgnoreCase)) continue;
-            found = true;
-            break;
+            yield return UpgradeSelected();
         }
 
-        if (!found)
+        yield return Ui.Click(W + "/closeButton");
+    }
+
+    /// <summary>The garage tile of a machine, found by the machine it holds rather than its label.</summary>
+    private static Transform FindSquare(int number)
+    {
+        foreach (var t in Ui.VisibleChildren(Grid).Where(s => s.name.StartsWith("warMachineSquare")).ToList())
         {
-            Logger.Warning($"[War Machine] '{_machine.Value}' not found in the garage.");
-            yield return Ui.Click(W + "/closeButton");
-            yield break;
+            var sq = t.GetComponent<WarMachineInteractionSquare>();
+            if (sq?.warMachine != null && (int)sq.warMachine.machineCode == number) return t;
         }
+        return null;
+    }
 
+    private IEnumerator UpgradeSelected()
+    {
+        var name = Ui.Text(Name);
         if (_levels.Value)
         {
             yield return Ui.Click(W + "/submenus/submenuButtons/workshop", 1.2f);
+            var ups = 0;
             for (var i = 0; i < 20; i++)
             {
                 var tokens = Ui.NumberAt(W + "/counters/currencyInteraction (ExpeditionToken)/quantity");
@@ -459,35 +530,36 @@ public class WarMachineUpgradeTask : BotTask
                 });
                 if (cost <= 0 || tokens < cost || !componentsOk || !Ui.Clickable(Workshop + "/upgradeButton")) break;
                 yield return Ui.Click(Workshop + "/upgradeButton", 1.5f);
+                ups++;
             }
+            if (ups > 0) Logger.Info($"[War Machine] {name}: +{ups} level(s).");
         }
 
         var mode = (_blueprints.Value ?? "none").Trim().ToLowerInvariant();
-        if (mode != "none")
+        if (mode == "none") yield break;
+        yield return Ui.Click(W + "/submenus/submenuButtons/blueprintUpgrades", 1.2f);
+        var counter = Ui.VisibleChildren(W + "/counters")
+            .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
+        if (counter == null)
         {
-            yield return Ui.Click(W + "/submenus/submenuButtons/blueprintUpgrades", 1.2f);
-            var counter = Ui.VisibleChildren(W + "/counters")
-                .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
-            if (counter == null)
-                Logger.Debug("[War Machine] No blueprint counter on screen; skipping blueprints to stay safe.");
-            else
+            Logger.Debug("[War Machine] No blueprint counter on screen; skipping blueprints to stay safe.");
+            yield break;
+        }
+        int[] slots = mode switch { "damage" => new[] { 0 }, "health" => new[] { 1 }, "armor" => new[] { 2 }, _ => new[] { 0, 1, 2 } };
+        var bought = 0;
+        foreach (var s in slots)
+        {
+            var button = Blueprints + $"/wmBlueprintUpgrade ({s})/upgradeButton";
+            for (var i = 0; i < 20; i++)
             {
-                int[] slots = mode switch { "damage" => new[] { 0 }, "health" => new[] { 1 }, "armor" => new[] { 2 }, _ => new[] { 0, 1, 2 } };
-                foreach (var s in slots)
-                {
-                    var button = Blueprints + $"/wmBlueprintUpgrade ({s})/upgradeButton";
-                    for (var i = 0; i < 20; i++)
-                    {
-                        var have = Ui.NumberOf(counter.Find("quantity"));
-                        var cost = Ui.NumberAt(button + "/costText");
-                        if (cost <= 0 || have < cost || !Ui.Clickable(button)) break;
-                        yield return Ui.Click(button, 1.2f);
-                    }
-                }
+                var have = Ui.NumberOf(counter.Find("quantity"));
+                var cost = Ui.NumberAt(button + "/costText");
+                if (cost <= 0 || have < cost || !Ui.Clickable(button)) break;
+                yield return Ui.Click(button, 1.2f);
+                bought++;
             }
         }
-
-        yield return Ui.Click(W + "/closeButton");
+        if (bought > 0) Logger.Info($"[War Machine] {name}: {bought} blueprint upgrade(s).");
     }
 }
 

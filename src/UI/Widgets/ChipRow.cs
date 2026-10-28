@@ -26,6 +26,10 @@ internal abstract class ChipRow : UiRow
     }
 
     private readonly List<Chip> _chips = new();
+    private int _lines = 1;
+
+    /// <summary>Chips that do not fit wrap onto more lines, and the row grows to hold them.</summary>
+    public override float Height => UiTheme.RowHeight + (_lines - 1) * (UiTheme.ChipHeight + UiTheme.ChipGap);
 
     protected ChipRow(ConfigEntry config, RectTransform rowRect) : base(config, rowRect)
     {
@@ -55,6 +59,10 @@ internal abstract class ChipRow : UiRow
     {
         var area = BuildControlArea(UiTheme.ChipLabelRatio);
         var x = 0f;
+        var line = 0;
+        var available = ControlWidth();
+        // First line sits where a single line always did (centred in a normal row); more lines go below it.
+        var top = (UiTheme.RowHeight - 2f * UiTheme.ControlInsetY - UiTheme.ChipHeight) / 2f;
 
         foreach (var choice in Config.Choices)
         {
@@ -71,10 +79,9 @@ internal abstract class ChipRow : UiRow
             chip.Label = label;
 
             var rect = button.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 0.5f);
-            rect.anchorMax = new Vector2(0f, 0.5f);
-            rect.pivot = new Vector2(0f, 0.5f);
-            rect.anchoredPosition = new Vector2(x, 0f);
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
 
             // Width estimated first and corrected after: TMP only measures once the mesh is built,
             // and to build the mesh the rect already needs a size.
@@ -82,6 +89,12 @@ internal abstract class ChipRow : UiRow
 
             var width = UiTheme.ChipPaddingX * 2f + TextWidth(label, choice.Label);
             rect.sizeDelta = new Vector2(width, UiTheme.ChipHeight);
+            if (x > 0f && x + width > available)
+            {
+                line++;
+                x = 0f;
+            }
+            rect.anchoredPosition = new Vector2(x, -(top + line * (UiTheme.ChipHeight + UiTheme.ChipGap)));
 
             // Local capture: without it the closure would read the loop variable, not this
             // iteration's.
@@ -95,8 +108,8 @@ internal abstract class ChipRow : UiRow
         // The cursor does not know how to stop: a set of options wider than the control column runs
         // straight past it and vanishes into the scroll view's clip, with no log and no ellipsis.
         // Comparing here turns a silent visual bug into a log line.
+        _lines = line + 1;
         var needed = x - UiTheme.ChipGap;
-        var available = ControlWidth();
 
         if (needed > available)
             Logger.Warning($"[UI] '{Config.Key}': {Config.Choices.Length} chips need about {needed:0}px but the " +
@@ -139,7 +152,7 @@ internal abstract class ChipRow : UiRow
             var background = on ? UiTheme.Accent : UiTheme.Button;
             if (chip.Background.color != background) chip.Background.color = background;
 
-            var text = on ? UiTheme.Text : UiTheme.TextMuted;
+            var text = on ? UiTheme.Header : UiTheme.TextMuted; // dark ink on the orange fill, like the planner's buttons
             if (chip.Label.color != text) chip.Label.color = text;
         }
     }

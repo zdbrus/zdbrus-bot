@@ -240,7 +240,7 @@ internal static class UiContentBuilder
     private static void AddRow(ConfigEntry config, int section, string sectionTitle)
     {
         var background = UiFactory.CreateImage($"row_{config.Entry.Identifier}", _rows, UiTheme.Row, true);
-        UiRow.Create(config, background.rectTransform);
+        var row = UiRow.Create(config, background.rectTransform);
 
         // The whole row is the target. ColorTint replaces the graphic's color, so the tints have to
         // carry the same low alpha as the background — otherwise the row would turn into an opaque
@@ -271,7 +271,7 @@ internal static class UiContentBuilder
         Blocks.Add(new Block
         {
             Rect = background.rectTransform,
-            Height = UiTheme.RowHeight,
+            Height = row?.Height ?? UiTheme.RowHeight,
             Section = section
         });
     }

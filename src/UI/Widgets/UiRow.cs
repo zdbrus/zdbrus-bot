@@ -22,6 +22,9 @@ internal abstract class UiRow
     protected ConfigEntry Config { get; }
     protected RectTransform RowRect { get; }
 
+    /// <summary>Height the row needs in the panel; rows with wrapped chips are taller.</summary>
+    public virtual float Height => UiTheme.RowHeight;
+
     public static UiRow Create(ConfigEntry config, RectTransform rowRect)
     {
         switch (config.Kind)

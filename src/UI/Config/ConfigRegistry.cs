@@ -129,22 +129,6 @@ internal static class ConfigRegistry
             new ConfigChoice("armor", "Armor"),
             new ConfigChoice("all", "All")
         },
-        ["war_machine_upgrade/war_machine"] = new[]
-        {
-            new ConfigChoice("Aegis", "Aegis"),
-            new ConfigChoice("Cloudfist", "Cloudfist"),
-            new ConfigChoice("Curator", "Curator"),
-            new ConfigChoice("Earthshatterer", "Earthshatterer"),
-            new ConfigChoice("Firecracker", "Firecracker"),
-            new ConfigChoice("Fortress", "Fortress"),
-            new ConfigChoice("Goliath", "Goliath"),
-            new ConfigChoice("Harvester", "Harvester"),
-            new ConfigChoice("Hunter", "Hunter"),
-            new ConfigChoice("Judgement", "Judgement"),
-            new ConfigChoice("Sentinel", "Sentinel"),
-            new ConfigChoice("Talos", "Talos"),
-            new ConfigChoice("Thunderclap", "Thunderclap")
-        }
     };
 
     /// <summary>
@@ -153,6 +137,23 @@ internal static class ConfigRegistry
     /// </summary>
     private static readonly Dictionary<string, ConfigChoice[]> MultiChoices = new()
     {
+        ["war_machine_upgrade/war_machine"] = new[]
+        {
+            new ConfigChoice("squad", "Active squad"),
+            new ConfigChoice("4", "Aegis"),
+            new ConfigChoice("11", "Cloudfist"),
+            new ConfigChoice("6", "Curator"),
+            new ConfigChoice("10", "Earthshatterer"),
+            new ConfigChoice("3", "Firecracker"),
+            new ConfigChoice("1", "Fortress"),
+            new ConfigChoice("0", "Goliath"),
+            new ConfigChoice("8", "Harvester"),
+            new ConfigChoice("12", "Hunter"),
+            new ConfigChoice("5", "Judgement"),
+            new ConfigChoice("7", "Sentinel"),
+            new ConfigChoice("9", "Talos"),
+            new ConfigChoice("2", "Thunderclap")
+        },
         ["chaos_rift/holy_guardians"] = new[]
         {
             new ConfigChoice("Vermilion", "Vermilion"),
