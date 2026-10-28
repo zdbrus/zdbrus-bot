@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.4 (2026-10-27)
+- Fixed: Apply to game could leave the tank out of the front spot. The tank now always goes in front.
+
 ## 0.7.3 (2026-10-27)
 - When a task starts and the game is already on that task's screen, the bot carries on from there instead of closing everything and walking back from town. The same goes for the planner's Apply to game and Spend for me.
 
