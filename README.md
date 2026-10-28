@@ -28,7 +28,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
    (Steam: right-click Firestone > Manage > Browse local files to find the folder.)
 2. **Start the game once and close it.** MelonLoader finishes setting itself up on the first run.
 3. **Download [ZdbrusBot.zip](https://github.com/zdbrus/zdbrus-bot/releases/latest/download/ZdbrusBot.zip)** and extract all of it into the Firestone folder (the one with `Firestone.exe`), replacing files when asked. It contains `Mods\ZdbrusBot.dll` plus three fixed MelonLoader files (`MelonLoader\net6\Il2CppInterop.*.dll`) that the current game needs.
-4. **Start the game**, press **F1** to pick which features to turn on, then press **F7** to start the bot.
+4. **Start the game.** The bot starts by itself (Auto Start). Press **F1** to pick which features to turn on, and **F7** to stop or start it.
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
 
@@ -42,7 +42,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 | **F1** | Settings panel (turn features on or off, set priorities) |
 | **F2** | Task status (what runs next and when) |
 | **F7** | Start / stop the bot |
-| **F6** | Hero auto-upgrade on / off (on by default: every minute it opens upgrades, buys to the next milestone and closes the menu again) |
+| **F6** | Hero auto-upgrade on / off (on by default: every minute it opens upgrades, buys to the next milestone or Max, and closes the menu again) |
 | **F4** | War Machine Planner (opens in your browser) |
 | **F8** | Auto skills on / off |
 | **F9** | Save a screen map (attach it to bug reports) |
@@ -53,11 +53,11 @@ Every feature can be switched on or off in the F1 panel.
 
 | Area | Automated |
 |------|-----------|
-| **Daily** | Daily rewards, check-in, free shop items, mail rewards, daily and weekly quests, battle pass free rewards |
+| **Daily** | Daily rewards, check-in, free shop items, mail rewards, daily and weekly quests, battle pass free rewards, opens your chests (keeps the ones you choose) |
 | **Town** | Firestone research (your priority order), meteorite research, alchemist, Oracle rituals and blessings, engineer tools, guardian training and enlightenment, exotic merchant (sell, upgrades, emblem chests), tavern (beer to tokens, cards), Scarab's game, Pharaoh's vault and milestones |
 | **Guild** | Expeditions, free pickaxes, guild crystal, Chaos Rift (hits, eclipse stones, tomes, holy upgrades for the guardians you choose), personal tree, hero awakening, forbidden knowledge |
 | **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (keeps going after each win) |
-| **Battle** | Arena (picks the easiest opponent, uses the free refresh, tries again later), war machine levels and blueprints for the machine you pick (all 13 supported), clicks coal miners and double-beer dragons the moment they appear |
+| **Battle** | Arena (picks the easiest opponent, uses the free refresh, tries again later), war machine levels and blueprints for any machines you pick or your active squad, switches to your arena squad for arena fights and back, clicks coal miners and double-beer dragons the moment they appear |
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
 | **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
@@ -76,8 +76,13 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - Only heroes you have unlocked are used. It only saves when the squad on screen matches the plan, so a half-done change never replaces a working squad.
 - **Hero faces** come from your own game (open Engineer > Select crew once).
 - **Plan upgrades** by editing levels, rarities, blueprints or jewels.
+- **Ethereal shard advisor** ranks the next jewel enchant for every hero in your squad by war machine power per shard. **Spend for me** does those enchants for you within a shard budget.
 
-It also reads the notification bubbles on the left of the screen, so it reacts the moment something is ready instead of waiting for a timer.
+<img src="assets/planner.jpg" alt="War Machine Planner in the browser" width="100%">
+
+### Works from the game's own signals
+
+Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run when that icon shows, so the bot does not open screens just to look. If a task's screen is already open, it carries on from there instead of walking back from town. Campaign, boss retries and chests run on their own timers.
 
 ## Safety
 
@@ -106,7 +111,9 @@ It also reads the notification bubbles on the left of the screen, so it reacts t
 
 **Where are my settings?** `UserData\ZdbrusBotPreferences.cfg`. The F1 panel writes to it for you. See [ADVANCED.md](ADVANCED.md) for every option.
 
-**The game updated and the bot broke.** The bot tells you when a new version is out (in the log and the F1 panel title). You can also watch or star this repo to get notified.
+**The game updated and the bot broke.** Check [Releases](https://github.com/zdbrus/zdbrus-bot/releases) for a newer version. Watch or star this repo to get notified when one comes out.
+
+**Nothing happens / no tasks run.** The bot is stopped. Press F7, or turn on F1 > Bot > Auto Start. The log says so when it is off.
 
 ## Credits
 
