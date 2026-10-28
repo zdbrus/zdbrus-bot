@@ -59,9 +59,11 @@ public static class JewelSpender
         yield return Watchdog.ForceClearAll("before spending ethereal shards");
 
         Status = "Opening the Hall of Heroes…";
+        // Through town, the same way a player gets there (opening it from code left a black screen).
+        yield return Ui.OpenTownBuilding("hallOfHeroes");
         HallOfHeroesMech mech = null;
-        try { mech = GameInitialize.MenuLoader?.HallOfHeroesMech; mech?.Open(null); }
-        catch (Exception e) { Logger.Debug($"[Shards] open: {e.Message}"); }
+        try { mech = GameInitialize.MenuLoader?.HallOfHeroesMech; }
+        catch (Exception e) { Logger.Debug($"[Shards] mech: {e.Message}"); }
         yield return Ui.WaitFor(Hoh, 4f);
         yield return new WaitForSeconds(1f);
         if (mech == null || !Ui.Visible(Hoh))
