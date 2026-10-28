@@ -214,7 +214,7 @@ public static class BotManager
             }
 
             // The planner is applying a squad: let it finish its clicks before the next job starts.
-            if (Planner.SquadApplier.Busy) readyTask = null;
+            if (Planner.SquadApplier.Busy || Planner.JewelSpender.Busy) readyTask = null;
 
             if (readyTask != null)
             {

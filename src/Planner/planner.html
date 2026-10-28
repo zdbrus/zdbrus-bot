@@ -178,7 +178,9 @@ button,input,select{font:inherit;color:inherit}
 .panel-h h2{font:700 15px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;margin:0 auto 0 0}
 .panel-b{padding:12px 14px}
 .shards{margin-top:16px;border-radius:var(--r)}
-.shards .panel-h{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.shards .panel-h{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.shards .spend{margin-left:auto;display:flex;gap:8px;align-items:center}
+.shards .spend input{width:84px}
 .ledger td.best{color:var(--brass-hi);font-weight:600}
 .bench{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
 .search{background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:6px 10px;width:160px}
@@ -317,8 +319,13 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
   </section>
 
   <section class="panel shards" aria-label="Ethereal shard advisor">
-    <div class="panel-h"><h2>Ethereal shard advisor</h2><span class="note" id="shard-sub"></span></div>
+    <div class="panel-h"><h2>Ethereal shard advisor</h2><span class="note" id="shard-sub"></span>
+      <span class="spend" id="spend-wrap" hidden>
+        <label class="field" title="The most ethereal shards the bot may spend"><span class="label">Budget</span><input id="budget" type="number" min="0" step="60" value="1000" aria-label="Shard budget"></label>
+        <button class="btn primary" id="spend">Spend for me</button>
+      </span></div>
     <div class="panel-b">
+      <div id="spend-status"></div>
       <div class="ledger-wrap"><table class="ledger" id="shards"></table></div>
       <p class="note">Ethereal shards enchant jewels, and jewels on crew heroes are what raise war machine stats. Each row is the next enchant for a hero in your current squad, ranked by squad power gained per 100 shards. Costs follow the game's pattern (60, 120, 240, 480, 960…); the first enchant of a jewel is estimated at 30. Gear (void crystals) and soulstones (soul shards) only raise hero stats, not war machines.</p>
     </div>
@@ -721,7 +728,7 @@ async function applyToGame() {
 // Poll quickly while the bot is applying, so progress shows as it happens.
 function fastPoll() {
   let n = 0;
-  const t = setInterval(async () => { await poll(); n++; if (n > 150 || (!applying && !(G && G.apply && G.apply.busy))) clearInterval(t); }, 1200);
+  const t = setInterval(async () => { await poll(); n++; if (n > 150 || (!applying && !spending && !(G && G.apply && G.apply.busy) && !(G && G.spend && G.spend.busy))) clearInterval(t); }, 1200);
 }
 async function poll() {
   try {
@@ -912,12 +919,54 @@ function shardOptions(total) {
       j.level = lv + 1;
       let gain = 0; try { gain = squadScore() - total; } finally { j.level = lv; }
       const cost = jewelCost(lv);
-      if (gain > 0) out.push({ hero: h.name, machine: E.WAR_MACHINES[id]?.name || id, jewel: JEWEL_NAME[type] || type, lv, cost, gain, per: gain / cost * 100 });
+      if (gain > 0) out.push({ hid: h.id, type, j, hero: h.name, machine: E.WAR_MACHINES[id]?.name || id, jewel: JEWEL_NAME[type] || type, lv, cost, gain, per: gain / cost * 100 });
     }
   }
   return out.sort((a, b) => b.per - a.per);
 }
+// Greedy plan within a budget: take the best enchant, apply it, re-rank, repeat. Levels are restored afterwards.
+function shardPlan(budget) {
+  const steps = [], touched = [];
+  let left = budget;
+  try {
+    for (let n = 0; n < 40; n++) {
+      const total = S.squad.reduce((a, id) => a + scoreOf(statsFor(id)), 0);
+      const best = shardOptions(total).find(o => o.cost <= left);
+      if (!best) break;
+      left -= best.cost;
+      best.j.level = best.lv + 1; touched.push([best.j, best.lv]);
+      steps.push(best);
+    }
+  } finally { for (let i = touched.length - 1; i >= 0; i--) touched[i][0].level = touched[i][1]; }
+  return { steps, spent: budget - left };
+}
+let spending = false;
+async function spendForMe() {
+  if (!G || spending) return;
+  const budget = Math.max(0, +$('#budget').value || 0);
+  const { steps, spent } = shardPlan(budget);
+  if (!steps.length) { toast('Nothing fits in ' + budget + ' shards'); return; }
+  const plan = steps.map(s => s.hid + '.' + s.type[0].toUpperCase() + s.type.slice(1)).join(',');
+  spending = true; render();
+  try {
+    const r = await fetch('/spend?plan=' + encodeURIComponent(plan), { cache: 'no-store' });
+    const j = await r.json();
+    toast(j.result === 'Spending' ? steps.length + ' enchants (' + spent.toLocaleString() + ' shards) sent to the game' : j.result);
+  } catch { toast('The bot did not answer'); }
+  setTimeout(() => { spending = false; }, 3000);
+  fastPoll();
+}
+
 function renderShards(total) {
+  $('#spend-wrap').hidden = !(LIVE && G);
+  const sp = G && G.spend, sbox = $('#spend-status'); sbox.replaceChildren();
+  if (sp && (sp.busy || spending || sp.status)) {
+    const bar = el('div', { class: 'applybar' });
+    if (sp.busy || spending) bar.append(el('span', { class: 'spin' }));
+    bar.append(el('b', {}, 'Spend for me: '), sp.status || 'Sending the plan to the bot…');
+    sbox.append(bar);
+  }
+  $('#spend').disabled = !!(sp && sp.busy) || spending;
   const t = $('#shards'); if (!t) return;
   const rows = shardOptions(total).slice(0, 10);
   $('#shard-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + ' · top ' + rows.length;
@@ -1140,6 +1189,7 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 // controls
 $('#auto').onclick = runAuto;
 $('#apply').onclick = applyToGame;
+$('#spend').onclick = spendForMe;
 $('#slot').onchange = () => { S.slots = { ...(S.slots || {}), [S.mode]: +$('#slot').value }; save(); render(); };
 $('#use-game').onclick = () => {
   if (!G) return;

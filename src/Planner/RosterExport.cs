@@ -80,6 +80,11 @@ public static class RosterExport
             w.WriteBoolean("ok", SquadApplier.Ok);
             w.WriteString("status", SquadApplier.Status ?? "");
             w.WriteEndObject();
+            w.WriteStartObject("spend");
+            w.WriteBoolean("busy", JewelSpender.Busy);
+            w.WriteBoolean("ok", JewelSpender.Ok);
+            w.WriteString("status", JewelSpender.Status ?? "");
+            w.WriteEndObject();
 
             // ---- war machines (owned) ----
             w.WriteStartArray("machines");
