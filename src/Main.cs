@@ -53,6 +53,7 @@ public class Main : MelonMod
         if (_isGameReady)
         {
             if (BotSettings.AutoStart) BotManager.Start();
+            else LoggerInstance.Warning("Bot is stopped: no tasks, bubbles or boss retries will run. Press F7 to start it, or turn on F1 > Bot > Auto Start.");
             AutoUpgrade.AutoStart();
         }
         else BotManager.Stop();

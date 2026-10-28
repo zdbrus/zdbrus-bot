@@ -97,7 +97,7 @@ public static class BotSettings
         _category = MelonPreferences.CreateCategory("firebot_settings", "General");
         _category.SetFilePath(ConfigPath);
 
-        _autoStart = _category.CreateEntry("auto_start", false, "Auto Start",
+        _autoStart = _category.CreateEntry("auto_start", true, "Auto Start",
             "Determines if the bot logic should be initialized and started automatically upon game launch.");
 
         _startBotDelay = _category.CreateEntry("start_bot_delay", 10.0f, "Start Bot Delay",

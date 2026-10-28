@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.7.5 (2026-10-27)
+- The bot now starts by itself when the game loads (Auto Start is on by default for new installs). If it is off, the log says clearly that nothing will run until you press F7. A stopped bot is why bubbles, boss retries and tasks never got done.
 - Auto upgrade: new "Max" option buys as many levels as you can afford with each press.
 
 ## 0.7.4 (2026-10-27)
