@@ -72,6 +72,8 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - **Game check** compares every number with the game's own, so you can trust the math.
 - **Campaign target** shows the power a mission needs and the furthest mission your squad covers.
 - **Apply to game** sets your planned squad in one click: the bot goes through Engineer, Squads, Edit and Select crew like a player would, saves, and confirms what stuck.
+- **Squad 1, 2 or 3**: pick which of your squads Apply writes to. Campaign and arena remember their own (campaign squad 1, arena squad 2). Set **F1 > Battle > Arena > Arena Squad** to 2 and the bot switches to your arena squad for arena fights and back afterwards.
+- Only heroes you have unlocked are used. It only saves when the squad on screen matches the plan, so a half-done change never replaces a working squad.
 - **Hero faces** come from your own game (open Engineer > Select crew once).
 - **Plan upgrades** by editing levels, rarities, blueprints or jewels.
 
