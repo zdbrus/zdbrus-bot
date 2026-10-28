@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.7.3 (2026-10-27)
-- When a task starts and the game is already on that task's screen, the bot carries on from there instead of closing everything and walking back from town.
+- When a task starts and the game is already on that task's screen, the bot carries on from there instead of closing everything and walking back from town. The same goes for the planner's Apply to game and Spend for me.
 
 ## 0.7.2 (2026-10-27)
 - New in the planner: **Ethereal shard advisor**. Lists the next jewel enchant for every hero in your squad, ranked by war machine power gained per shard, so you know exactly where your shards do the most.

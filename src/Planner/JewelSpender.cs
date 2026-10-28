@@ -56,7 +56,7 @@ public static class JewelSpender
     {
         var giveUp = Time.unscaledTime + 180f;
         while ((BotManager.IsBusy || SquadApplier.Busy) && Time.unscaledTime < giveUp) yield return new WaitForSeconds(0.5f);
-        yield return Watchdog.ForceClearAll("before spending ethereal shards");
+        if (!Ui.Visible(Hoh)) yield return Watchdog.ForceClearAll("before spending ethereal shards");
 
         Status = "Opening the Hall of Heroes…";
         // Through town, the same way a player gets there (opening it from code left a black screen).

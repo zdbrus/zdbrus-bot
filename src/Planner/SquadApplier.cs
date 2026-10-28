@@ -95,7 +95,9 @@ public static class SquadApplier
         var giveUp = Time.unscaledTime + 180f;
         while (BotManager.IsBusy && Time.unscaledTime < giveUp) yield return new WaitForSeconds(0.5f);
 
-        yield return Watchdog.ForceClearAll("before applying the planner squad");
+        // Already in the Engineer or on the Squads screen: start from there instead of walking back from town.
+        if (!(Ui.Visible(Engineer) || Ui.Visible(Squads)) || Ui.Visible(Builder))
+            yield return Watchdog.ForceClearAll("before applying the planner squad");
         yield return Open();
         if (!Ui.Visible(Builder))
         {
@@ -152,9 +154,9 @@ public static class SquadApplier
     {
         Status = "Opening the Engineer…";
         yield return Ui.OpenTownBuilding("engineer");
-        yield return Ui.Click(P.Popups + "/GarageSelection/bg/engineer", 1.5f);
+        if (!Ui.Visible(Engineer) && !Ui.Visible(Squads)) yield return Ui.Click(P.Popups + "/GarageSelection/bg/engineer", 1.5f);
         yield return Ui.WaitFor(Engineer);
-        yield return Ui.Click(SquadsTab, 1f);
+        if (!Ui.Visible(Squads)) yield return Ui.Click(SquadsTab, 1f);
         yield return Ui.WaitFor(Squads, 3f);
         if (!Ui.Visible(Squads))
         {
