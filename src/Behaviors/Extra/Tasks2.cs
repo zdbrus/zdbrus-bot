@@ -686,6 +686,7 @@ public class OpenChestsTask : BotTask
     private const string Preview = P.Popups + "/ChestOpenPreview/bg";
     private const string Opening = P.Menus + "/ChestOpening";
     private MelonPreferences_Entry<string> _skip;
+    protected override bool EnabledByDefault => true;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
