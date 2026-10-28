@@ -218,43 +218,55 @@ public static class SquadApplier
             if (removeOnly && current.All(planned.Crew.Contains)) continue;
             if (!removeOnly && planned.Crew.All(current.Contains) && current.All(planned.Crew.Contains)) continue;
 
-            var open = spot.editCrewButton != null && spot.editCrewButton.gameObject.activeInHierarchy
-                ? spot.editCrewButton
-                : spot.addCrewButton;
-            if (open == null || !open.gameObject.activeInHierarchy) continue;
-            open.onClick.Invoke();
+            var mech = Mech();
+            var opened = false;
+            if (mech != null)
+            {
+                try { mech.OpenWarMachineHeroesPopup(spot.spotIndex); opened = true; }
+                catch (Exception e) { Logger.Debug($"[Planner] crew open: {e.Message}"); }
+            }
+            if (!opened)
+            {
+                var open = spot.editCrewButton != null && spot.editCrewButton.gameObject.activeInHierarchy
+                    ? spot.editCrewButton
+                    : spot.addCrewButton;
+                if (open == null || !open.gameObject.activeInHierarchy) continue;
+                open.onClick.Invoke();
+            }
             yield return Ui.WaitFor(CrewPicker, 3f);
             yield return new WaitForSeconds(Step);
 
+            var code = spot.warMachine.machineCode.ToString();
             var picker = UnityEngine.Object.FindObjectOfType<SelectWarMachineHeroesViewController>();
             var heroes = picker?.HeroInteractionSelects;
-            if (heroes != null)
+            SelectWarMachineHeroesPopup pop = null;
+            try { pop = GameInitialize.MenuLoader?.SelectWarMachineHeroesPopup; } catch { }
+
+            Logger.Info($"[Planner] {code} crew before: [{string.Join(", ", Draft(pop))}], want [{string.Join(", ", planned.Crew)}]");
+            // Off first, then on, so a full crew has room for the new heroes.
+            foreach (var id in Draft(pop).Where(id => !planned.Crew.Contains(id)).ToList())
             {
-                // Off first, then on, so a full crew has room for the new heroes.
-                for (var i = 0; i < heroes.Count; i++)
+                Toggle(pop, heroes, id);
+                yield return new WaitForSeconds(0.3f);
+            }
+            if (!removeOnly)
+                foreach (var id in planned.Crew)
                 {
-                    var h = heroes[i];
-                    if (h?.hero == null || h.isEmpty || !h.IsSelected() || planned.Crew.Contains(h.hero.code)) continue;
-                    h.InvokeAction();
+                    if (Draft(pop).Contains(id)) continue;
+                    Toggle(pop, heroes, id);
                     yield return new WaitForSeconds(0.3f);
                 }
-
-                if (!removeOnly)
-                    foreach (var id in planned.Crew)
-                        for (var i = 0; i < heroes.Count; i++)
-                        {
-                            var h = heroes[i];
-                            if (h?.hero == null || h.isEmpty || h.hero.code != id) continue;
-                            if (!h.IsSelected()) h.InvokeAction();
-                            yield return new WaitForSeconds(0.3f);
-                            break;
-                        }
-            }
+            Logger.Info($"[Planner] {code} crew after: [{string.Join(", ", Draft(pop))}]");
 
             var set = picker?.SetCrewButton;
             if (set != null && set.gameObject.activeInHierarchy && set.interactable)
             {
                 set.onClick.Invoke();
+                yield return new WaitForSeconds(1f);
+            }
+            else if (pop != null)
+            {
+                try { pop.SetNewCrew(); } catch (Exception e) { Logger.Debug($"[Planner] set crew: {e.Message}"); }
                 yield return new WaitForSeconds(1f);
             }
             if (Ui.Visible(CrewPicker)) yield return Ui.Click(CrewPicker + "/bg/closeButton", 1f);
@@ -318,6 +330,40 @@ public static class SquadApplier
         var codes = new List<string>();
         for (var i = 0; i < data.Count; i++) if (data[i] != null) codes.Add(data[i].code);
         return plan.All(p => codes.Any(c => IsMachine(c, p.Code)));
+    }
+
+    /// <summary>The crew being edited in the open picker (its draft), as hero ids.</summary>
+    private static List<int> Draft(SelectWarMachineHeroesPopup pop)
+    {
+        var list = new List<int>();
+        try
+        {
+            var d = pop?.warMachineSpotDataDraft?.warMachineHeroCodes;
+            for (var i = 0; d != null && i < d.Count; i++) list.Add(d[i]);
+        }
+        catch { }
+        return list;
+    }
+
+    /// <summary>Selects or deselects one hero in the open picker, through the picker's own handler.</summary>
+    private static void Toggle(SelectWarMachineHeroesPopup pop, Il2CppSystem.Collections.Generic.List<HeroInteractionSelect> heroes, int id)
+    {
+        HeroInteractionSelect tile = null;
+        for (var i = 0; heroes != null && i < heroes.Count; i++)
+            if (heroes[i]?.hero != null && !heroes[i].isEmpty && heroes[i].hero.code == id) { tile = heroes[i]; break; }
+        var hero = tile?.hero;
+        if (hero == null)
+        {
+            var dict = GameInitialize.HandlerLoader?.heroServerHandler?.heroesDict;
+            if (dict != null) foreach (var kv in dict) if (kv.Value != null && kv.Value.code == id) { hero = kv.Value; break; }
+        }
+        if (pop != null && hero != null)
+        {
+            try { pop.ToogleHeroInteractionSelection(hero); return; }
+            catch (Exception e) { Logger.Debug($"[Planner] toggle {id}: {e.Message}"); }
+        }
+        if (tile != null) tile.InvokeAction();
+        else Logger.Info($"[Planner] Hero {id} is not in the crew list.");
     }
 
     private static void Press(WarMachineSelectInteraction tile)
