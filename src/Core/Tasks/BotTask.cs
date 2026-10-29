@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Firebot.GameModel.Base;
 using MelonLoader;
@@ -38,6 +39,17 @@ public abstract class BotTask
     public void RestoreNextRun(DateTime when) => NextRunTime = when;
 
     protected virtual string NotificationPath => null;
+
+    internal virtual IEnumerable<string> HandledNotificationNames
+    {
+        get
+        {
+            var path = NotificationPath;
+            return string.IsNullOrEmpty(path)
+                ? Array.Empty<string>()
+                : new[] { path[(path.LastIndexOf('/') + 1)..] };
+        }
+    }
 
     public bool IsEnabled
     {
@@ -151,6 +163,10 @@ public abstract class BotTask
     public bool IsReady()
         => !IsLevelLocked && (IsNotificationVisibleCore() || (IsEnabled && DateTime.Now >= DueTime));
 
+    /// <summary>Checks readiness when the caller has already checked notification visibility.</summary>
+    public bool IsReady(bool notificationVisible)
+        => !IsLevelLocked && (notificationVisible || (IsEnabled && DateTime.Now >= DueTime));
+
     /// <summary>When the timer next runs this task: its next run time, or 6 hours later for a bubble task.</summary>
     public DateTime DueTime => string.IsNullOrEmpty(NotificationPath) ? NextRunTime : NextRunTime.AddHours(6);
 
@@ -162,7 +178,7 @@ public abstract class BotTask
         => !IsLevelLocked && IsNotificationVisibleCore();
 
     /// <summary>The level is looked up once per call through the guards above, not once per branch.</summary>
-    private bool IsNotificationVisibleCore()
+    protected virtual bool IsNotificationVisibleCore()
         => IsEnabled && DateTime.Now >= BubbleQuietUntil && NotificationElement != null && NotificationElement.IsVisible();
 
     /// <summary>

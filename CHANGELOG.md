@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.10 (2026-10-29)
+- Notification rewards now run as soon as a configured bubble appears, instead of waiting for the 10-minute sweep. Bubbles with no free reward still get a 3-hour cooldown.
+- Meteorite Research now buys the first affordable upgrade instead of opening every upgrade preview before spending.
+- The scheduler no longer checks the same hidden notification twice during one scan.
+
 ## 0.7.9 (2026-10-28)
 - The planner can rebuild and apply the selected mode's squad every 2, 4, 6 or 12 hours when the estimated power gain meets a configurable threshold (3% by default). Off by default; the game and planner page must stay open.
 - Build and release notes are consolidated in `RELEASING.md`. In particular, keep the three bundled Il2CppInterop files, stable MelonLoader 0.7.3, and the main-thread-only Unity access pattern.

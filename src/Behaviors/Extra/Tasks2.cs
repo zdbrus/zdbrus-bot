@@ -35,7 +35,7 @@ internal static class NodeBuyer
     }
 
     public static IEnumerator Run(List<Transform> nodes, Layout l, Func<double> currency, string priority,
-        double keep = 0, int maxPerNode = 10)
+        double keep = 0, int maxPerNode = 10, bool stopAtFirstAffordable = false)
     {
         var info = new List<(Transform node, string name, double cost, bool open)>();
         foreach (var node in nodes)
@@ -49,7 +49,28 @@ internal static class NodeBuyer
                         (m.Success && int.Parse(m.Groups[1].Value) >= int.Parse(m.Groups[2].Value));
             var buy = l.Preview + "/" + l.Buy;
             var cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
-            info.Add((node, name, cost, !maxed && Ui.Visible(buy) && cost > 0));
+            var open = !maxed && Ui.Visible(buy) && cost > 0;
+            if (stopAtFirstAffordable && open && currency() - keep >= cost)
+            {
+                Logger.Info($"[Nodes] First affordable: {name} ({cost}), have {currency()}.");
+                for (var n = 0; n < maxPerNode; n++)
+                {
+                    cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
+                    if (cost <= 0 || currency() - keep < cost || !Ui.Clickable(buy))
+                    {
+                        Logger.Debug($"[Nodes] stop {name}: cost {cost}, have {currency()}, clickable {Ui.Clickable(buy)}");
+                        break;
+                    }
+
+                    yield return Ui.Click(buy, 1.2f, name);
+                    if (Ui.MissingCurrency) break;
+                }
+
+                if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
+                yield break;
+            }
+
+            info.Add((node, name, cost, open));
             Logger.Debug($"[Nodes] {name} | {level} | cost {cost} | buy {(Ui.Visible(buy) ? (Ui.Clickable(buy) ? "on" : "off") : "hidden")}");
             yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
         }
@@ -102,15 +123,10 @@ public class MeteoriteResearchTask : BotTask
     private const string L = P.Menus + "/Library";
     private const string M = L + "/submenus/meteoriteResearch";
     private const string Meteorites = L + "/counters/currencyInteraction (Meteorite)/quantity";
-    private MelonPreferences_Entry<string> _priority;
     private MelonPreferences_Entry<int> _keep;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority",
-            "Attribute damage,All main attributes,Raining gold,Hero level up cost,Attribute health,Attribute armor," +
-            "Firestone finder,Powerless boss,Powerless enemy", "Priority",
-            "Meteorite research names in buy order, comma-separated. Unlisted ones are bought after, cheapest first.");
         _keep = c.CreateEntry("keep_meteorites", 0, "Meteorites To Keep", "Meteorites to leave unspent.");
     }
 
@@ -138,7 +154,7 @@ public class MeteoriteResearchTask : BotTask
             Preview = P.Popups + "/MeteoriteResearchPreview/bg",
             Name = "researchName", Level = "level", Buy = "unlocked/researchButton",
             Cost = "unlocked/researchButton/cost", Close = "closeButton"
-        }, () => Ui.NumberAt(Meteorites), _priority.Value, _keep.Value);
+        }, () => Ui.NumberAt(Meteorites), string.Empty, _keep.Value, stopAtFirstAffordable: true);
 
         yield return Ui.Click(L + "/closeButton");
     }
@@ -455,6 +471,20 @@ public class BubbleRewardsTask : BotTask
             "Bubbles", "Notification bubbles to open for free rewards (comma-separated bubble names).");
     }
 
+    internal override IEnumerable<string> HandledNotificationNames => BubbleNames();
+
+    protected override bool IsNotificationVisibleCore()
+    {
+        if (!IsEnabled || DateTime.Now < BubbleQuietUntil) return false;
+
+        return BubbleNames().Any(name =>
+            (!Quiet.TryGetValue(name, out var until) || DateTime.Now >= until) &&
+            Ui.Visible(P.Notifications + "/" + name));
+    }
+
+    private IEnumerable<string> BubbleNames()
+        => (_bubbles?.Value ?? string.Empty).Split(',').Select(s => s.Trim()).Where(s => s.Length > 0);
+
     private static HashSet<int> OpenRoots()
     {
         var set = new HashSet<int>();
@@ -478,8 +508,7 @@ public class BubbleRewardsTask : BotTask
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddMinutes(10);
-        var names = (_bubbles.Value ?? "").Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
-        foreach (var name in names)
+        foreach (var name in BubbleNames())
         {
             var path = P.Notifications + "/" + name;
             if (!Ui.Visible(path)) continue;
@@ -509,7 +538,7 @@ public class BubbleRewardsTask : BotTask
             }
 
             Logger.Info($"[Bubbles] {name}: opened {string.Join(", ", opened.Select(o => o.name))}; claimed {claimed}");
-            if (claimed == 0) Quiet[name] = DateTime.Now.AddHours(3);
+            Quiet[name] = DateTime.Now.Add(claimed == 0 ? TimeSpan.FromHours(3) : TimeSpan.FromMinutes(1));
 
             // Close what the bubble opened, newest first.
             foreach (var screen in opened.AsEnumerable().Reverse())

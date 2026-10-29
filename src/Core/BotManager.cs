@@ -185,13 +185,21 @@ public static class BotManager
                     if (task.IsEnabled && !task.IsLevelLocked && task.DueTime < nextEnabledTaskRun)
                         nextEnabledTaskRun = task.DueTime;
 
-                    if (notificationTask == null && task.IsNotificationVisible())
+                    var notificationVisible = false;
+                    if (notificationTask == null)
                     {
-                        notificationTask = task;
-                        continue;
+                        notificationVisible = task.IsNotificationVisible();
+                        if (notificationVisible)
+                        {
+                            notificationTask = task;
+                            continue;
+                        }
                     }
 
-                    if (!task.IsReady()) continue;
+                    if (!(notificationTask == null
+                            ? task.IsReady(notificationVisible)
+                            : task.IsReady()))
+                        continue;
                     if (task.NextRunTime >= earliest) continue;
 
                     earliest = task.NextRunTime;

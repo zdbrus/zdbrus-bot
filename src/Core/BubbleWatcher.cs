@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using Firebot.Core.Tasks;
 using UnityEngine;
 
@@ -52,12 +51,9 @@ public static class BubbleWatcher
     {
         var set = new HashSet<string> { "MysteryBox", "CheckIn", "OraclesGift", "ScarabGameShopFreeToken",
             "WarfrontCampaign", "FreePickaxes", "ChaosRiftSupplies", "GuardianHolyUpgrade" };
-        var prop = typeof(BotTask).GetProperty("NotificationPath", BindingFlags.Instance | BindingFlags.NonPublic);
         foreach (var task in BotManager.AllTasks)
-        {
-            if (prop?.GetValue(task) is string path && path.Length > 0)
-                set.Add(path[(path.LastIndexOf('/') + 1)..]);
-        }
+            foreach (var name in task.HandledNotificationNames)
+                set.Add(name);
 
         return set;
     }
