@@ -112,7 +112,17 @@ public class MagicQuartersTask : BotTask
         if (!useStrangeDust) yield break;
 
         var enlightenmentBtn = Guardian.EnlightenmentBtn;
-        while (enlightenmentBtn.IsClickable()) yield return enlightenmentBtn.Click();
+        var applied = 0;
+        while (applied < 50 && enlightenmentBtn.IsClickable())
+        {
+            yield return enlightenmentBtn.Click();
+            applied++;
+        }
+
+        if (applied >= 50)
+            Debug("[WARNING] Enlightenment stayed clickable after 50 clicks; stopping.");
+        else if (applied > 0)
+            Debug($"[INFO] Enlightenment clicked {applied} time(s) until the button became unavailable.");
     }
 
 

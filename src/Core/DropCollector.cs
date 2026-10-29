@@ -28,6 +28,7 @@ public static class DropCollector
     private static readonly HashSet<string> Reported = new();
     private static readonly HashSet<string> Clicked = new();
     private static readonly Dictionary<string, float> SeenSince = new();
+    private static readonly Dictionary<string, int> Attempts = new();
     private static float _nextScan;
 
     public static void Tick()
@@ -45,12 +46,23 @@ public static class DropCollector
                 if (shownWhen != null)
                 {
                     shown = t.Find(shownWhen);
-                    if (shown == null || !shown.gameObject.activeInHierarchy) { Clicked.Remove(path); SeenSince.Remove(path); continue; }
+                    if (shown == null || !shown.gameObject.activeInHierarchy) { Clicked.Remove(path); SeenSince.Remove(path); Attempts.Remove(path); continue; }
                 }
 
                 // Only while it is actually inside the screen, and once per visit.
-                if (!OnScreen(shown)) { Clicked.Remove(path); SeenSince.Remove(path); continue; }
-                if (Clicked.Contains(path)) continue;
+                if (!OnScreen(shown)) { Clicked.Remove(path); SeenSince.Remove(path); Attempts.Remove(path); continue; }
+                if (Clicked.Contains(path))
+                {
+                    // Still on screen well after the click: it likely did not register, so retry a few times.
+                    var attempts = Attempts.TryGetValue(path, out var a) ? a : 0;
+                    if (attempts < 3 && LastClick.TryGetValue(path, out var clickedAt) &&
+                        Time.unscaledTime - clickedAt > 3f)
+                    {
+                        Logger.Debug($"[Collector] {label} still on screen after the click; retrying.");
+                        Clicked.Remove(path);
+                    }
+                    else continue;
+                }
                 // Let it settle on screen for a moment first: clicking one mid-spawn may upset the game.
                 if (!SeenSince.TryGetValue(path, out var since)) { SeenSince[path] = Time.unscaledTime; continue; }
                 if (Time.unscaledTime - since < 1.5f) continue;
@@ -66,6 +78,7 @@ public static class DropCollector
                 Logger.Debug($"[Collector] Clicking {t.name} ({label}).");
                 LastClick[path] = Time.unscaledTime;
                 Clicked.Add(path);
+                Attempts[path] = (Attempts.TryGetValue(path, out var n) ? n : 0) + 1;
                 b.onClick.Invoke();
                 if (Reported.Add(label)) Logger.Info($"[Collector] Clicked the {label}.");
             }
