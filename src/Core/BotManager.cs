@@ -180,8 +180,10 @@ public static class BotManager
                     // A task locked by level is enabled but cannot run. Counting its next run — MinValue, for
                     // one that never ran — would leave the auto upgrade thinking a task is always about to
                     // fire, and it would never resume while the lock lasts.
-                    if (task.IsEnabled && !task.IsLevelLocked && task.NextRunTime < nextEnabledTaskRun)
-                        nextEnabledTaskRun = task.NextRunTime;
+                    // DueTime, not NextRunTime: a bubble task waiting on its bubble has a next run time in the past,
+                    // which read as "a task is about to run" forever and kept auto-upgrade paused (0.7.6 bug).
+                    if (task.IsEnabled && !task.IsLevelLocked && task.DueTime < nextEnabledTaskRun)
+                        nextEnabledTaskRun = task.DueTime;
 
                     if (notificationTask == null && task.IsNotificationVisible())
                     {

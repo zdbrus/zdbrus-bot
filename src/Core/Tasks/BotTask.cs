@@ -149,8 +149,10 @@ public abstract class BotTask
     ///     timer still runs it, but only 6 hours after it was due.
     /// </summary>
     public bool IsReady()
-        => !IsLevelLocked && (IsNotificationVisibleCore() ||
-                              (IsEnabled && DateTime.Now >= (string.IsNullOrEmpty(NotificationPath) ? NextRunTime : NextRunTime.AddHours(6))));
+        => !IsLevelLocked && (IsNotificationVisibleCore() || (IsEnabled && DateTime.Now >= DueTime));
+
+    /// <summary>When the timer next runs this task: its next run time, or 6 hours later for a bubble task.</summary>
+    public DateTime DueTime => string.IsNullOrEmpty(NotificationPath) ? NextRunTime : NextRunTime.AddHours(6);
 
     /// <summary>
     ///     The check the scheduler makes before it even looks at readiness: a popup can be clicked from here,

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.8 (2026-10-28)
+- **Fixed: auto-upgrade stopped buying (#2).** Since 0.7.6, a task waiting on its bubble looked like it was "about to run", so auto-upgrade stayed paused for good. It buys again.
+
 ## 0.7.7 (2026-10-28)
 - Fixed the log filling up with "[FAILED] Path broken ... menus/Upgrades is missing" lines (issue #2). Those checks are normal when a menu is closed; each one is now logged once per session instead of every few seconds. One player's log had grown to 17 MB.
 
