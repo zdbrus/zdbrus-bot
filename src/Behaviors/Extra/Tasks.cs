@@ -396,7 +396,16 @@ public class ChaosRiftTask : BotTask
             yield return Ui.Click(P.Notifications + "/ChaosRift", 2f);
         else
             yield return Ui.OpenGuildBuilding("chaosRift");
-        if (!Ui.Visible(R)) yield break;
+        if (!Ui.Visible(R))
+        {
+            Logger.Warning("[Chaos Rift] The Chaos Rift screen did not open; trying the holy upgrade bubble instead.");
+            if (_holyUpgrades.Value && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade"))
+            {
+                yield return Ui.Click(P.Notifications + "/GuardianHolyUpgrade", 2f);
+                yield return HolyUpgrades();
+            }
+            yield break;
+        }
 
         yield return HitAll();
 
@@ -417,39 +426,48 @@ public class ChaosRiftTask : BotTask
         if (_holyUpgrades.Value)
         {
             yield return Ui.Click(UI + "/actionButtons/upgrades", 2f);
-            if (Ui.Visible(MQ))
-            {
-                var wanted = (_holyGuardians.Value ?? string.Empty).Split(',')
-                    .Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
-                foreach (var g in Ui.VisibleChildren(MQ + "/guardianList").Where(Ui.Clickable).ToList())
-                {
-                    if (wanted.Count == 0) break;
-                    yield return Ui.Click(g, 1.2f);
-                    var name = Ui.Text(MQ + "/guardianPreview/info/guardianName");
-                    if (!wanted.Any(w => w.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
-                    yield return Ui.Click(MQ + "/submenus/submenuButtons/chaosRift", 1.2f);
-                    for (var n = 0; n < 10; n++)
-                    {
-                        var cost = Ui.NumberAt(Holy + "/layout/costText");
-                        var orbsBefore = Ui.NumberAt(Orbs);
-                        if (cost <= 0 || orbsBefore < cost || !Ui.Clickable(Holy)) break;
-                        var upgraded = false;
-                        yield return Ui.ClickUntil(Ui.Find(Holy),
-                            () => Ui.NumberAt(Orbs) < orbsBefore ||
-                                  Ui.NumberAt(Holy + "/layout/costText") != cost,
-                            value => upgraded = value, "holy damage upgrade", 1.2f, 2f);
-                        if (!upgraded) break;
-                    }
-                }
-
-                yield return Ui.Click(MQ + "/closeButton", 1.5f);
-            }
+            yield return HolyUpgrades();
         }
-
         if (_hits >= 30) NextRunTime = DateTime.Now.AddMinutes(2);
         yield return Ui.Click(R + "/closeButton");
     }
 
+    private IEnumerator HolyUpgrades()
+    {
+        if (!Ui.Visible(MQ))
+        {
+            Logger.Warning("[Chaos Rift] Magic Quarters did not open; holy upgrades skipped.");
+            yield break;
+        }
+
+        var wanted = (_holyGuardians.Value ?? string.Empty).Split(',')
+            .Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+        var done = 0;
+        foreach (var g in Ui.VisibleChildren(MQ + "/guardianList").Where(Ui.Clickable).ToList())
+        {
+            if (wanted.Count == 0) break;
+            yield return Ui.Click(g, 1.2f);
+            var name = Ui.Text(MQ + "/guardianPreview/info/guardianName");
+            if (!wanted.Any(w => w.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
+            yield return Ui.Click(MQ + "/submenus/submenuButtons/chaosRift", 1.2f);
+            for (var n = 0; n < 10; n++)
+            {
+                var cost = Ui.NumberAt(Holy + "/layout/costText");
+                var orbsBefore = Ui.NumberAt(Orbs);
+                if (cost <= 0 || orbsBefore < cost || !Ui.Clickable(Holy)) break;
+                var upgraded = false;
+                yield return Ui.ClickUntil(Ui.Find(Holy),
+                    () => Ui.NumberAt(Orbs) < orbsBefore ||
+                          Ui.NumberAt(Holy + "/layout/costText") != cost,
+                    value => upgraded = value, "holy damage upgrade", 1.2f, 2f);
+                if (!upgraded) break;
+                done++;
+            }
+        }
+
+        Logger.Info($"[Chaos Rift] Holy upgrades confirmed: {done}; orbs of light now {Ui.NumberAt(Orbs):0}.");
+        yield return Ui.Click(MQ + "/closeButton", 1.5f);
+    }
     private IEnumerator HitAll()
     {
         // Moon stones go first; the game switches the same button to eclipse stones when they run out.

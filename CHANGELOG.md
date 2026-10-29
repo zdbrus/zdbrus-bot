@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.23 (2026-10-29)
+- Chaos Rift: live log showed it finishing in 5s doing nothing while the Holy Upgrade bubble stayed lit. It now warns when the Chaos Rift screen does not open and then opens Holy Upgrade from its own bubble, and logs how many holy upgrades were confirmed and the orbs of light left.
+
 ## 0.7.22 (2026-10-29)
 - Awaken Heroes waits up to 5s for the Awaken button to become clickable again after an awakening (live log showed it stopping after 1 of several affordable awakenings).
 
