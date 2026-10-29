@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Firebot.Behaviors.Extra;
 using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Town.Oracle;
@@ -11,20 +14,35 @@ namespace Firebot.Behaviors.Town;
 public class DailyRewardsTask : BotTask
 {
     private const float MenuOpenDelay = 2f;
+    private static readonly string[] NotificationNames =
+        { "MysteryBox", "CheckIn", "ScarabGameShopFreeToken", "OraclesGift" };
+
+    internal override IEnumerable<string> HandledNotificationNames => NotificationNames;
+
+    protected override bool IsNotificationVisibleCore()
+        => IsEnabled && DateTime.Now >= BubbleQuietUntil &&
+           NotificationNames.Any(name => Ui.Visible(P.Notifications + "/" + name));
 
     public override IEnumerator Execute()
     {
-        yield return Notifications.MysteryBox;
-        yield return new WaitForSeconds(MenuOpenDelay);
-        yield return Store.ClaimMysteryBox;
-        NextRunTime = Store.MysteryBoxNextRunTime;
-        yield return Store.Close;
+        var notificationTriggered = NotificationNames.Any(name => Ui.Visible(P.Notifications + "/" + name));
+        if (!notificationTriggered || Ui.Visible(P.Notifications + "/MysteryBox"))
+        {
+            yield return Notifications.MysteryBox;
+            yield return new WaitForSeconds(MenuOpenDelay);
+            yield return Store.ClaimMysteryBox;
+            NextRunTime = Store.MysteryBoxNextRunTime;
+            yield return Store.Close;
+        }
 
-        yield return Notifications.CheckIn;
-        yield return new WaitForSeconds(MenuOpenDelay);
-        yield return Store.ClaimCheckIn;
-        NextRunTime = Store.CheckInNextRunTime;
-        yield return Store.Close;
+        if (!notificationTriggered || Ui.Visible(P.Notifications + "/CheckIn"))
+        {
+            yield return Notifications.CheckIn;
+            yield return new WaitForSeconds(MenuOpenDelay);
+            yield return Store.ClaimCheckIn;
+            NextRunTime = Store.CheckInNextRunTime;
+            yield return Store.Close;
+        }
 
         if (!PlayerStats.TryGetCharacterLevel(out var level))
         {
@@ -32,7 +50,8 @@ public class DailyRewardsTask : BotTask
             yield break;
         }
 
-        if (level >= LevelRequirements.ScarabGameShop)
+        if (level >= LevelRequirements.ScarabGameShop &&
+            (!notificationTriggered || Ui.Visible(P.Notifications + "/ScarabGameShopFreeToken")))
         {
             yield return Notifications.ScarabGameShopFreeToken;
             yield return new WaitForSeconds(MenuOpenDelay);
@@ -44,7 +63,8 @@ public class DailyRewardsTask : BotTask
         // Fail-closed here, unlike BotTask.IsLevelLocked: the Oracle gift is a bonus on top of the check-in,
         // and the menu only exists at LevelRequirements.Oracle — with no level read there is no reason to
         // trust that it is there.
-        if (level < LevelRequirements.Oracle)
+        if (level < LevelRequirements.Oracle ||
+            (notificationTriggered && !Ui.Visible(P.Notifications + "/OraclesGift")))
             yield break;
 
         yield return Notifications.OraclesGift;

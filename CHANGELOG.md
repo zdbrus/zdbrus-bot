@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.13 (2026-10-29)
+- Daily rewards, Warfront loot and Free Pickaxes now run as soon as their notification bubbles appear instead of waiting for their timers.
+- The free-reward bubble scanner now includes Chaos Rift Supplies and Guardian Holy Upgrade; existing custom bubble lists are preserved.
+
 ## 0.7.12 (2026-10-29)
 - The F1 settings and F2 status windows now have a brighter sci-fi HUD treatment with cyan/orange corner accents and clearer interactive section headers.
 - Slightly smaller setting labels and wider section-title insets help keep long names readable.

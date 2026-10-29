@@ -1,4 +1,7 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using Firebot.Behaviors.Extra;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Guild.Shop;
 using Firebot.GameModel.Shared;
@@ -11,6 +14,10 @@ public class FreePickaxesTask : BotTask
     private MelonPreferences_Entry<int> _pickaxeClaimThreshold;
 
     private int PickaxeClaimThreshold => _pickaxeClaimThreshold?.Value ?? 1;
+    internal override IEnumerable<string> HandledNotificationNames => new[] { "FreePickaxes" };
+
+    protected override bool IsNotificationVisibleCore()
+        => IsEnabled && DateTime.Now >= BubbleQuietUntil && Ui.Visible(P.Notifications + "/FreePickaxes");
 
     public override int MinimumLevel => LevelRequirements.FreePickaxes;
 

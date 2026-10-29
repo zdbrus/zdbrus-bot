@@ -455,6 +455,12 @@ public class ScarabMilestonesTask : BotTask
 /// </summary>
 public class BubbleRewardsTask : BotTask
 {
+    private const string PreviousDefaultBubbles =
+        "SignIn,LockerRewards,PiratesPrize,HallOfHeroes,TowerOfSouls,Prophet,Mercenaries,AncientArtifact," +
+        "TalentAvailable,GuardianEvolution,GuardianRarity,WarMachinesRarity,WarmachineUnlocked," +
+        "ScarabGameBeastRelease,UnlockLedra,UnlockYamanoth,UnlockKramatak,BattleLive";
+    private const string DefaultBubbles = PreviousDefaultBubbles + ",ChaosRiftSupplies,GuardianHolyUpgrade";
+
     private static readonly Regex FreeButton =
         new(@"^(claim|collect|free|getfree|claimall|claimbutton|collectbutton|claimallbutton|collectall|purchasefreebutton)", RegexOptions.IgnoreCase);
 
@@ -464,11 +470,9 @@ public class BubbleRewardsTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _bubbles = c.CreateEntry("bubbles",
-            "SignIn,LockerRewards,PiratesPrize,HallOfHeroes,TowerOfSouls,Prophet,Mercenaries,AncientArtifact," +
-            "TalentAvailable,GuardianEvolution,GuardianRarity,WarMachinesRarity,WarmachineUnlocked," +
-            "ScarabGameBeastRelease,UnlockLedra,UnlockYamanoth,UnlockKramatak,BattleLive",
+        _bubbles = c.CreateEntry("bubbles", DefaultBubbles,
             "Bubbles", "Notification bubbles to open for free rewards (comma-separated bubble names).");
+        if (_bubbles.Value == PreviousDefaultBubbles) _bubbles.Value = DefaultBubbles;
     }
 
     internal override IEnumerable<string> HandledNotificationNames => BubbleNames();
