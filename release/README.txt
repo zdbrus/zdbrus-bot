@@ -19,6 +19,7 @@ Upgrade tasks skip preview scans when the relevant currency is at or below its r
 cost, currency or inventory changes after purchases, and stop when progress cannot be confirmed.
 Reward logs report observed state changes without claiming a reward was granted unless the game
 exposes a reliable receipt.
+Temple prestige triggers on a stalled run, or once the gold boost grows slower than half the previous run's rate (adjustable, 0 = off); it never uses the paid 2x.
 The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
 The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
 

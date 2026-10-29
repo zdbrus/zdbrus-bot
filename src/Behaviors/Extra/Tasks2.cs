@@ -334,6 +334,10 @@ public class TemplePrestigeTask : BotTask
     private MelonPreferences_Entry<int> _minHours;
     private MelonPreferences_Entry<int> _bestStage;
     private MelonPreferences_Entry<string> _bestAt;
+    private MelonPreferences_Entry<int> _efficiency;
+    private MelonPreferences_Entry<double> _lastGain;
+    private MelonPreferences_Entry<string> _lastGainAt;
+    private MelonPreferences_Entry<double> _refRate;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
@@ -342,6 +346,11 @@ public class TemplePrestigeTask : BotTask
         _minGain = c.CreateEntry("min_gain_percent", 100, "Minimum Gold Boost %",
             "Never empower for less than this extra gold (the +% the temple shows).");
         _minHours = c.CreateEntry("min_hours_played", 1, "Minimum Hours In Run", "Never empower a run younger than this.");
+        _efficiency = c.CreateEntry("efficiency_percent", 50, "Empower When Gain Rate Below %",
+            "Empower once the gold boost grows slower than this % of the previous run's average growth per hour. 0 turns this rule off; the stall rule above still applies.");
+        _lastGain = c.CreateEntry("last_gain", -1.0, "Last Gold Boost Sample", "Kept by the bot.", is_hidden: true);
+        _lastGainAt = c.CreateEntry("last_gain_at", "", "Last Sample Time", "Kept by the bot.", is_hidden: true);
+        _refRate = c.CreateEntry("reference_rate", 0.0, "Previous Run Gain Rate", "Kept by the bot.", is_hidden: true);
         _bestStage = c.CreateEntry("best_stage", 0, "Best Stage", "Highest stage seen this run (kept by the bot).", is_hidden: true);
         _bestAt = c.CreateEntry("best_stage_at", "", "Best Stage Time", "When the highest stage was reached (kept by the bot).", is_hidden: true);
     }
@@ -380,7 +389,12 @@ public class TemplePrestigeTask : BotTask
         BubbleQuietUntil = DateTime.Now.AddMinutes(15);
         NextRunTime = DateTime.Now.AddMinutes(30);
         var stalled = HoursSinceProgress();
-        if (stalled < _stallHours.Value)
+        var isStalled = stalled >= _stallHours.Value;
+        var sampleDue = _efficiency.Value > 0 && _refRate.Value > 0 &&
+                        (!DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
+                             DateTimeStyles.RoundtripKind, out var sampledAt) ||
+                         (DateTime.Now - sampledAt).TotalMinutes >= 60);
+        if (!isStalled && !sampleDue)
         {
             Logger.Debug($"Temple: best stage {_bestStage.Value}, {stalled:0.#}h without a new one (empowers after {_stallHours.Value}h).");
             yield break;
@@ -395,7 +409,20 @@ public class TemplePrestigeTask : BotTask
         var played = TimeSpan.TryParse(playedText, out var ts) ? ts.TotalHours : 0;
         var dayMatch = Regex.Match(playedText, @"(\d+)d");
         if (dayMatch.Success) played = Math.Max(played, int.Parse(dayMatch.Groups[1].Value) * 24);
-        Logger.Info($"Temple: stalled at stage {_bestStage.Value} for {stalled:0.#}h, gold boost +{gain}%, run {played:0.#}h.");
+        Logger.Info($"Temple: stage {_bestStage.Value}, {stalled:0.#}h without a new best, gold boost +{gain}%, run {played:0.#}h.");
+
+        if (!isStalled)
+        {
+            var reason = EvaluateRate(gain, out var inefficient);
+            if (!inefficient)
+            {
+                Logger.Info($"Temple: keeping the run ({reason}).");
+                yield return Ui.Click(T + "/closeButton");
+                yield break;
+            }
+
+            Logger.Info($"Temple: gain rate dropped ({reason}); empowering if the minimums are met.");
+        }
 
         if (gain < _minGain.Value || played < _minHours.Value || !Ui.Clickable(Info + "/openEmpowerButton"))
         {
@@ -466,9 +493,43 @@ public class TemplePrestigeTask : BotTask
             yield break;
         }
 
+        if (played > 0 && gain > 0 && gain < 1e300) _refRate.Value = gain / played;
+        _lastGain.Value = -1;
+        _lastGainAt.Value = "";
         _bestStage.Value = 0;
         _bestAt.Value = "";
         MelonPreferences.Save();
+    }
+
+    /// <summary>Compares the gold boost growth per hour since the last sample with the previous run's average.</summary>
+    private string EvaluateRate(double gain, out bool inefficient)
+    {
+        inefficient = false;
+        if (gain <= 0 || gain >= 1e300) return "gold boost unreadable";
+
+        var now = DateTime.Now;
+        var previous = _lastGain.Value;
+        var hasSample = previous >= 0 &&
+                        DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
+                            DateTimeStyles.RoundtripKind, out var sampleAt);
+        DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out sampleAt);
+        var hours = (now - sampleAt).TotalHours;
+
+        if (hasSample && gain >= previous && hours >= 0.25)
+        {
+            var rate = (gain - previous) / hours;
+            var limit = _refRate.Value * _efficiency.Value / 100.0;
+            inefficient = rate < limit;
+            _lastGain.Value = gain;
+            _lastGainAt.Value = now.ToString("o");
+            MelonPreferences.Save();
+            return $"+{gain - previous:0.##}% over {hours:0.#}h = {rate:0.##}%/h vs limit {limit:0.##}%/h";
+        }
+
+        _lastGain.Value = gain;
+        _lastGainAt.Value = now.ToString("o");
+        MelonPreferences.Save();
+        return "first sample for this run";
     }
 }
 
