@@ -92,7 +92,7 @@ internal static class UiTheme
     public const float SectionFontSize = 24f;
     public const float DetailTitleFontSize = 23f;
     public const float DetailFontSize = 21f;
-    public const float LabelFontSize = 26f;
+    public const float LabelFontSize = 24f;
     public const float ButtonFontSize = 24f;
     public const float HintFontSize = 21f;
 
@@ -129,7 +129,7 @@ internal static class UiTheme
     public const float InputHeight = 38f;
     public const float InputInsetRight = 21f;
     public const float InputTextInset = 7f;
-    public const float SectionInsetLeft = 14f;
+    public const float SectionInsetLeft = 21f;
     public const float SectionInsetRight = 42f;
     public const float SectionMarkerInset = 14f;
 
@@ -174,6 +174,7 @@ internal static class UiTheme
     public static readonly Color CyanGlow = new(0.271f, 0.827f, 0.902f, 0.18f);
     public static readonly Color TabIdle = new(0.067f, 0.110f, 0.133f, 1f);
     public static readonly Color TabActive = new(0.110f, 0.235f, 0.275f, 1f);
+    public static readonly Color OrangeGlow = new(1f, 0.541f, 0.239f, 0.18f);
     public const float TabBarHeight = 46f;
     public const float TabGap = 6f;
     public const float TabFontSize = 19f;

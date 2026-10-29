@@ -79,8 +79,18 @@ internal sealed class UiWindow
             new Vector2(0f, -UiTheme.HeaderHeight - UiTheme.GlowLine), new Vector2(0f, -UiTheme.HeaderHeight));
         Strip("hudTL1", window, UiTheme.Cyan, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -3f), new Vector2(UiTheme.Bracket, 0f));
         Strip("hudTL2", window, UiTheme.Cyan, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -UiTheme.Bracket), new Vector2(3f, 0f));
+        Strip("hudTRGlow", window, UiTheme.OrangeGlow, new Vector2(1f, 1f), new Vector2(1f, 1f),
+            new Vector2(-UiTheme.Bracket - 5f, -5f), new Vector2(0f, 0f));
+        Strip("hudBLGlow", window, UiTheme.CyanGlow, Vector2.zero, Vector2.zero,
+            new Vector2(0f, 0f), new Vector2(UiTheme.Bracket + 5f, 5f));
+        Strip("hudBL1", window, UiTheme.Cyan, Vector2.zero, Vector2.zero, new Vector2(0f, 0f), new Vector2(UiTheme.Bracket, 3f));
+        Strip("hudBL2", window, UiTheme.Cyan, Vector2.zero, Vector2.zero, new Vector2(0f, 0f), new Vector2(3f, UiTheme.Bracket));
+        Strip("hudBRGlow", window, UiTheme.OrangeGlow, new Vector2(1f, 0f), new Vector2(1f, 0f),
+            new Vector2(-UiTheme.Bracket - 5f, -3f), new Vector2(0f, 3f));
         Strip("hudBR1", window, UiTheme.Accent, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-UiTheme.Bracket, 0f), new Vector2(0f, 3f));
         Strip("hudBR2", window, UiTheme.Accent, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-3f, 0f), new Vector2(0f, UiTheme.Bracket));
+        Strip("hudTR1", window, UiTheme.Accent, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-UiTheme.Bracket, -3f), new Vector2(0f, 0f));
+        Strip("hudTR2", window, UiTheme.Accent, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-3f, -UiTheme.Bracket), new Vector2(0f, 0f));
     }
 
     private static void Strip(string name, Transform parent, Color color, Vector2 anchorMin, Vector2 anchorMax,

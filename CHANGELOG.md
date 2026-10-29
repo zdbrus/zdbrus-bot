@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.12 (2026-10-29)
+- The F1 settings and F2 status windows now have a brighter sci-fi HUD treatment with cyan/orange corner accents and clearer interactive section headers.
+- Slightly smaller setting labels and wider section-title insets help keep long names readable.
+
 ## 0.7.11 (2026-10-29)
 - The F4 planner now ranks the next war machine level and blueprint upgrades by power gained per resource, using separate rankings for tokens, components, blueprints and ethereal shards.
 - Upgrade costs sampled in-game are shown directly; prices at unsampled levels are marked as estimates. The new advisor is read-only and does not spend resources.

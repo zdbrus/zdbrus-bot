@@ -208,6 +208,20 @@ internal static class UiContentBuilder
 
         var button = header.gameObject.AddComponent<Button>();
         button.targetGraphic = header;
+        var colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1.16f, 1.16f, 1.16f, 1f);
+        colors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
+        colors.selectedColor = Color.white;
+        colors.fadeDuration = 0.08f;
+        button.colors = colors;
+
+        var rail = UiFactory.CreateImage("sectionRail", header.transform, UiTheme.Cyan, false);
+        rail.rectTransform.anchorMin = Vector2.zero;
+        rail.rectTransform.anchorMax = new Vector2(0f, 1f);
+        rail.rectTransform.offsetMin = Vector2.zero;
+        rail.rectTransform.offsetMax = new Vector2(3f, 0f);
+
         button.onClick.AddListener((Action)(() => ToggleSection(section)));
 
         var title = UiFactory.CreateLabel(header.transform, group.Title, UiTheme.SectionFontSize, UiTheme.Accent,
@@ -220,6 +234,7 @@ internal static class UiContentBuilder
 
         var marker = UiFactory.CreateLabel(header.transform, "-", UiTheme.SectionFontSize, UiTheme.TextMuted,
             TextAlignmentOptions.Right);
+        marker.color = UiTheme.Cyan;
         var markerRect = marker.rectTransform;
         markerRect.anchorMin = Vector2.zero;
         markerRect.anchorMax = Vector2.one;
