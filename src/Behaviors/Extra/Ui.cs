@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -67,6 +67,26 @@ internal static class Ui
     public static IEnumerator Click(string path, float wait = -1) => Click(Find(path), wait, path);
 
     public static IEnumerator Click(string path, float wait, string label) => Click(Find(path), wait, label);
+
+    /// <summary>Sends a real pointer down/up/click to the object, for tiles whose logic listens to pointer events instead of Button.onClick.</summary>
+    public static void PointerClick(Transform t)
+    {
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (t == null || es == null) return;
+        try
+        {
+            var data = new UnityEngine.EventSystems.PointerEventData(es)
+                { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, clickCount = 1 };
+            var go = t.gameObject;
+            UnityEngine.EventSystems.ExecuteEvents.Execute(go, data, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+            UnityEngine.EventSystems.ExecuteEvents.Execute(go, data, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+            UnityEngine.EventSystems.ExecuteEvents.Execute(go, data, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+        }
+        catch (Exception e)
+        {
+            Logger.Debug("[Extra] Pointer click failed on " + t.name + ": " + e.Message);
+        }
+    }
 
     public static IEnumerator Click(Transform t, float wait = -1, string label = null)
     {

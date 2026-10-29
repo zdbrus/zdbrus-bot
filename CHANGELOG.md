@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.24 (2026-10-29)
+- Open Chests: the chest tiles never opened their preview from the Button callback (logged 'Clicking Common did not open its preview' on every run). If the button click shows nothing, it now sends a real pointer down/up/click to the tile. Retries every 20 minutes instead of 2 hours. Not yet live-verified.
+
 ## 0.7.23 (2026-10-29)
 - Chaos Rift: live log showed it finishing in 5s doing nothing while the Holy Upgrade bubble stayed lit. It now warns when the Chaos Rift screen does not open and then opens Holy Upgrade from its own bubble, and logs how many holy upgrades were confirmed and the orbs of light left.
 

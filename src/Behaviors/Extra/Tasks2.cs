@@ -1060,7 +1060,7 @@ public class OpenChestsTask : BotTask
 
     public override IEnumerator Execute()
     {
-        NextRunTime = DateTime.Now.AddHours(2);
+        NextRunTime = DateTime.Now.AddMinutes(20);
         var skip = (_skip.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToHashSet();
         yield return Ui.Click(Bag, 1.5f);
         yield return Ui.WaitFor(Inv);
@@ -1098,7 +1098,14 @@ public class OpenChestsTask : BotTask
             var name = chest.name;
             var beforeQuantity = Ui.NumberOf(chest.Find("quantity"));
             yield return Ui.Click(chest, 1.2f);
-            yield return Ui.WaitFor(Preview);
+            yield return Ui.WaitFor(Preview, 2f);
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Info($"[Chests] Button click on {name} showed no preview; sending a pointer click.");
+                Ui.PointerClick(chest);
+                yield return Ui.WaitFor(Preview, 4f);
+            }
+
             if (!Ui.Visible(Preview))
             {
                 Logger.Warning($"[Chests] Clicking {name} did not open its preview; stopping.");
