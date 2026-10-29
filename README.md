@@ -34,7 +34,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 ## Keys
 
-<img src="assets/panel.jpg" alt="Zdbrus Bot settings panel in game" width="420" align="right">
+<img src="assets/panel.jpg" alt="Zdbrus Bot settings panel in game, Battle tab" width="380" align="right">
 
 
 | Key | Action |

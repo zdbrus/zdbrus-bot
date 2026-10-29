@@ -9,6 +9,8 @@ namespace Firebot.GameModel.Primitives;
 
 public class CachedGameButton : GameButton
 {
+    private static readonly System.Collections.Generic.HashSet<string> LoggedMissing = new();
+
     private Transform _cachedRoot;
 
     public CachedGameButton(string path = null, GameElement parent = null, Transform transform = null)
@@ -23,7 +25,7 @@ public class CachedGameButton : GameButton
             _cachedRoot = ResolvePath(Path);
 
             if (_cachedRoot == null && !string.IsNullOrEmpty(Path))
-                Debug($"[FAILED] Critical: Could not resolve Transform. Path: {Path}");
+                if (LoggedMissing.Add(Path)) Debug($"[FAILED] Critical: Could not resolve Transform. Path: {Path}");
 
             return _cachedRoot;
         }

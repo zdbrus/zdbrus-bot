@@ -10,7 +10,9 @@ namespace Firebot.GameModel.Base;
 public class GameElement
 {
     private readonly string _className;
-    private readonly HashSet<string> _loggedFailures = new();
+    // Shared by every GameElement: code creates a new element on each check (for example "is the upgrades menu
+    // open?" every few seconds), so a per-object set logged the same missing path thousands of times.
+    private static readonly HashSet<string> _loggedFailures = new();
 
     public GameElement(string path = null, GameElement parent = null, Transform transform = null)
     {

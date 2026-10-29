@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.7 (2026-10-28)
+- Fixed the log filling up with "[FAILED] Path broken ... menus/Upgrades is missing" lines (issue #2). Those checks are normal when a menu is closed; each one is now logged once per session instead of every few seconds. One player's log had grown to 17 MB.
+
 ## 0.7.6 (2026-10-28)
 - The bot now starts by itself when the game loads (Auto Start is on by default for new installs). If it is off, the log says clearly that nothing will run until you press F7. A stopped bot is why bubbles, boss retries and tasks never got done.
 - Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) now only run when that icon shows, instead of opening their screens on a timer to look. A 6-hour safety check still runs them in case a bubble is missed. Fewer wasted screens, more time farming.
