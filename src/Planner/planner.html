@@ -329,6 +329,14 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
     </div>
   </section>
 
+  <section class="panel shards" aria-label="War machine upgrade advisor">
+    <div class="panel-h"><h2>War Machine Upgrade Advisor</h2><span class="note" id="upgrade-sub"></span></div>
+    <div class="panel-b">
+      <div class="ledger-wrap"><table class="ledger" id="upgrades"></table></div>
+      <p class="note">Ranks the next machine level and blueprint upgrades separately for each resource, using your selected campaign or arena power. Every resource shown for a machine level upgrade is required. Observed in-game: level upgrades cost 500 expedition tokens, 20 screws, 12 cogs and 1 metal at machine levels 1, 13 and 15; blueprint costs sampled at levels 0, 4 and 20 match 100 + 5 per current blueprint level. Unsampled levels are marked ~ and estimated from those observations. This advisor is read-only. Jewel upgrades are ranked separately below by ethereal shards.</p>
+    </div>
+  </section>
+
   <section class="panel shards" aria-label="Ethereal shard advisor">
     <div class="panel-h"><h2>Ethereal shard advisor</h2><span class="note" id="shard-sub"></span>
       <span class="spend" id="spend-wrap" hidden>
@@ -366,6 +374,13 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
 
 const SPEC = { DAMAGE: 'damage', TANK: 'tank', HEALER: 'healer' };
 const ATTRS = ['damage', 'health', 'armor'];
+const MACHINE_LEVEL_RESOURCES = [
+  { resource: 'Expedition tokens', cost: 500 },
+  { resource: 'Screws', cost: 20 },
+  { resource: 'Cogs', cost: 12 },
+  { resource: 'Metal', cost: 1 },
+];
+const blueprintUpgradeCost = (level) => 100 + 5 * Math.max(0, level || 0);
 
 // Base attributes: wiki War Machines page
 const WAR_MACHINES = {
@@ -1088,11 +1103,81 @@ function renderShards(total) {
       el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per))))));
 }
 
+function machineUpgradeOptions() {
+  const acct = account();
+  const out = [];
+  const crewFor = (wm) => {
+    const ids = S.squad.includes(wm.id) ? (S.crews[wm.id] || []) : (wm.gameCrew || []);
+    return ids.map(heroById).filter(Boolean);
+  };
+  const score = (wm, crew) => scoreOf(E.machineStats(wm, acct, crew));
+
+  for (const wm of S.machines.filter(m => m.owned)) {
+    const crew = crewFor(wm);
+    const level = Number(wm.level) || 1;
+    const current = score(wm, crew);
+    const nextLevel = { ...wm, level: level + 1 };
+    const levelGain = score(nextLevel, crew) - current;
+    if (levelGain > 0) for (const cost of MACHINE_LEVEL_RESOURCES) {
+      out.push({
+        resource: cost.resource, upgrade: `${E.WAR_MACHINES[wm.id].name} level`,
+        level: `${level} → ${level + 1}`, cost: cost.cost, gain: levelGain,
+        estimated: ![1, 13, 15].includes(level),
+        per: levelGain / cost.cost * 100,
+      });
+    }
+
+    const cap = E.blueprintCap(level);
+    for (const attr of ATTRS) {
+      const blueprintLevel = wm.blueprints?.[attr] || 0;
+      if (blueprintLevel >= cap) continue;
+      const next = {
+        ...wm,
+        blueprints: { ...wm.blueprints, [attr]: blueprintLevel + 1 },
+      };
+      const gain = score(next, crew) - current;
+      const cost = blueprintUpgradeCost(blueprintLevel);
+      if (gain > 0) out.push({
+        resource: 'Blueprints', upgrade: `${E.WAR_MACHINES[wm.id].name} ${attr}`,
+        level: `${blueprintLevel} → ${blueprintLevel + 1}`, cost, gain,
+        estimated: ![0, 4, 20].includes(blueprintLevel),
+        per: gain / cost * 100,
+      });
+    }
+  }
+  return out;
+}
+
+function renderUpgradeAdvisor() {
+  const resourceOrder = ['Expedition tokens', 'Screws', 'Cogs', 'Metal', 'Blueprints'];
+  const rows = machineUpgradeOptions().sort((a, b) =>
+    resourceOrder.indexOf(a.resource) - resourceOrder.indexOf(b.resource) || b.per - a.per);
+  $('#upgrade-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + ` · ${rows.length} options`;
+  const table = $('#upgrades');
+  if (!rows.length) {
+    table.replaceChildren(el('tr', {}, el('td', {}, 'No owned machine upgrades are currently available.')));
+    return;
+  }
+
+  let resource = '', rank = 0;
+  table.replaceChildren(
+    el('thead', {}, el('tr', {}, ...['Resource', 'Rank', 'Upgrade', 'Level', 'Cost', 'Power gained', 'Per 100'].map(x => el('th', {}, x)))),
+    el('tbody', {}, ...rows.map(r => {
+      rank = r.resource === resource ? rank + 1 : 1;
+      resource = r.resource;
+      return el('tr', {},
+        el('td', {}, r.resource), el('td', {}, String(rank)), el('td', {}, r.upgrade),
+        el('td', {}, r.level), el('td', {}, (r.estimated ? '~' : '') + r.cost.toLocaleString()),
+        el('td', {}, '+' + fmt(r.gain)), el('td', { class: rank === 1 ? 'best' : '' }, (r.estimated ? '~' : '+') + fmt(r.per)));
+    })));
+}
+
 function render() {
   renderLive();
   const acct = account();
   const all = S.squad.map(id => statsFor(id));
   const total = all.reduce((a, st) => a + scoreOf(st), 0);
+  renderUpgradeAdvisor();
   renderShards(total);
   countTo($('#pow'), 'squad', total);
   $('#pow-label').textContent = S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power';

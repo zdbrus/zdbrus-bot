@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.11 (2026-10-29)
+- The F4 planner now ranks the next war machine level and blueprint upgrades by power gained per resource, using separate rankings for tokens, components, blueprints and ethereal shards.
+- Upgrade costs sampled in-game are shown directly; prices at unsampled levels are marked as estimates. The new advisor is read-only and does not spend resources.
+
 ## 0.7.10 (2026-10-29)
 - Notification rewards now run as soon as a configured bubble appears, instead of waiting for the 10-minute sweep. Bubbles with no free reward still get a 3-hour cooldown.
 - Meteorite Research now buys the first affordable upgrade instead of opening every upgrade preview before spending.

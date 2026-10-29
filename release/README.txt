@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.10 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.11 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Based on Firebot by danilogmoura (MIT).
@@ -14,6 +14,7 @@ FEATURES
 See the release notes for the full list. Highlights include notification-bubble tasks, daily rewards,
 research and town automation, map missions, arena, talents, boss retries, and the F4 War Machine Planner.
 The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
+The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
 
 KEYS
 F1 settings   F2 status   F4 planner   F6 auto-upgrade   F7 bot on/off   F8 auto-skill   F9 screen map

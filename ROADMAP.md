@@ -10,7 +10,7 @@
 Ideas for the next updates. Nothing here is promised; it is the list we work from.
 
 ## Next up
-- **Upgrade advisor.** In the planner, rank every possible upgrade (machine level, blueprint, jewel) by war machine power gained per resource spent. The War Machine Upgrade task can then follow that list.
+- **Upgrade advisor (read-only rankings implemented).** The planner ranks the next machine level and blueprint upgrades separately by their required resources; the existing Ethereal shard advisor ranks jewel upgrades separately. No level or blueprint spending is automated. In-game cost samples: machine levels 1, 13 and 15; blueprint levels 0, 4 and 20. Unsampled prices are marked as estimates; validate additional cost changes before connecting any ranking to automation.
 - **Arena smart picks.** Read each opponent's squad from the battle preview and only fight the ones the math says you beat.
 
 ## Hero optimizer (new)
