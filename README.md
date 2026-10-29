@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 <img src="assets/logo.png" alt="Zdbrus Bot logo" width="180">
 
@@ -88,7 +88,7 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 
 Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run when that icon shows, so the bot does not open screens just to look. If a task's screen is already open, it carries on from there instead of walking back from town. Campaign, boss retries and chests run on their own timers.
 
-For notification bubbles without a dedicated task, the bot looks for free claim/collect buttons on the screens the bubble activates. The log reports button clicks and follow-up button state changes separately; those are not proof that the game granted the reward.
+For notification bubbles without a dedicated task, the bot looks for free claim/collect buttons on the screens the bubble activates. The log reports button clicks and follow-up button state changes separately; those are not proof that the game granted the reward. Upgrades, missions, rituals, training, vault and research actions also check for a visible change (currency, timer, button) after each click and stop instead of looping when none appears.
 
 Upgrade tasks skip preview scans when the relevant currency is at or below its reserve, check for a level, cost, currency, or inventory change after each purchase, and stop when progress cannot be confirmed. Reward tasks likewise report observed counter or claim-control changes without overstating them as confirmed rewards when the game exposes no reliable receipt.
 

@@ -40,13 +40,34 @@ public class Experiments : GameElement
                 var speedBtnPath =
                     $"/{Slot}{resource}/{Paths.MenusLoc.CanvasLoc.TownLoc.AlchemistLoc.ExperimentsLoc.SpeedupBtn}";
                 var button = new GameButton(speedBtnPath, this);
-                if (button.IsClickable()) yield return button.Click();
+                if (button.IsClickable())
+                {
+                    var claimButton = new GameButton(
+                        $"/{Slot}{resource}/{Paths.MenusLoc.CanvasLoc.TownLoc.AlchemistLoc.ExperimentsLoc.ClaimBtn}", this);
+                    var claimWasClickable = claimButton.IsClickable();
+                    var finishWasVisible = speedupFinish.IsVisible();
+                    var changed = false;
+                    yield return button.ClickUntil(
+                        () => !button.IsClickable() || speedupFinish.IsVisible() != finishWasVisible ||
+                              (!claimWasClickable && claimButton.IsClickable()),
+                        value => changed = value, $"Alchemist free finish ({resource})");
+                    if (changed) Logger.Info($"[Alchemist] Experiment {resource} free-finish state changed.");
+                }
             }
 
             var claimBtnPath =
                 $"/{Slot}{resource}/{Paths.MenusLoc.CanvasLoc.TownLoc.AlchemistLoc.ExperimentsLoc.ClaimBtn}";
             var gameButton = new GameButton(claimBtnPath, this);
-            if (gameButton.IsClickable()) yield return gameButton.Click();
+            if (!gameButton.IsClickable()) continue;
+
+            var beforeQuantity = ResourceQuantity(resource);
+            var claimed = false;
+            yield return gameButton.ClickUntil(
+                () => !gameButton.IsClickable() || ResourceQuantity(resource) > beforeQuantity,
+                value => claimed = value, $"Alchemist claim ({resource})");
+            if (claimed)
+                Logger.Info($"[Alchemist] Claim control or resource state changed for experiment {resource}; " +
+                            "reward receipt is not independently verified.");
         }
     }
 
@@ -60,8 +81,31 @@ public class Experiments : GameElement
                 continue; // Skip if experiment slot is already visible (i.e. experiment is active)
 
             var path = $"/{Type}{resource}/{Paths.MenusLoc.CanvasLoc.TownLoc.AlchemistLoc.ExperimentsLoc.StartBtn}";
+            var cost = new GameText(path + "/cost", this).GetParsedDouble();
+            var quantity = ResourceQuantity(resource);
+            if (cost <= 0)
+            {
+                Logger.Warning($"[Alchemist] Could not read the cost for experiment {resource}; not starting it.");
+                continue;
+            }
+
+            if (quantity < cost)
+            {
+                Logger.Info($"[Alchemist] Experiment {resource} needs {cost}; have {quantity}. Skipping start.");
+                continue;
+            }
+
             var gameButton = new GameButton(path, this);
-            if (gameButton.IsClickable()) yield return gameButton.Click();
+            if (!gameButton.IsClickable())
+            {
+                Logger.Info($"[Alchemist] Experiment {resource} start button is unavailable; skipping.");
+                continue;
+            }
+
+            var started = false;
+            yield return gameButton.ClickUntil(() => experimentSlot.IsVisible(),
+                value => started = value, $"Alchemist start ({resource})");
+            if (started) Logger.Info($"[Alchemist] Experiment {resource} started.");
         }
     }
 

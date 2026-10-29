@@ -72,11 +72,11 @@ public class MapMissionsTask : BotTask
         // Start new missions only while squads are free. With every squad busy there is nothing to start,
         // so the whole list is skipped instead of opening each mission to read "not enough squads".
         var free = FreeSquads;
-        if (free != 0)
+        if (free > 0)
         {
             foreach (var mission in ScanMissions(m => !m.IsActive && !m.IsCompleted, true).ToList())
             {
-                if (FreeSquads == 0) break;
+                if (FreeSquads <= 0) break;
 
                 yield return mission.Select();
 
@@ -87,12 +87,26 @@ public class MapMissionsTask : BotTask
                 }
 
                 var endsAt = mission.TimeRequired;
+                var squadsBefore = FreeSquads;
                 yield return MissionPreview.StartMission;
+                var started = false;
+                yield return Firebot.Behaviors.Extra.Ui.WaitUntil(
+                    () => mission.IsActive || (squadsBefore >= 0 && FreeSquads < squadsBefore),
+                    value => started = value, 5f);
+                if (!started)
+                {
+                    Logger.Warning("[Map Missions] Start control produced no active-mission or free-squad change; stopping new starts.");
+                    yield return MissionPreview.Close;
+                    break;
+                }
+
                 var due = endsAt.AddSeconds(-BotSettings.FreeSpeedupSeconds);
                 if (due < DateTime.Now) due = endsAt;
                 if (endsAt > DateTime.Now && (!earliest.HasValue || due < earliest.Value)) earliest = due;
             }
         }
+        else if (free < 0)
+            Logger.Warning("[Map Missions] Could not read the free-squad counter; skipping mission starts.");
         else
             Debug("All squads are busy; skipping new missions.");
 

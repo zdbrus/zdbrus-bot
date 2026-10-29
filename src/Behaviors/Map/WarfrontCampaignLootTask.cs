@@ -16,7 +16,8 @@ public class WarfrontCampaignLootTask : BotTask
     internal override IEnumerable<string> HandledNotificationNames => new[] { "WarfrontCampaign" };
 
     protected override bool IsNotificationVisibleCore()
-        => IsEnabled && DateTime.Now >= BubbleQuietUntil && Ui.Visible(P.Notifications + "/WarfrontCampaign");
+        => IsEnabled && DateTime.Now >= BubbleQuietUntil && DateTime.Now >= NextRunTime &&
+           Ui.Visible(P.Notifications + "/WarfrontCampaign");
 
     public override IEnumerator Execute()
     {
@@ -42,7 +43,16 @@ public class WarfrontCampaignLootTask : BotTask
         }
         else
             Logger.Warning("[Warfront] Loot claim produced no observable state change.");
-        NextRunTime = WarfrontLoot.NextRunTime;
+        if (stateChanged)
+            NextRunTime = WarfrontLoot.NextRunTime;
+        else
+        {
+            var retry = WarfrontLoot.NextRunTime;
+            if (retry <= DateTime.Now) retry = DateTime.Now.AddMinutes(15);
+            NextRunTime = retry;
+            BubbleQuietUntil = retry;
+        }
+
         yield return MapMission.Close;
     }
 }

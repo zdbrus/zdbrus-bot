@@ -12,6 +12,17 @@ public static class Preview
     public static bool IsMaxed =>
         new GameText(Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.PreviewLoc.MaxedTxt).IsVisible();
 
-    public static IEnumerator Start =>
-        new GameButton(Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.PreviewLoc.ActivateBtn).Click();
+    public static IEnumerator Start => StartAndVerify();
+
+    private static IEnumerator StartAndVerify()
+    {
+        if (!ResearchPanel.HasEmptySlot) yield break;
+
+        var button = new GameButton(Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.PreviewLoc.ActivateBtn);
+        yield return button.ClickUntil(() => !ResearchPanel.HasEmptySlot,
+            value =>
+            {
+                if (value) Firebot.Core.Logger.Info("[Research] A research slot was consumed.");
+            }, "Firestone research start");
+    }
 }

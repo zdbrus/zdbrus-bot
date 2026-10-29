@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.15 - auto-play mod for Firestone: Idle Clicker Online RPG
+﻿ZDBRUS BOT 0.7.17 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Based on Firebot by danilogmoura (MIT).
@@ -14,7 +14,7 @@ FEATURES
 See the release notes for the full list. Highlights include notification-bubble tasks, daily rewards,
 research and town automation, map missions, arena, talents, boss retries, and the F4 War Machine Planner.
 For bubbles without a dedicated task, the bot looks for free claim/collect buttons on activated screens.
-Its log distinguishes button clicks and later button state changes from independently verified rewards.
+Its log distinguishes button clicks and later button state changes from independently verified rewards. Upgrades, missions, rituals, training, vault and research actions also stop when no visible change follows a click.
 Upgrade tasks skip preview scans when the relevant currency is at or below its reserve, verify level,
 cost, currency or inventory changes after purchases, and stop when progress cannot be confirmed.
 Reward logs report observed state changes without claiming a reward was granted unless the game

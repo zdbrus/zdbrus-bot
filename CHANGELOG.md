@@ -1,4 +1,10 @@
-# Changelog
+﻿# Changelog
+
+## 0.7.17 (2026-10-29)
+- Map missions, Oracle rituals, guardian training, Chaos Rift, Awakening, Holy Upgrade, Scarab milestones, Pharaoh's Vault, Event Exchange, Expeditions, Alchemist and Library research now verify a visible state change (currency, claim button, timer or slot) after each click and stop instead of looping when none is seen.
+- Chaos Rift now owns its bubbles; Bubble Rewards and Scarab Game no longer overlap tasks that handle the same bubble.
+- Temple Prestige waits for a stage reset before resetting its stall tracker.
+- Logs state when a result is only a click/control change and not independently confirmed reward receipt. Not yet live-tested in game.
 
 ## 0.7.16 (2026-10-29)
 - Upgrade tasks now skip empty-currency preview scans, verify level/cost/currency changes after each purchase, and stop instead of repeating clicks when progress is not observed.

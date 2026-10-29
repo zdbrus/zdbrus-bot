@@ -303,18 +303,13 @@ public class ScarabGameTask : BotTask
             }
         }
 
-        if (_vault.Value && Ui.Clickable(H + "/actionButtons/pharaohVault"))
+        var dedicatedVaultTaskEnabled = BotManager.AllTasks
+            .OfType<PharaohsVaultTask>()
+            .Any(task => task.IsEnabled);
+        if (_vault.Value && !dedicatedVaultTaskEnabled && Ui.Clickable(H + "/actionButtons/pharaohVault"))
         {
             yield return Ui.Click(H + "/actionButtons/pharaohVault", 1.5f);
-            for (var n = 0; n < 10 && Ui.Visible(V); n++)
-            {
-                var cost = Ui.NumberAt(V + "/openButton/layout/costText");
-                if (cost <= 0 || Ui.NumberAt(Coins) < cost || !Ui.Clickable(V + "/openButton")) break;
-                yield return Ui.Click(V + "/openButton", 4f, "pharaoh's vault");
-                yield return Ui.CloseRewards();
-                if (Ui.MissingCurrency) break;
-            }
-
+            yield return PharaohsVaultTask.OpenAvailableVaults();
             if (Ui.Visible(V)) yield return Ui.Click(V + "/closeButton", 1f);
         }
 
@@ -333,6 +328,7 @@ public class TemplePrestigeTask : BotTask
     private const string T = P.Menus + "/TempleOfEternals";
     private const string Info = T + "/submenus/bgNew/prestigeSubmenu/adventureInfo";
     private const string Stage = P.Battle + "/topSideUI/stageProgression/currentStage/stageNum";
+    private const string PrestigeComplete = P.Popups + "/TOEPrestigeComplete";
     private MelonPreferences_Entry<int> _stallHours;
     private MelonPreferences_Entry<int> _minGain;
     private MelonPreferences_Entry<int> _minHours;
@@ -426,9 +422,11 @@ public class TemplePrestigeTask : BotTask
         }
 
         before = new HashSet<int>(Ui.VisibleChildren(P.Popups).Select(t => t.GetInstanceID()));
+        var stageBefore = Ui.NumberAt(Stage);
         yield return Ui.Click(empower.transform, 3f, "empower (prestige)");
 
         // The game may ask to confirm; press only an obvious confirm button in a newly opened popup.
+        var prestigeConfirmed = false;
         foreach (var confirmPopup in Ui.VisibleChildren(P.Popups).Where(t => !before.Contains(t.GetInstanceID())).ToList())
         {
             var yes = confirmPopup.GetComponentsInChildren<UnityEngine.UI.Button>()
@@ -436,8 +434,36 @@ public class TemplePrestigeTask : BotTask
                                      Regex.IsMatch(b.name, "^(confirm|yes|ok|accept|empower)", RegexOptions.IgnoreCase) &&
                                      !b.name.Contains("2x"));
             if (yes == null) continue;
+            if (string.Equals(confirmPopup.name, "TOEPrestigeComplete", StringComparison.OrdinalIgnoreCase))
+                prestigeConfirmed = true;
             yield return Ui.Click(yes.transform, 5f, "confirm empower");
             break;
+        }
+
+        if (!prestigeConfirmed)
+        {
+            var completionAppeared = false;
+            yield return Ui.WaitUntil(() => Ui.Visible(PrestigeComplete),
+                value => completionAppeared = value, 5f);
+            if (completionAppeared)
+            {
+                prestigeConfirmed = true;
+                yield return Ui.Click(PrestigeComplete + "/bg/confirmButton", 2f, "start after temple prestige");
+            }
+        }
+
+        var stageResetObserved = false;
+        if (stageBefore > 0)
+            yield return Ui.WaitUntil(() =>
+            {
+                var stageAfter = Ui.NumberAt(Stage);
+                return stageAfter > 0 && stageAfter < stageBefore;
+            }, value => stageResetObserved = value, 5f);
+
+        if (!prestigeConfirmed && !stageResetObserved)
+        {
+            Logger.Warning("Temple: no prestige completion or stage reset was observed; keeping the stall tracker.");
+            yield break;
         }
 
         _bestStage.Value = 0;
@@ -468,13 +494,30 @@ public class ScarabMilestonesTask : BotTask
         var list = Ui.Find(List);
         if (list != null)
         {
+            var confirmed = 0;
+            var unconfirmed = 0;
             for (var i = 0; i < list.childCount; i++)
             {
                 var claim = list.GetChild(i).Find("rewardRoot/claimButton");
                 if (!Ui.Clickable(claim)) continue;
-                yield return Ui.Click(claim, 1.5f, "scarab milestone");
+                var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                var changed = false;
+                yield return Ui.ClickUntil(claim,
+                    () => !Ui.Clickable(claim) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                    value => changed = value, "Scarab milestone", 1.5f);
+                if (!changed)
+                {
+                    unconfirmed++;
+                    Logger.Warning("[Scarab] Milestone claim had no observable state change; stopping claims.");
+                    break;
+                }
+
+                confirmed++;
                 yield return Ui.CloseRewards();
             }
+
+            Logger.Info($"[Scarab] Claim controls changed for {confirmed} milestone(s); " +
+                        $"{unconfirmed} claim(s) unconfirmed. Reward receipt is not independently verified.");
         }
 
         if (Ui.Visible(Popup)) yield return Ui.Click(Popup + "/closeButton", 0.8f);
@@ -522,7 +565,16 @@ public class BubbleRewardsTask : BotTask
     }
 
     private IEnumerable<string> BubbleNames()
-        => (_bubbles?.Value ?? string.Empty).Split(',').Select(s => s.Trim()).Where(s => s.Length > 0);
+    {
+        var ownedByEnabledTasks = BotManager.AllTasks
+            .Where(task => task != this && task.IsEnabled)
+            .SelectMany(task => task.HandledNotificationNames)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return (_bubbles?.Value ?? string.Empty).Split(',')
+            .Select(s => s.Trim())
+            .Where(s => s.Length > 0 && !ownedByEnabledTasks.Contains(s));
+    }
 
     private static HashSet<int> OpenRoots()
     {
@@ -654,17 +706,47 @@ public class PharaohsVaultTask : BotTask
         yield return Ui.OpenTownBuilding("tavern");
         yield return Ui.Click(P.Popups + "/TavernSelection/bg/scarabGame", 2.5f);
         yield return Ui.Click(S + "/helpCanvas/actionButtons/pharaohVault", 1.5f);
+        yield return OpenAvailableVaults();
+
+        if (Ui.Visible(V)) yield return Ui.Click(V + "/closeButton", 0.8f);
+        if (Ui.Visible(S)) yield return Ui.Click(S + "/closeButton");
+    }
+
+    internal static IEnumerator OpenAvailableVaults()
+    {
+        var opened = 0;
         for (var n = 0; n < 10 && Ui.Visible(V); n++)
         {
             var cost = Ui.NumberAt(V + "/openButton/layout/costText");
-            if (cost <= 0 || Ui.NumberAt(Coins) < cost || !Ui.Clickable(V + "/openButton")) break;
-            yield return Ui.Click(V + "/openButton", 4f, "pharaoh's vault");
+            var before = Ui.NumberAt(Coins);
+            if (cost <= 0)
+            {
+                Logger.Warning("[Pharaoh's Vault] Could not read the opening cost; stopping.");
+                break;
+            }
+
+            if (before < cost)
+            {
+                Logger.Info($"[Pharaoh's Vault] Need {cost} ancient coins; have {before}. No opening attempted.");
+                break;
+            }
+
+            var confirmed = false;
+            yield return Ui.ClickUntil(Ui.Find(V + "/openButton"),
+                () => Ui.NumberAt(Coins) < before,
+                value => confirmed = value, "Pharaoh's Vault", 4f, 3f);
+            if (!confirmed)
+            {
+                Logger.Warning("[Pharaoh's Vault] Ancient coin balance did not decrease; stopping to avoid retrying.");
+                break;
+            }
+
+            opened++;
             yield return Ui.CloseRewards();
             if (Ui.MissingCurrency) break;
         }
 
-        if (Ui.Visible(V)) yield return Ui.Click(V + "/closeButton", 0.8f);
-        if (Ui.Visible(S)) yield return Ui.Click(S + "/closeButton");
+        Logger.Info($"[Pharaoh's Vault] Confirmed {opened} opening(s).");
     }
 }
 
@@ -725,6 +807,8 @@ public class EventExchangeTask : BotTask
             }
 
         var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
+        var purchased = 0;
+        var stopBuying = false;
         foreach (var want in order)
         {
             var item = items.FirstOrDefault(it => Ui.Text(it.Find("itemName")).Trim().ToLowerInvariant() == want);
@@ -736,14 +820,28 @@ public class EventExchangeTask : BotTask
                 var m = Regex.Match(Ui.Text(item.Find("remainingQuantity")) ?? "", @"(\d+)\s*/\s*(\d+)");
                 if (m.Success && int.Parse(m.Groups[1].Value) >= int.Parse(m.Groups[2].Value)) break;
                 if (cost <= 0 || Have() - _keep.Value < cost || !Ui.Clickable(buy)) break;
-                yield return Ui.Click(buy, 1.2f, "event exchange: " + want);
+                var before = Have();
+                var confirmed = false;
+                yield return Ui.ClickUntil(buy, () => Have() < before,
+                    value => confirmed = value, "event exchange: " + want, 1.2f, 3f);
+                if (!confirmed)
+                {
+                    Logger.Warning($"[EventExchange] {want}: event currency did not decrease; stopping purchases.");
+                    stopBuying = true;
+                    break;
+                }
+
+                purchased++;
                 yield return Ui.CloseRewards();
                 if (Ui.MissingCurrency) yield break;
             }
+
+            if (stopBuying) break;
         }
 
         var close = shop.Find("bg/closeButton");
         if (close != null) yield return Ui.Click(close, 0.8f);
+        Logger.Info($"[EventExchange] Confirmed {purchased} purchase(s).");
     }
 
     private static string GetPath(Transform t)

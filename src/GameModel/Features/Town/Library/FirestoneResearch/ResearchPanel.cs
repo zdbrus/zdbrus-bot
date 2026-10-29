@@ -26,16 +26,36 @@ public class ResearchPanel : GameElement
                 var canClaim = !new GameElement(
                     Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.SpeedupFinishDesc, child).IsVisible();
 
-                if (speedBtn.IsVisible() && canClaim)
+                var claimButton = new GameButton(
+                    Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.ClaimBtn, child);
+                var hadEmptySlot = HasEmptySlot;
+                var claimWasClickable = claimButton.IsClickable();
+
+                if (speedBtn.IsClickable() && canClaim)
                 {
-                    Debug("[INFO] Claiming completed research.");
-                    yield return speedBtn.Click();
-                    yield break;
+                    var changed = false;
+                    yield return speedBtn.ClickUntil(
+                        () => !speedBtn.IsClickable() || (!hadEmptySlot && HasEmptySlot) ||
+                              (!claimWasClickable && claimButton.IsClickable()),
+                        value => changed = value, "Firestone research free finish");
+                    if (changed)
+                    {
+                        Debug("[INFO] Research free-finish state changed.");
+                        yield break;
+                    }
                 }
 
-                yield return new GameButton(
-                        Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.ClaimBtn, child)
-                    .Click();
+                if (!claimButton.IsClickable()) continue;
+
+                var claimed = false;
+                yield return claimButton.ClickUntil(
+                    () => !claimButton.IsClickable() || (!hadEmptySlot && HasEmptySlot),
+                    value => claimed = value, "Firestone research claim");
+                if (claimed)
+                {
+                    Debug("[INFO] Research claim control or slot state changed.");
+                    yield break;
+                }
             }
     }
 

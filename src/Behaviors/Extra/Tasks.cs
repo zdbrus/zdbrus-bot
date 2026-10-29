@@ -367,6 +367,14 @@ public class ChaosRiftTask : BotTask
     private int _hits;
 
     protected override string NotificationPath => P.Notifications + "/ChaosRift";
+    private static readonly string[] NotificationNames =
+        { "ChaosRift", "ChaosRiftSupplies", "GuardianHolyUpgrade" };
+
+    internal override IEnumerable<string> HandledNotificationNames => NotificationNames;
+
+    protected override bool IsNotificationVisibleCore()
+        => IsEnabled && DateTime.Now >= BubbleQuietUntil &&
+           NotificationNames.Any(name => Ui.Visible(P.Notifications + "/" + name));
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
@@ -423,8 +431,14 @@ public class ChaosRiftTask : BotTask
                     for (var n = 0; n < 10; n++)
                     {
                         var cost = Ui.NumberAt(Holy + "/layout/costText");
-                        if (cost <= 0 || Ui.NumberAt(Orbs) < cost || !Ui.Clickable(Holy)) break;
-                        yield return Ui.Click(Holy, 1.2f, "holy damage");
+                        var orbsBefore = Ui.NumberAt(Orbs);
+                        if (cost <= 0 || orbsBefore < cost || !Ui.Clickable(Holy)) break;
+                        var upgraded = false;
+                        yield return Ui.ClickUntil(Ui.Find(Holy),
+                            () => Ui.NumberAt(Orbs) < orbsBefore ||
+                                  Ui.NumberAt(Holy + "/layout/costText") != cost,
+                            value => upgraded = value, "holy damage upgrade", 1.2f, 2f);
+                        if (!upgraded) break;
                     }
                 }
 
@@ -441,7 +455,19 @@ public class ChaosRiftTask : BotTask
         // Moon stones go first; the game switches the same button to eclipse stones when they run out.
         while (_hits < 30 && (Ui.NumberAt(Moon) > 0 || Ui.NumberAt(Eclipse) > 0) && Ui.Clickable(Hit))
         {
-            yield return Ui.Click(Hit, 3f);
+            var moonBefore = Ui.NumberAt(Moon);
+            var eclipseBefore = Ui.NumberAt(Eclipse);
+            yield return Ui.Click(Hit, 3f, "Chaos Rift hit");
+            var moonAfter = Ui.NumberAt(Moon);
+            var eclipseAfter = Ui.NumberAt(Eclipse);
+            var spentStone = (moonBefore >= 0 && moonAfter >= 0 && moonAfter < moonBefore) ||
+                             (eclipseBefore >= 0 && eclipseAfter >= 0 && eclipseAfter < eclipseBefore);
+            if (!spentStone)
+            {
+                Logger.Warning("[Chaos Rift] No Moonstone or Eclipse Stone decrease was observed; stopping hits.");
+                break;
+            }
+
             yield return Ui.CloseRewards();
             _hits++;
         }
@@ -450,19 +476,41 @@ public class ChaosRiftTask : BotTask
     private IEnumerator Buy(string item)
     {
         var button = Items + $"/{item}/claimBg/purchaseButton";
+        var isStone = item.StartsWith("moonstone");
+        var currency = isStone ? Shop + "/counters/currencyInteraction (ExpeditionToken)/quantity" : Runes;
+        var purchased = 0;
         for (var n = 0; n < 5; n++)
         {
             var cost = Ui.NumberAt(button + "/priceHolder/purchaseCost");
-            // Eclipse stones cost expedition tokens; the tome is paid in another currency. Require that some
-            // counter in the shop covers the price, and let the currency guard stop anything else.
-            var best = Ui.VisibleChildren(Shop + "/counters").Select(c => Ui.NumberOf(c.Find("quantity"))).DefaultIfEmpty(-1).Max();
-            var tokens = Ui.NumberAt(Shop + "/counters/currencyInteraction (ExpeditionToken)/quantity");
-            var isStone = item.StartsWith("moonstone");
-            if (cost <= 0 || (isStone ? tokens : best) < cost || !Ui.Clickable(button)) yield break;
-            yield return Ui.Click(button, 1.5f, item);
+            var have = Ui.NumberAt(currency);
+            if (cost <= 0)
+            {
+                Logger.Warning($"[Chaos Rift] Could not read the {item} cost; not buying.");
+                break;
+            }
+
+            if (have < cost)
+            {
+                Logger.Info($"[Chaos Rift] {item} costs {cost}; have {have} of its required currency. Skipping.");
+                break;
+            }
+
+            if (!Ui.Clickable(button)) break;
+            var confirmed = false;
+            yield return Ui.ClickUntil(Ui.Find(button), () => Ui.NumberAt(currency) < have,
+                value => confirmed = value, "Chaos Rift " + item, 1.5f, 3f);
+            if (!confirmed)
+            {
+                Logger.Warning($"[Chaos Rift] {item} currency did not decrease; stopping purchases.");
+                break;
+            }
+
+            purchased++;
             if (Ui.MissingCurrency) yield break;
             yield return Ui.CloseRewards();
         }
+
+        Logger.Info($"[Chaos Rift] Confirmed {purchased} purchase(s) of {item}.");
     }
 }
 
@@ -481,8 +529,29 @@ public class AwakenHeroesTask : BotTask
         {
             var have = Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity");
             var cost = Ui.NumberAt(Button + "/costText");
-            if (cost <= 0 || have < cost || !Ui.Clickable(Button)) break;
-            yield return Ui.Click(Button, 3f);
+            if (cost <= 0)
+            {
+                Logger.Warning("[Awakening] Could not read the awakening cost; stopping.");
+                break;
+            }
+
+            if (have < cost)
+            {
+                Logger.Info($"[Awakening] Need {cost} Arcane Crystals; have {have}. No awakening attempted.");
+                break;
+            }
+
+            if (!Ui.Clickable(Button)) break;
+            var confirmed = false;
+            yield return Ui.ClickUntil(Ui.Find(Button),
+                () => Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity") < have,
+                value => confirmed = value, "hero awakening", 3f, 3f);
+            if (!confirmed)
+            {
+                Logger.Warning("[Awakening] Arcane Crystal balance did not decrease; stopping to avoid retrying.");
+                break;
+            }
+
             yield return Ui.CloseRewards();
         }
 
@@ -698,6 +767,8 @@ public class EventChallengesTask : BotTask
         NextRunTime = DateTime.Now.AddHours(2);
         yield return Ui.Click(P.EventsButton, 2f);
         var count = Ui.VisibleChildren(List).Count(t => t.name.StartsWith("eventInteraction"));
+        var confirmed = 0;
+        var unconfirmed = 0;
         for (var i = 0; i < count; i++)
         {
             if (!Ui.Visible(List))
@@ -715,7 +786,14 @@ public class EventChallengesTask : BotTask
             {
                 var claim = ch.Find("unlocked/reward/claimButton");
                 if (!Ui.Clickable(claim)) continue;
-                yield return Ui.Click(claim, 1.5f);
+                var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                var claimChanged = false;
+                yield return Ui.ClickUntil(claim,
+                    () => !Ui.Clickable(claim) ||
+                          (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                    value => claimChanged = value, "event challenge reward", 1.5f);
+                if (claimChanged) confirmed++;
+                else unconfirmed++;
                 yield return Ui.CloseRewards();
             }
 
@@ -723,6 +801,8 @@ public class EventChallengesTask : BotTask
         }
 
         yield return Ui.Click(P.Events + "/EventManager/bg/closeButton");
+        Logger.Info($"[Events] Claim controls changed for {confirmed} reward(s); " +
+                    $"{unconfirmed} claim(s) unconfirmed. Reward receipt is not independently verified.");
     }
 }
 

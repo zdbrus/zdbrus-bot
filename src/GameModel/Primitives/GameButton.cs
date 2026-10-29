@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using Firebot.GameModel.Base;
 using UnityEngine;
@@ -41,5 +41,24 @@ public class GameButton : GameElement
         }
 
         yield return new WaitForSeconds(InteractionDelay);
+    }
+
+    public IEnumerator ClickUntil(Func<bool> stateChanged, Action<bool> result, string label, float timeout = 2f)
+    {
+        if (!IsClickable())
+        {
+            Debug($"[FAILED] {label}: button is not clickable. Path: {Path}");
+            result(false);
+            yield break;
+        }
+
+        yield return Click();
+        var deadline = Time.unscaledTime + timeout;
+        while (!stateChanged() && Time.unscaledTime < deadline) yield return null;
+
+        var changed = stateChanged();
+        if (!changed)
+            Debug($"[FAILED] {label}: clicked, but no confirming game-state change was observed.");
+        result(changed);
     }
 }

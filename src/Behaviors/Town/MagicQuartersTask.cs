@@ -30,6 +30,8 @@ public class MagicQuartersTask : BotTask
             var guardianBtn = new GameButton(parent: child);
             yield return TryTrainGuardian(guardianBtn, trainBtn, useStrangeDust);
         }
+        else
+            Debug("[INFO] No unlocked guardian is available for training.");
 
         NextRunTime = MagicQuarters.NextRunTime;
         yield return MagicQuarters.CloseLockedPopup;
@@ -69,26 +71,41 @@ public class MagicQuartersTask : BotTask
             if (result >= 0) return result;
         }
 
-        return 0;
+        return -1;
     }
 
     private int TryGuardianAtIndex(int index)
     {
+        if (index < 0 || index > 3) return -1;
         var child = MagicQuarters.Guardians.GetChild(index);
+        if (child == null) return -1;
 
         var guardian = new Guardian(parent: child);
         if (guardian.IsVisible() && guardian.IsUnlocked)
             return index;
 
-        return 0;
+        return -1;
     }
 
     private IEnumerator TryTrainGuardian(GameButton guardianBtn, GameButton trainBtn, bool useStrangeDust)
     {
         yield return guardianBtn.Click();
-        yield return trainBtn.Click();
+        if (!trainBtn.IsClickable())
+        {
+            Debug("[INFO] Training is not available for the selected guardian.");
+            yield break;
+        }
+
+        var before = CooldownMarker();
+        var trained = false;
+        yield return trainBtn.ClickUntil(() => !trainBtn.IsClickable() || CooldownMarker() != before,
+            value => trained = value, "Guardian training", 3f);
+        if (trained) Firebot.Core.Logger.Info("[Guardians] Training control or cooldown state changed.");
         yield return ApplyEnlightenment(useStrangeDust);
     }
+
+    private static string CooldownMarker()
+        => new GameText(Paths.MenusLoc.CanvasLoc.TownLoc.MagicQuarters.NextRunTimeTxt).GetParsedText();
 
     private IEnumerator ApplyEnlightenment(bool useStrangeDust)
     {

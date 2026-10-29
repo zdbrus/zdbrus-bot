@@ -209,6 +209,7 @@ internal static class Ui
     {
         if (!Clickable(button))
         {
+            Logger.Warning($"[Action] {label}: button is not available; no click was attempted.");
             result(false);
             yield break;
         }
