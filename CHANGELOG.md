@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.26 (2026-10-29)
+- Settings: the typed lists (Event Exchange items, Personal Tree, Forbidden Knowledge, Talents and Meteorite Research priorities, and which Bubbles to open) are now tick-box chips in the panel instead of text. Ticked items are saved in the list's fixed order (the default priority order). Firestone Research priority stays typed because its order is yours to choose.
+
 ## 0.7.25 (2026-10-29)
 - Open Chests: the 'Chests To Keep' text box is replaced by one checkbox per chest type (Common, Uncommon, Rare, Epic, Legendary, Wooden, Iron, Golden, Comet, Lunar), all ticked by default. Each is tied to the chest tile's game id, not its displayed name. Mystery boxes and Oracle gifts are never opened. Your old 'skip' setting is no longer used.
 

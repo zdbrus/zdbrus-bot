@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Firebot.Core;
@@ -161,6 +161,82 @@ internal static class ConfigRegistry
             new ConfigChoice("Grace", "Grace"),
             new ConfigChoice("Ankaa", "Ankaa"),
             new ConfigChoice("Azhar", "Azhar")
+        },
+        ["event_exchange/priority"] = new[]
+        {
+            new ConfigChoice("Pickaxe", "Pickaxe"),
+            new ConfigChoice("Legendary chest", "Legendary chest"),
+            new ConfigChoice("Meteorite", "Meteorite"),
+            new ConfigChoice("Golden key", "Golden key"),
+            new ConfigChoice("Strange dust", "Strange dust"),
+            new ConfigChoice("Twilight hourglass", "Twilight hourglass"),
+            new ConfigChoice("Soul ember", "Soul ember"),
+            new ConfigChoice("Exotic coin", "Exotic coin")
+        },
+        ["personal_tree/priority"] = new[]
+        {
+            new ConfigChoice("Raining gold", "Raining gold"),
+            new ConfigChoice("Battle cry", "Battle cry"),
+            new ConfigChoice("Prestigious", "Prestigious"),
+            new ConfigChoice("All main attributes", "All main attributes"),
+            new ConfigChoice("Attribute damage", "Attribute damage"),
+            new ConfigChoice("Firestone effect", "Firestone effect"),
+            new ConfigChoice("Hero level up cost", "Hero level up cost"),
+            new ConfigChoice("Attribute health", "Attribute health"),
+            new ConfigChoice("Attribute armor", "Attribute armor"),
+            new ConfigChoice("Guardian", "Guardian"),
+            new ConfigChoice("Precision", "Precision"),
+            new ConfigChoice("Fist fight", "Fist fight"),
+            new ConfigChoice("Magic spells", "Magic spells")
+        },
+        ["forbidden_knowledge/priority"] = new[]
+        {
+            new ConfigChoice("Firestone Finder", "Firestone Finder"),
+            new ConfigChoice("All main attributes", "All main attributes"),
+            new ConfigChoice("Attribute damage", "Attribute damage"),
+            new ConfigChoice("Raining gold", "Raining gold")
+        },
+        ["talents/priority"] = new[]
+        {
+            new ConfigChoice("All main attributes", "All main attributes"),
+            new ConfigChoice("Attribute damage", "Attribute damage"),
+            new ConfigChoice("Attribute health", "Attribute health"),
+            new ConfigChoice("Attribute armor", "Attribute armor")
+        },
+        ["meteorite_research/priority"] = new[]
+        {
+            new ConfigChoice("Attribute damage", "Attribute damage"),
+            new ConfigChoice("All main attributes", "All main attributes"),
+            new ConfigChoice("Raining gold", "Raining gold"),
+            new ConfigChoice("Hero level up cost", "Hero level up cost"),
+            new ConfigChoice("Attribute health", "Attribute health"),
+            new ConfigChoice("Attribute armor", "Attribute armor"),
+            new ConfigChoice("Firestone finder", "Firestone finder"),
+            new ConfigChoice("Powerless boss", "Powerless boss"),
+            new ConfigChoice("Powerless enemy", "Powerless enemy")
+        },
+        ["bubble_rewards/bubbles"] = new[]
+        {
+            new ConfigChoice("SignIn", "SignIn"),
+            new ConfigChoice("LockerRewards", "LockerRewards"),
+            new ConfigChoice("PiratesPrize", "PiratesPrize"),
+            new ConfigChoice("HallOfHeroes", "HallOfHeroes"),
+            new ConfigChoice("TowerOfSouls", "TowerOfSouls"),
+            new ConfigChoice("Prophet", "Prophet"),
+            new ConfigChoice("Mercenaries", "Mercenaries"),
+            new ConfigChoice("AncientArtifact", "AncientArtifact"),
+            new ConfigChoice("TalentAvailable", "TalentAvailable"),
+            new ConfigChoice("GuardianEvolution", "GuardianEvolution"),
+            new ConfigChoice("GuardianRarity", "GuardianRarity"),
+            new ConfigChoice("WarMachinesRarity", "WarMachinesRarity"),
+            new ConfigChoice("WarmachineUnlocked", "WarmachineUnlocked"),
+            new ConfigChoice("ScarabGameBeastRelease", "ScarabGameBeastRelease"),
+            new ConfigChoice("UnlockLedra", "UnlockLedra"),
+            new ConfigChoice("UnlockYamanoth", "UnlockYamanoth"),
+            new ConfigChoice("UnlockKramatak", "UnlockKramatak"),
+            new ConfigChoice("BattleLive", "BattleLive"),
+            new ConfigChoice("ChaosRiftSupplies", "ChaosRiftSupplies"),
+            new ConfigChoice("GuardianHolyUpgrade", "GuardianHolyUpgrade")
         },
         ["alchemist/resource_type"] = new[]
         {
