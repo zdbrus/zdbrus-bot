@@ -90,6 +90,8 @@ Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run wh
 
 For notification bubbles without a dedicated task, the bot looks for free claim/collect buttons on the screens the bubble activates. The log reports button clicks and follow-up button state changes separately; those are not proof that the game granted the reward.
 
+Upgrade tasks skip preview scans when the relevant currency is at or below its reserve, check for a level, cost, currency, or inventory change after each purchase, and stop when progress cannot be confirmed. Reward tasks likewise report observed counter or claim-control changes without overstating them as confirmed rewards when the game exposes no reliable receipt.
+
 ## Safety
 
 - **Never spends gems or real money.** Every purchase is skipped unless the game shows the button as available **and** you have enough of the exact currency it costs.

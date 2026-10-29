@@ -32,7 +32,7 @@ Do not treat the changelog as a substitute for keeping either README accurate.
 Start from the latest published `ZdbrusBot.zip` so the compatibility files, logo, license, and third-party notices stay intact. Extract it to a new, version-specific staging folder, replace `Mods\ZdbrusBot.dll` with the tested build and replace the bundled `README.txt` with `release\README.txt`, then re-create `ZdbrusBot.zip` with the package contents at its root:
 
 ```powershell
-$package = Join-Path $env:TEMP "ZdbrusBot-0.7.9-package"
+$package = Join-Path $env:TEMP "ZdbrusBot-0.7.16-package"
 Expand-Archive -Path "C:\path\to\latest\ZdbrusBot.zip" -DestinationPath $package
 Copy-Item "src\bin\Release\net6.0\ZdbrusBot.dll" (Join-Path $package "Mods\ZdbrusBot.dll") -Force
 Copy-Item "release\README.txt" (Join-Path $package "README.txt") -Force

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Firebot.Behaviors.Extra;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Guild.Shop;
 using Firebot.GameModel.Shared;
@@ -40,7 +41,23 @@ public class FreePickaxesTask : BotTask
         yield return Notifications.FreePickaxes;
 
         if (FreePickaxes.Quantity >= PickaxeClaimThreshold)
-            yield return FreePickaxes.Claim;
+        {
+            var before = FreePickaxes.Quantity;
+            var confirmed = false;
+            const string claimButton =
+                P.Menus + "/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/purchaseButton";
+            yield return Ui.ClickUntil(Ui.Find(claimButton), () => FreePickaxes.Quantity > before,
+                value => confirmed = value, "Free pickaxes claim", 1.5f);
+            if (confirmed)
+                Logger.Info($"[Free Pickaxes] Quantity increased from {before} to {FreePickaxes.Quantity}.");
+            else
+                Logger.Warning("[Free Pickaxes] Claim did not increase the pickaxe quantity; stopping.");
+        }
+        else
+        {
+            Logger.Info($"[Free Pickaxes] Waiting for {PickaxeClaimThreshold} pickaxes; " +
+                        $"{FreePickaxes.Quantity} available.");
+        }
 
         NextRunTime = FreePickaxes.NextRunTime;
         yield return GuildShop.Close;

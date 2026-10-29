@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.16 (2026-10-29)
+- Upgrade tasks now skip empty-currency preview scans, verify level/cost/currency changes after each purchase, and stop instead of repeating clicks when progress is not observed.
+- Daily rewards, Oracle blessings, Engineer tools, free pickaxes and Warfront loot now check visible game-state changes; logs distinguish those changes from independently confirmed reward receipt.
+- Fixed the Scarab free-token task reading the shop-sale countdown instead of the free-token reset timer.
+
 ## 0.7.15 (2026-10-29)
 - Free reward bubbles now detect newly available claim buttons anywhere in menus, popups and events, including content opened inside an already-active screen.
 - Bubble logs distinguish clicks and follow-up button state changes from independently verified reward collection.

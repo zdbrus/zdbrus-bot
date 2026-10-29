@@ -197,6 +197,29 @@ internal static class Ui
         while (!Visible(path) && Time.unscaledTime < end) yield return new WaitForSeconds(0.25f);
     }
 
+    public static IEnumerator WaitUntil(Func<bool> condition, Action<bool> completed, float timeout = 2f)
+    {
+        var end = Time.unscaledTime + timeout;
+        while (!condition() && Time.unscaledTime < end) yield return new WaitForSeconds(0.2f);
+        completed(condition());
+    }
+
+    public static IEnumerator ClickUntil(Transform button, Func<bool> stateChanged, Action<bool> result,
+        string label, float clickWait = 1f, float timeout = 2f)
+    {
+        if (!Clickable(button))
+        {
+            result(false);
+            yield break;
+        }
+
+        yield return Click(button, clickWait, label);
+        var changed = false;
+        yield return WaitUntil(stateChanged, value => changed = value, timeout);
+        if (!changed) Logger.Warning($"[Action] {label}: clicked, but no confirming game-state change was observed.");
+        result(changed);
+    }
+
     /// <summary>Closes the reward popup the game shows after a claim, if it is there.</summary>
     public static IEnumerator CloseRewards()
     {

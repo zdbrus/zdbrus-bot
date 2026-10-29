@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Firebot.Behaviors.Extra;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Map;
 using Firebot.GameModel.Features.Map.WarfrontCampaign;
@@ -20,7 +21,27 @@ public class WarfrontCampaignLootTask : BotTask
     public override IEnumerator Execute()
     {
         yield return Notifications.WarfrontCampaign;
-        yield return WarfrontLoot.Claim;
+        const string claimButton =
+            P.Menus + "/WorldMap/submenus/warfrontCampaignSubmenu/loot/claimButton";
+        const string honor = P.Menus + "/WorldMap/counters/currencyInteraction (Honor)/quantity";
+        const string gems = P.Menus + "/WorldMap/counters/currencyInteraction (Gem)/quantity";
+        var honorBefore = Ui.NumberAt(honor);
+        var gemsBefore = Ui.NumberAt(gems);
+        var stateChanged = false;
+        yield return Ui.ClickUntil(Ui.Find(claimButton),
+            () => Ui.NumberAt(honor) > honorBefore || Ui.NumberAt(gems) > gemsBefore ||
+                  !Ui.Clickable(claimButton),
+            value => stateChanged = value, "Warfront campaign loot", 1.5f);
+        yield return Ui.CloseRewards();
+        if (stateChanged)
+        {
+            if (Ui.NumberAt(honor) > honorBefore || Ui.NumberAt(gems) > gemsBefore)
+                Logger.Info("[Warfront] A campaign currency counter increased after the loot claim.");
+            else
+                Logger.Info("[Warfront] Claim state changed; reward receipt is not independently verified.");
+        }
+        else
+            Logger.Warning("[Warfront] Loot claim produced no observable state change.");
         NextRunTime = WarfrontLoot.NextRunTime;
         yield return MapMission.Close;
     }

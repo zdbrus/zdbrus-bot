@@ -34,9 +34,31 @@ internal static class NodeBuyer
         return i < 0 ? order.Count : i;
     }
 
+    private static IEnumerator BuyOne(Layout layout, string name, Func<double> currency, double keep,
+        Action<bool> result)
+    {
+        var levelPath = layout.Preview + "/" + layout.Level;
+        var costPath = layout.Preview + "/" + layout.Cost;
+        var buyPath = layout.Preview + "/" + layout.Buy;
+        var levelBefore = Ui.Text(levelPath);
+        var costBefore = Ui.NumberAt(costPath);
+        var currencyBefore = currency();
+        yield return Ui.ClickUntil(Ui.Find(buyPath),
+            () => Ui.Text(levelPath) != levelBefore ||
+                  Ui.NumberAt(costPath) != costBefore ||
+                  currency() < currencyBefore,
+            result, name, 1.2f);
+    }
+
     public static IEnumerator Run(List<Transform> nodes, Layout l, Func<double> currency, string priority,
         double keep = 0, int maxPerNode = 10, bool stopAtFirstAffordable = false)
     {
+        if (currency() - keep <= 0)
+        {
+            Logger.Info($"[Nodes] Skipping upgrade previews: currency {currency()}, reserve {keep}.");
+            yield break;
+        }
+
         var info = new List<(Transform node, string name, double cost, bool open)>();
         foreach (var node in nodes)
         {
@@ -62,8 +84,14 @@ internal static class NodeBuyer
                         break;
                     }
 
-                    yield return Ui.Click(buy, 1.2f, name);
+                    var changed = false;
+                    yield return BuyOne(l, name, currency, keep, value => changed = value);
                     if (Ui.MissingCurrency) break;
+                    if (!changed)
+                    {
+                        Logger.Warning($"[Nodes] Stopping after {name} made no verified progress.");
+                        break;
+                    }
                 }
 
                 if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
@@ -92,8 +120,15 @@ internal static class NodeBuyer
                     Logger.Debug($"[Nodes] stop {up.name}: cost {cost}, have {currency()}, clickable {Ui.Clickable(buy)}");
                     break;
                 }
-                yield return Ui.Click(buy, 1.2f, up.name);
+                var changed = false;
+                yield return BuyOne(l, up.name, currency, keep, value => changed = value);
                 if (Ui.MissingCurrency) break;
+                if (!changed)
+                {
+                    Logger.Warning($"[Nodes] Stopping after {up.name} made no verified progress.");
+                    if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
+                    yield break;
+                }
             }
 
             if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
@@ -735,21 +770,34 @@ public class BattlePassTask : BotTask
         var rect = Ui.Find(Scroll)?.GetComponent<UnityEngine.UI.ScrollRect>();
         var content = Ui.Find(Scroll + "/viewport/content/layout");
         var claimed = 0;
-        for (var step = 0; step <= 20 && content != null; step++)
+        var unconfirmed = 0;
+        var stalled = false;
+        for (var step = 0; step <= 20 && content != null && !stalled; step++)
         {
             if (rect != null) rect.horizontalNormalizedPosition = step / 20f;
             yield return new WaitForSeconds(0.4f);
             for (var i = 0; i < content.childCount; i++)
             {
+                if (stalled) break;
                 var claim = content.GetChild(i).Find("freeBg/glowOutlineFree/rewardRoot/claimButton");
                 if (!Ui.Clickable(claim)) continue;
-                yield return Ui.Click(claim, 1.2f, "battle pass free reward");
+                var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                var confirmed = false;
+                yield return Ui.ClickUntil(claim,
+                    () => !Ui.Clickable(claim) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                    value => confirmed = value, "battle pass free reward", 1.2f);
                 yield return Ui.CloseRewards();
-                claimed++;
+                if (confirmed) claimed++;
+                else
+                {
+                    unconfirmed++;
+                    stalled = true;
+                }
             }
         }
 
-        Logger.Debug($"[BattlePass] claimed {claimed}");
+        Logger.Info($"[BattlePass] Free reward controls changed for {claimed} reward(s); {unconfirmed} claim(s) unconfirmed. " +
+                    "Reward receipt is not independently verified.");
         yield return Ui.Click(B + "/closeButton");
     }
 }

@@ -152,7 +152,7 @@ public static class Paths
                     Root + "/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
 
                 public const string NextRunTimeTxt =
-                    Root + "/bg/submenuButtons/sale/timeLeftBg/timeLeft";
+                    Root + "/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/renewText";
             }
 
             public static class OracleStoreLoc

@@ -36,6 +36,8 @@ public class MailTask : BotTask
         if (!Ui.Visible(Mail)) yield break;
 
         var count = Ui.VisibleChildren(List).Count();
+        var claimsWithStateChange = 0;
+        var claimsUnconfirmed = 0;
         for (var i = 0; i < count && i < 30; i++)
         {
             var item = Ui.VisibleChildren(List).Skip(_deleteClaimed.Value ? 0 : i).FirstOrDefault();
@@ -43,13 +45,28 @@ public class MailTask : BotTask
             yield return Ui.Click(item, 1f);
             if (Ui.Clickable(Claim))
             {
-                yield return Ui.Click(Claim, 1.5f);
+                var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                var confirmed = false;
+                yield return Ui.ClickUntil(Ui.Find(Claim),
+                    () => !Ui.Clickable(Claim) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                    value => confirmed = value, "mail reward claim", 1.5f);
                 yield return Ui.CloseRewards();
-                if (_deleteClaimed.Value) yield return Ui.Click(Delete, 1f);
+                if (confirmed)
+                {
+                    claimsWithStateChange++;
+                    if (_deleteClaimed.Value) yield return Ui.Click(Delete, 1f);
+                }
+                else
+                {
+                    claimsUnconfirmed++;
+                    if (_deleteClaimed.Value) break;
+                }
             }
             else if (_deleteClaimed.Value) break;
         }
 
+        Logger.Info($"[Mail] Claim control changed for {claimsWithStateChange} message(s); {claimsUnconfirmed} claim(s) unconfirmed. " +
+                    "Reward receipt is not independently verified.");
         yield return Ui.Click(Mail + "/bg/closeButton");
     }
 }
@@ -87,9 +104,21 @@ public class TavernTask : BotTask
             for (var i = 0; i < 20 && Ui.Visible(Market); i++)
             {
                 var beer = Ui.NumberAt(Market + "/lower/counters/currencyInteraction (Beer)/quantity");
+                var tokensBefore = Ui.NumberAt(Tokens);
                 var cost = Ui.NumberAt(Market + "/items/gameTokenWithBeer/purchaseButtonOffer/currencyHolder/purchaseCost");
                 if (cost <= 0 || beer < cost) break;
-                yield return Ui.Click(Market + "/items/gameTokenWithBeer/purchaseButtonOffer", 1.5f);
+                var beerBefore = beer;
+                var bought = false;
+                var offer = Market + "/items/gameTokenWithBeer/purchaseButtonOffer";
+                yield return Ui.ClickUntil(Ui.Find(offer),
+                    () => Ui.NumberAt(Market + "/lower/counters/currencyInteraction (Beer)/quantity") < beerBefore ||
+                          Ui.NumberAt(Tokens) > tokensBefore,
+                    value => bought = value, "tavern token purchase", 1.5f);
+                if (!bought)
+                {
+                    Logger.Warning("[Tavern] Token purchase made no observable currency change; stopping purchases.");
+                    break;
+                }
                 yield return Ui.CloseRewards();
             }
 
@@ -105,11 +134,17 @@ public class TavernTask : BotTask
             var rng = new System.Random();
             while (plays < 20 && Ui.NumberAt(Tokens) > 0 && Ui.Clickable(Play))
             {
+                var tokensBefore = Ui.NumberAt(Tokens);
                 yield return Ui.Click(Play, 2f);
                 // In manual mode the game waits for a card to be picked.
                 var cards = Ui.VisibleChildren(Tavern + "/cardHolder").Where(Ui.Clickable).ToList();
                 if (cards.Count > 0) yield return Ui.Click(cards[rng.Next(cards.Count)], 3f, "tavern card");
                 yield return Ui.CloseRewards();
+                if (Ui.NumberAt(Tokens) >= tokensBefore)
+                {
+                    Logger.Warning("[Tavern] A play did not reduce the token counter; stopping.");
+                    break;
+                }
                 plays++;
             }
 
@@ -123,6 +158,7 @@ public class TavernTask : BotTask
 public class ExoticMerchantTask : BotTask
 {
     private const string M = P.Menus + "/ExoticMerchant/submenus";
+    private const string ExoticCoins = P.Menus + "/ExoticMerchant/counters/currencyInteraction (ExoticCoin)/quantity";
     private const string SellGrid = M + "/bg/sellItemsSubmenu/Scroll View/Viewport/Content/productGrid";
     private const string UpgradeList = M + "/bg/upgradesSubmenu/upgradesScrollView/Viewport/Content/upgradesList";
     private const string NextTree = M + "/bg/upgradesSubmenu/navigation/goForthTree";
@@ -158,7 +194,18 @@ public class ExoticMerchantTask : BotTask
                 var button = item.Find("sellButton");
                 while (clicks < 60 && Ui.Clickable(button) && Ui.NumberOf(item.Find("itemBg/quantity")) > 0)
                 {
-                    yield return Ui.Click(button, 0.6f, name);
+                    var quantityBefore = Ui.NumberOf(item.Find("itemBg/quantity"));
+                    var coinsBefore = Ui.NumberAt(ExoticCoins);
+                    var sold = false;
+                    yield return Ui.ClickUntil(button,
+                        () => Ui.NumberOf(item.Find("itemBg/quantity")) < quantityBefore ||
+                              Ui.NumberAt(ExoticCoins) > coinsBefore,
+                        value => sold = value, $"sell {name}", 0.6f);
+                    if (!sold)
+                    {
+                        Logger.Warning($"[Exotic Merchant] Stopping sales for {name}: quantity or coin change was not confirmed.");
+                        break;
+                    }
                     clicks++;
                 }
             }
@@ -166,26 +213,48 @@ public class ExoticMerchantTask : BotTask
 
         if (_buyUpgrades.Value)
         {
-            yield return Ui.Click(M + "/submenuButtons/upgrades", 1.5f);
-            for (var tree = 0; tree < 8; tree++)
+            if (Ui.NumberAt(ExoticCoins) <= 0)
             {
-                foreach (var up in Ui.VisibleChildren(UpgradeList).ToList())
+                Logger.Info("[Exotic Merchant] Skipping upgrade scans: no exotic coins available.");
+            }
+            else
+            {
+                yield return Ui.Click(M + "/submenuButtons/upgrades", 1.5f);
+                for (var tree = 0; tree < 8; tree++)
                 {
-                    var button = up.Find("upgradeButton");
-                    while (clicks < 90 && Ui.Clickable(button))
+                    foreach (var up in Ui.VisibleChildren(UpgradeList).ToList())
                     {
-                        yield return Ui.Click(button, 0.8f, Ui.Text(up.Find("upgradeName")));
-                        clicks++;
+                        var button = up.Find("upgradeButton");
+                        while (clicks < 90 && Ui.Clickable(button))
+                        {
+                            var name = Ui.Text(up.Find("upgradeName"));
+                            var currencyBefore = Ui.NumberAt(ExoticCoins);
+                            var costBefore = Ui.NumberOf(button.Find("costText"));
+                            var confirmed = false;
+                            yield return Ui.ClickUntil(button,
+                                () => Ui.NumberAt(ExoticCoins) < currencyBefore ||
+                                      Ui.NumberOf(button.Find("costText")) != costBefore,
+                                value => confirmed = value, name, 0.8f);
+                            if (!confirmed)
+                            {
+                                Logger.Warning($"[Exotic Merchant] Stopping at {name}: no cost or currency change was confirmed.");
+                                if (Ui.Visible(P.Popups + "/GenericMessage/bg"))
+                                    yield return Ui.Click(P.Popups + "/GenericMessage/bg/closeButton");
+                                yield return Ui.Click(P.Menus + "/ExoticMerchant/closeButton");
+                                yield break;
+                            }
+                            clicks++;
+                        }
                     }
-                }
 
-                if (!Ui.Clickable(NextTree)) break;
-                yield return Ui.Click(NextTree, 1.2f);
-                // A locked tree answers with a message instead of opening.
-                if (Ui.Visible(P.Popups + "/GenericMessage/bg"))
-                {
-                    yield return Ui.Click(P.Popups + "/GenericMessage/bg/closeButton");
-                    break;
+                    if (!Ui.Clickable(NextTree)) break;
+                    yield return Ui.Click(NextTree, 1.2f);
+                    // A locked tree answers with a message instead of opening.
+                    if (Ui.Visible(P.Popups + "/GenericMessage/bg"))
+                    {
+                        yield return Ui.Click(P.Popups + "/GenericMessage/bg/closeButton");
+                        break;
+                    }
                 }
             }
         }
@@ -194,14 +263,27 @@ public class ExoticMerchantTask : BotTask
         {
             yield return Ui.Click(M + "/submenuButtons/emblemMarket", 1.5f);
             yield return Ui.Click(M + "/bg/emblemMarketSubmenu/categoryButtons/gear", 1.2f);
+            var purchaseStalled = false;
             for (var i = 3; i >= 0; i--)
             {
                 var buy = GearGrid + $"/exoticMerchantEmblemGearChest ({i})/purchaseButton";
                 for (var n = 0; n < 5 && Ui.Clickable(buy); n++)
                 {
-                    yield return Ui.Click(buy, 1.5f);
+                    var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                    var purchased = false;
+                    yield return Ui.ClickUntil(Ui.Find(buy),
+                        () => !Ui.Clickable(buy) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                        value => purchased = value, "emblem gear chest", 1.5f);
+                    if (!purchased)
+                    {
+                        Logger.Warning("[Exotic Merchant] Chest purchase made no visible state change; stopping chest purchases.");
+                        purchaseStalled = true;
+                        break;
+                    }
                     yield return Ui.CloseRewards();
                 }
+
+                if (purchaseStalled) break;
             }
         }
 
@@ -246,7 +328,16 @@ public class ArcaneCrystalTask : BotTask
         while (hits < 80 && Ui.NumberAt(C + "/counters/currencyInteraction (Pickaxe)/quantity") > _keep.Value &&
                Ui.Clickable(C + "/crystalParent/hitButton"))
         {
-            yield return Ui.Click(C + "/crystalParent/hitButton", 1f);
+            var pickaxesBefore = Ui.NumberAt(C + "/counters/currencyInteraction (Pickaxe)/quantity");
+            var hit = false;
+            yield return Ui.ClickUntil(Ui.Find(C + "/crystalParent/hitButton"),
+                () => Ui.NumberAt(C + "/counters/currencyInteraction (Pickaxe)/quantity") < pickaxesBefore,
+                value => hit = value, "arcane crystal hit", 1f);
+            if (!hit)
+            {
+                Logger.Warning("[Arcane Crystal] Hit did not consume a pickaxe; stopping.");
+                break;
+            }
             yield return Ui.CloseRewards();
             hits++;
         }
@@ -406,6 +497,8 @@ public class WarMachineUpgradeTask : BotTask
     private const string W = P.Menus + "/WarMachines";
     private const string Grid = W + "/warMachinesScrollView/Viewport/grid";
     private const string Name = W + "/bg/warMachinePreview/standardLevelProgress/bg/name";
+    private const string Level = W + "/bg/warMachinePreview/standardLevelProgress/levelBg/level";
+    private const string Tokens = W + "/counters/currencyInteraction (ExpeditionToken)/quantity";
     private const string Workshop = W + "/submenus/bg/workshopSubmenu";
     private const string Blueprints = W + "/submenus/bg/blueprintUpgradesSubmenu/upgrades";
     private MelonPreferences_Entry<string> _machine;
@@ -484,6 +577,19 @@ public class WarMachineUpgradeTask : BotTask
         yield return Ui.Click(P.Popups + "/GarageSelection/bg/garage", 2f);
         if (!Ui.Visible(W)) yield break;
 
+        var blueprintMode = (_blueprints.Value ?? "none").Trim().ToLowerInvariant();
+        var blueprintCounter = Ui.VisibleChildren(W + "/counters")
+            .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
+        var canUpgradeLevels = _levels.Value && Ui.NumberAt(Tokens) > 0;
+        var canUpgradeBlueprints = blueprintMode != "none" && blueprintCounter != null &&
+                                   Ui.NumberOf(blueprintCounter.Find("quantity")) > 0;
+        if (!canUpgradeLevels && !canUpgradeBlueprints)
+        {
+            Logger.Info("[War Machine] Skipping machine screens: no selected upgrade type has available currency.");
+            yield return Ui.Click(W + "/closeButton");
+            yield break;
+        }
+
         foreach (var number in targets)
         {
             var square = FindSquare(number);
@@ -513,7 +619,7 @@ public class WarMachineUpgradeTask : BotTask
     private IEnumerator UpgradeSelected()
     {
         var name = Ui.Text(Name);
-        if (_levels.Value)
+        if (_levels.Value && Ui.NumberAt(Tokens) > 0)
         {
             yield return Ui.Click(W + "/submenus/submenuButtons/workshop", 1.2f);
             var ups = 0;
@@ -529,7 +635,18 @@ public class WarMachineUpgradeTask : BotTask
                     return parts.Length == 2 && Ui.Parse(parts[0]) >= Ui.Parse(parts[1]);
                 });
                 if (cost <= 0 || tokens < cost || !componentsOk || !Ui.Clickable(Workshop + "/upgradeButton")) break;
-                yield return Ui.Click(Workshop + "/upgradeButton", 1.5f);
+                var levelBefore = Ui.Text(Level);
+                var tokensBefore = tokens;
+                var changed = false;
+                yield return Ui.ClickUntil(Ui.Find(Workshop + "/upgradeButton"),
+                    () => Ui.Text(Level) != levelBefore || Ui.NumberAt(Tokens) < tokensBefore,
+                    value => changed = value, $"{name} level upgrade", 1.5f);
+                if (!changed)
+                {
+                    Logger.Warning($"[War Machine] {name}: stopping level upgrades after no verified level or token change.");
+                    break;
+                }
+
                 ups++;
             }
             if (ups > 0) Logger.Info($"[War Machine] {name}: +{ups} level(s).");
@@ -537,14 +654,11 @@ public class WarMachineUpgradeTask : BotTask
 
         var mode = (_blueprints.Value ?? "none").Trim().ToLowerInvariant();
         if (mode == "none") yield break;
-        yield return Ui.Click(W + "/submenus/submenuButtons/blueprintUpgrades", 1.2f);
-        var counter = Ui.VisibleChildren(W + "/counters")
+        var blueprintCurrency = Ui.VisibleChildren(W + "/counters")
             .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
-        if (counter == null)
-        {
-            Logger.Debug("[War Machine] No blueprint counter on screen; skipping blueprints to stay safe.");
-            yield break;
-        }
+        if (blueprintCurrency == null || Ui.NumberOf(blueprintCurrency.Find("quantity")) <= 0) yield break;
+
+        yield return Ui.Click(W + "/submenus/submenuButtons/blueprintUpgrades", 1.2f);
         int[] slots = mode switch { "damage" => new[] { 0 }, "health" => new[] { 1 }, "armor" => new[] { 2 }, _ => new[] { 0, 1, 2 } };
         var bought = 0;
         foreach (var s in slots)
@@ -552,10 +666,20 @@ public class WarMachineUpgradeTask : BotTask
             var button = Blueprints + $"/wmBlueprintUpgrade ({s})/upgradeButton";
             for (var i = 0; i < 20; i++)
             {
-                var have = Ui.NumberOf(counter.Find("quantity"));
+                var have = Ui.NumberOf(blueprintCurrency.Find("quantity"));
                 var cost = Ui.NumberAt(button + "/costText");
                 if (cost <= 0 || have < cost || !Ui.Clickable(button)) break;
-                yield return Ui.Click(button, 1.2f);
+                var before = have;
+                var changed = false;
+                yield return Ui.ClickUntil(Ui.Find(button),
+                    () => Ui.NumberOf(blueprintCurrency.Find("quantity")) < before,
+                    value => changed = value, $"{name} blueprint {s}", 1.2f);
+                if (!changed)
+                {
+                    Logger.Warning($"[War Machine] {name}: stopping blueprint upgrades after no verified currency change.");
+                    break;
+                }
+
                 bought++;
             }
         }
@@ -767,8 +891,20 @@ public class OracleBlessingsTask : BotTask
         {
             yield return Ui.Click(blessing, 1.2f);
             // The game only enables "Bless" when you have every glyph it asks for.
+            var name = Ui.Text(Preview + "/darkBlueFrame/upgradeName");
             for (var n = 0; n < 10 && Ui.Clickable(Bless); n++)
-                yield return Ui.Click(Bless, 1.5f, Ui.Text(Preview + "/darkBlueFrame/upgradeName"));
+            {
+                var levelBefore = Ui.Text(Preview + "/darkBlueFrame/upgradeLevelText");
+                var changed = false;
+                yield return Ui.ClickUntil(Ui.Find(Bless),
+                    () => Ui.Text(Preview + "/darkBlueFrame/upgradeLevelText") != levelBefore,
+                    value => changed = value, $"Oracle blessing: {name}", 1.5f);
+                if (!changed)
+                {
+                    Logger.Warning($"[Oracle] Stopping {name}: blessing level did not change after purchase.");
+                    break;
+                }
+            }
             yield return Ui.Click(Preview + "/closeButton", 0.8f);
         }
 
@@ -802,6 +938,12 @@ public class PersonalTreeTask : BotTask
         yield return Ui.OpenGuildBuilding("treeOfLife");
         yield return Ui.Click(T + "/submenuButtons/personalTree", 1.5f);
         if (!Ui.Visible(Nodes)) yield break;
+        if (Ui.NumberAt(Tokens) <= _keepTokens.Value)
+        {
+            Logger.Info($"[Personal Tree] Skipping upgrade previews: tokens {Ui.NumberAt(Tokens)}, reserve {_keepTokens.Value}.");
+            yield return Ui.Click(T + "/closeButton");
+            yield break;
+        }
 
         // Read every upgrade once: name, cost and whether it is maxed.
         var info = new System.Collections.Generic.List<(Transform node, string name, double cost, bool maxed)>();
@@ -832,7 +974,21 @@ public class PersonalTreeTask : BotTask
             {
                 var cost = Ui.NumberAt(Buy + "/cost");
                 if (cost <= 0 || Ui.NumberAt(Tokens) - _keepTokens.Value < cost || !Ui.Clickable(Buy)) break;
-                yield return Ui.Click(Buy, 1.5f, up.name);
+                var levelBefore = Ui.Text(Preview + "/upgradeLevelText");
+                var tokensBefore = Ui.NumberAt(Tokens);
+                var changed = false;
+                yield return Ui.ClickUntil(Ui.Find(Buy),
+                    () => Ui.Text(Preview + "/upgradeLevelText") != levelBefore ||
+                          Ui.NumberAt(Buy + "/cost") != cost ||
+                          Ui.NumberAt(Tokens) < tokensBefore,
+                    value => changed = value, up.name, 1.5f);
+                if (!changed)
+                {
+                    Logger.Warning($"[Personal Tree] Stopping after {up.name} made no verified progress.");
+                    if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                    yield return Ui.Click(T + "/closeButton");
+                    yield break;
+                }
             }
 
             yield return Ui.Click(Preview + "/closeButton", 0.6f);
@@ -859,23 +1015,41 @@ public class QuestsTask : BotTask
         if (!Ui.Visible(C)) yield break;
 
         yield return Ui.Click(C + "/submenuButtons/quests", 1.5f);
+        var confirmed = 0;
+        var unconfirmed = 0;
+        var stalled = false;
         foreach (var tab in new[] { "dailyButton", "weeklyButton" })
         {
+            if (stalled) break;
             yield return Ui.Click(Q + "/submenuButtons/" + tab, 1.5f);
             foreach (var scroll in Ui.VisibleChildren(Q + "/submenus").ToList())
             {
+                if (stalled) break;
                 var grid = scroll.Find("Viewport/grid");
                 if (grid == null) continue;
                 for (var i = 0; i < grid.childCount; i++)
                 {
                     var claim = grid.GetChild(i).Find("claimButton");
                     if (!Ui.Clickable(claim)) continue;
-                    yield return Ui.Click(claim, 1.5f, "quest reward");
+                    var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                    var changed = false;
+                    yield return Ui.ClickUntil(claim,
+                        () => !Ui.Clickable(claim) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                        value => changed = value, "quest reward", 1.5f);
                     yield return Ui.CloseRewards();
+                    if (changed) confirmed++;
+                    else
+                    {
+                        unconfirmed++;
+                        stalled = true;
+                        break;
+                    }
                 }
             }
         }
 
+        Logger.Info($"[Quests] Claim controls changed for {confirmed} reward(s); {unconfirmed} claim(s) unconfirmed. " +
+                    "Reward receipt is not independently verified.");
         yield return Ui.Click(C + "/closeButton");
     }
 }
