@@ -13,6 +13,8 @@ INSTALL
 FEATURES
 See the release notes for the full list. Highlights include notification-bubble tasks, daily rewards,
 research and town automation, map missions, arena, talents, boss retries, and the F4 War Machine Planner.
+For bubbles without a dedicated task, the bot looks for free claim/collect buttons on activated screens.
+Its log distinguishes button clicks and later button state changes from independently verified rewards.
 The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
 The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
 

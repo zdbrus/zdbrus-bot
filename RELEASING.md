@@ -4,6 +4,10 @@ This project is a Windows MelonLoader mod targeting .NET 6. The DLL references a
 
 ## Build and test
 
+For every user-visible change, review and update both the repository `README.md` and the player-facing
+`release\README.txt` when their descriptions, setup steps, safety notes, or feature claims need to change.
+Do not treat the changelog as a substitute for keeping either README accurate.
+
 1. Install the stable MelonLoader **0.7.3** in the Firestone game folder. Do not use a nightly build; newer nightlies have made the game crash at startup.
 2. Launch Firestone once through Steam or Epic, then close it. MelonLoader generates `MelonLoader\Il2CppAssemblies`, which the project references.
 3. Install a .NET SDK, then build with the actual folder containing `Firestone.exe`:
@@ -50,7 +54,7 @@ Those three Interop DLLs are intentionally bundled: the current game can close d
 1. Set `Brand.Version` in `src\Core\Brand.cs` and add a dated section for that version at the top of `CHANGELOG.md`.
 2. Commit and push the verified source changes. The repository has no bot build/release workflow; the binary zip must be built and attached manually.
 3. Create a GitHub **draft release** with a matching `v<version>` tag, based on the commit containing the release source. Upload the tested package as `ZdbrusBot.zip`.
-4. Before publishing, verify the release page reports the correct tag and attached asset, download the asset once, and inspect its four required DLL paths above. Keep the release as a draft until that check is complete; **Publish release** is the final public step.
+4. Before publishing, verify the release page reports the correct tag and attached asset, download the asset once, and inspect its four required DLL paths above. Confirm the bundled `README.txt` describes the current release and agrees with `README.md`. Keep the release as a draft until that check is complete; **Publish release** is the final public step.
 
 ## Crash-prevention notes
 

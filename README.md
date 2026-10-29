@@ -88,6 +88,8 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 
 Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run when that icon shows, so the bot does not open screens just to look. If a task's screen is already open, it carries on from there instead of walking back from town. Campaign, boss retries and chests run on their own timers.
 
+For notification bubbles without a dedicated task, the bot looks for free claim/collect buttons on the screens the bubble activates. The log reports button clicks and follow-up button state changes separately; those are not proof that the game granted the reward.
+
 ## Safety
 
 - **Never spends gems or real money.** Every purchase is skipped unless the game shows the button as available **and** you have enough of the exact currency it costs.
