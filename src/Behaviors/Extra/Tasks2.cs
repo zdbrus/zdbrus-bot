@@ -1049,19 +1049,21 @@ public class OpenChestsTask : BotTask
     private const string Opening = P.Menus + "/ChestOpening";
     private static readonly HashSet<string> SupportedChests = new(StringComparer.OrdinalIgnoreCase)
         { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" };
-    private MelonPreferences_Entry<string> _skip;
+    private readonly Dictionary<string, MelonPreferences_Entry<bool>> _open = new(StringComparer.OrdinalIgnoreCase);
     protected override bool EnabledByDefault => true;
 
+    // Keyed by the chest tile's object name in the game (its ID), never by the displayed text.
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _skip = c.CreateEntry("skip", "mysteryBox,oraclesGift", "Chests To Keep",
-            "Chest names to leave unopened, comma-separated (Common, Uncommon, Rare, Epic, Legendary, Wooden, Iron, Golden, Comet, Lunar...).");
+        foreach (var id in new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" })
+            _open[id] = c.CreateEntry("open_" + id.ToLowerInvariant(), true, "Open " + id + " Chests",
+                "Tick to let the bot open this chest type (game id: " + id + "). Untick to keep them.");
     }
 
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddMinutes(20);
-        var skip = (_skip.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToHashSet();
+        var skip = _open.Where(kv => !kv.Value.Value).Select(kv => kv.Key.ToLowerInvariant()).ToHashSet();
         yield return Ui.Click(Bag, 1.5f);
         yield return Ui.WaitFor(Inv);
         if (!Ui.Visible(Inv))

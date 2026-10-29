@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.25 (2026-10-29)
+- Open Chests: the 'Chests To Keep' text box is replaced by one checkbox per chest type (Common, Uncommon, Rare, Epic, Legendary, Wooden, Iron, Golden, Comet, Lunar), all ticked by default. Each is tied to the chest tile's game id, not its displayed name. Mystery boxes and Oracle gifts are never opened. Your old 'skip' setting is no longer used.
+
 ## 0.7.24 (2026-10-29)
 - Open Chests: the chest tiles never opened their preview from the Button callback (logged 'Clicking Common did not open its preview' on every run). If the button click shows nothing, it now sends a real pointer down/up/click to the tile. Retries every 20 minutes instead of 2 hours. Not yet live-verified.
 
