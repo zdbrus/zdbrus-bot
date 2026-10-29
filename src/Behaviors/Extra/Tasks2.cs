@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -27,6 +27,41 @@ internal static class NodeBuyer
         public string Cost;      // cost text, relative to Preview
         public string Close;     // close button, relative to Preview
     }
+
+    private sealed class NodeInfo
+    {
+        public bool Maxed;
+        public double Cost;
+        public DateTime At;
+    }
+
+    private static readonly Dictionary<string, NodeInfo> Known = new();
+
+    private static string KeyOf(Transform node)
+    {
+        var parts = new List<string>();
+        for (var t = node; t != null && parts.Count < 6; t = t.parent)
+            parts.Add(t.name + "#" + t.GetSiblingIndex());
+        return string.Join("/", parts);
+    }
+
+    /// <summary>
+    ///     True when a node's earlier preview already shows it cannot be bought now: maxed, a known cost above
+    ///     the budget, or locked recently. Skips opening its preview again.
+    /// </summary>
+    internal static bool CanSkip(Transform node, double budget)
+    {
+        if (!Known.TryGetValue(KeyOf(node), out var k)) return false;
+        if (k.Maxed) return true;
+        var age = DateTime.Now - k.At;
+        if (k.Cost > 0) return budget < k.Cost && age < TimeSpan.FromHours(6);
+        return age < TimeSpan.FromHours(2);
+    }
+
+    internal static void Remember(Transform node, bool maxed, double cost)
+        => Known[KeyOf(node)] = new NodeInfo { Maxed = maxed, Cost = cost, At = DateTime.Now };
+
+    internal static void Forget(Transform node) => Known.Remove(KeyOf(node));
 
     private static int Rank(List<string> order, string name)
     {
@@ -60,8 +95,15 @@ internal static class NodeBuyer
         }
 
         var info = new List<(Transform node, string name, double cost, bool open)>();
+        var skipped = 0;
         foreach (var node in nodes)
         {
+            if (CanSkip(node, currency() - keep))
+            {
+                skipped++;
+                continue;
+            }
+
             yield return Ui.Click(node, 0.9f);
             if (!Ui.Visible(l.Preview)) continue;
             var name = Ui.Text(l.Preview + "/" + l.Name);
@@ -72,9 +114,11 @@ internal static class NodeBuyer
             var buy = l.Preview + "/" + l.Buy;
             var cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
             var open = !maxed && Ui.Visible(buy) && cost > 0;
+            Remember(node, maxed, open ? cost : 0);
             if (stopAtFirstAffordable && open && currency() - keep >= cost)
             {
                 Logger.Info($"[Nodes] First affordable: {name} ({cost}), have {currency()}.");
+                Forget(node);
                 for (var n = 0; n < maxPerNode; n++)
                 {
                     cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
@@ -106,11 +150,13 @@ internal static class NodeBuyer
         var order = (priority ?? string.Empty).Split(',').Select(s => s.Trim().ToLowerInvariant())
             .Where(s => s.Length > 0).ToList();
 
-        Logger.Info($"[Nodes] {info.Count(u => u.open)} of {info.Count} upgradable, currency {currency()}");
+        Logger.Info($"[Nodes] {info.Count(u => u.open)} of {info.Count} previewed upgradable " +
+                    $"({skipped} skipped from earlier reads), currency {currency()}");
         foreach (var up in info.Where(u => u.open).OrderBy(u => Rank(order, u.name)).ThenBy(u => u.cost).ToList())
         {
             if (currency() - keep < up.cost) continue;
             yield return Ui.Click(up.node, 0.9f);
+            Forget(up.node);
             var buy = l.Preview + "/" + l.Buy;
             for (var n = 0; n < maxPerNode; n++)
             {
@@ -338,6 +384,7 @@ public class TemplePrestigeTask : BotTask
     private MelonPreferences_Entry<double> _lastGain;
     private MelonPreferences_Entry<string> _lastGainAt;
     private MelonPreferences_Entry<double> _refRate;
+    private int _slowStreak;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
@@ -346,8 +393,8 @@ public class TemplePrestigeTask : BotTask
         _minGain = c.CreateEntry("min_gain_percent", 100, "Minimum Gold Boost %",
             "Never empower for less than this extra gold (the +% the temple shows).");
         _minHours = c.CreateEntry("min_hours_played", 1, "Minimum Hours In Run", "Never empower a run younger than this.");
-        _efficiency = c.CreateEntry("efficiency_percent", 50, "Empower When Gain Rate Below %",
-            "Empower once the gold boost grows slower than this % of the previous run's average growth per hour. 0 turns this rule off; the stall rule above still applies.");
+        _efficiency =         c.CreateEntry("efficiency_percent", 75, "Empower When Gain Rate Below %",
+                    "Empower once the gold boost's current growth per hour stays below this % of this run's own average growth per hour (the point where waiting lowers your long-run average). Lower values wait longer to cover the time a new run needs to ramp up. 0 turns this rule off; the stall rule above still applies.");
         _lastGain = c.CreateEntry("last_gain", -1.0, "Last Gold Boost Sample", "Kept by the bot.", is_hidden: true);
         _lastGainAt = c.CreateEntry("last_gain_at", "", "Last Sample Time", "Kept by the bot.", is_hidden: true);
         _refRate = c.CreateEntry("reference_rate", 0.0, "Previous Run Gain Rate", "Kept by the bot.", is_hidden: true);
@@ -390,7 +437,7 @@ public class TemplePrestigeTask : BotTask
         NextRunTime = DateTime.Now.AddMinutes(30);
         var stalled = HoursSinceProgress();
         var isStalled = stalled >= _stallHours.Value;
-        var sampleDue = _efficiency.Value > 0 && _refRate.Value > 0 &&
+        var sampleDue = _efficiency.Value > 0 &&
                         (!DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
                              DateTimeStyles.RoundtripKind, out var sampledAt) ||
                          (DateTime.Now - sampledAt).TotalMinutes >= 60);
@@ -413,7 +460,7 @@ public class TemplePrestigeTask : BotTask
 
         if (!isStalled)
         {
-            var reason = EvaluateRate(gain, out var inefficient);
+            var reason = EvaluateRate(gain, played, out var inefficient);
             if (!inefficient)
             {
                 Logger.Info($"Temple: keeping the run ({reason}).");
@@ -494,6 +541,7 @@ public class TemplePrestigeTask : BotTask
         }
 
         if (played > 0 && gain > 0 && gain < 1e300) _refRate.Value = gain / played;
+        _slowStreak = 0;
         _lastGain.Value = -1;
         _lastGainAt.Value = "";
         _bestStage.Value = 0;
@@ -502,7 +550,7 @@ public class TemplePrestigeTask : BotTask
     }
 
     /// <summary>Compares the gold boost growth per hour since the last sample with the previous run's average.</summary>
-    private string EvaluateRate(double gain, out bool inefficient)
+    private string EvaluateRate(double gain, double played, out bool inefficient)
     {
         inefficient = false;
         if (gain <= 0 || gain >= 1e300) return "gold boost unreadable";
@@ -518,8 +566,10 @@ public class TemplePrestigeTask : BotTask
         if (hasSample && gain >= previous && hours >= 0.25)
         {
             var rate = (gain - previous) / hours;
-            var limit = _refRate.Value * _efficiency.Value / 100.0;
-            inefficient = rate < limit;
+            var average = played > 0 ? gain / played : 0;
+            var limit = average * _efficiency.Value / 100.0;
+            _slowStreak = rate < limit ? _slowStreak + 1 : 0;
+            inefficient = _slowStreak >= 2;
             _lastGain.Value = gain;
             _lastGainAt.Value = now.ToString("o");
             MelonPreferences.Save();

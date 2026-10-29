@@ -4,7 +4,8 @@
 - Map missions, Oracle rituals, guardian training, Chaos Rift, Awakening, Holy Upgrade, Scarab milestones, Pharaoh's Vault, Event Exchange, Expeditions, Alchemist and Library research now verify a visible state change (currency, claim button, timer or slot) after each click and stop instead of looping when none is seen.
 - Chaos Rift now owns its bubbles; Bubble Rewards and Scarab Game no longer overlap tasks that handle the same bubble.
 - Miner, beer-dragon and pumpkin clicks are retried (up to 3 times) if the target is still on screen 3s later; Enlightenment is capped at 50 clicks per visit.
-- Temple Prestige adds a rate-based trigger: after the bot's first prestige it samples the temple's gold boost hourly and empowers once growth per hour falls below a set share (default 50%) of the previous run's average. The stall rule remains, and both respect the minimum gain and run age.
+- Tree and research upgrade tasks (Personal Tree, Meteorite and other node trees) remember maxed, locked and unaffordable nodes and stop opening every node's preview each run.
+- Temple Prestige adds a rate-based trigger: it samples the temple's gold boost hourly and empowers once growth per hour stays below a set share (default 75%) of this run's own average for two checks in a row, which needs no earlier prestige. The stall rule remains, and both respect the minimum gain and run age.
 - Temple Prestige waits for a stage reset before resetting its stall tracker.
 - Logs state when a result is only a click/control change and not independently confirmed reward receipt. Not yet live-tested in game.
 

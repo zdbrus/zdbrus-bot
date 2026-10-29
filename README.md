@@ -63,7 +63,7 @@ Every feature can be switched on or off in the F1 panel.
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
 | **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
-| **Prestige** | Temple prestige once your run stalls (no new highest stage for 3 hours, adjustable) or, after the bot's first prestige, once the temple's gold boost grows slower than half the previous run's rate (adjustable, 0 = off); never the paid 2x |
+| **Prestige** | Temple prestige once your run stalls (no new highest stage for 3 hours, adjustable) or once the temple's gold boost grows slower than 75% of this run's own average rate for two checks in a row (adjustable, 0 = off); never the paid 2x |
 
 ### War Machine Planner (F4)
 

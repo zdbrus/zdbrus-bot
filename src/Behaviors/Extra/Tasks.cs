@@ -1027,17 +1027,28 @@ public class PersonalTreeTask : BotTask
 
         // Read every upgrade once: name, cost and whether it is maxed.
         var info = new System.Collections.Generic.List<(Transform node, string name, double cost, bool maxed)>();
+        var skipped = 0;
         foreach (var node in Ui.VisibleChildren(Nodes).Where(n => n.name.StartsWith("treeOfLifePersonalUpgrade")).ToList())
         {
+            if (NodeBuyer.CanSkip(node, Ui.NumberAt(Tokens) - _keepTokens.Value))
+            {
+                skipped++;
+                continue;
+            }
+
             yield return Ui.Click(node, 1f);
             var name = Ui.Text(Preview + "/upgradeName");
             var level = Ui.Text(Preview + "/upgradeLevelText");
             var parts = level.Split('/');
             var maxed = parts.Length == 2 && Ui.Parse(parts[0]) >= Ui.Parse(parts[1]);
             var cost = Ui.NumberAt(Buy + "/cost");
-            info.Add((node, name, cost, maxed || !Ui.Visible(Buy)));
+            var done = maxed || !Ui.Visible(Buy);
+            NodeBuyer.Remember(node, maxed, done ? 0 : cost);
+            info.Add((node, name, cost, done));
             yield return Ui.Click(Preview + "/closeButton", 0.6f);
         }
+
+        Logger.Info($"[Personal Tree] Previewed {info.Count} upgrade(s), skipped {skipped} already known as unaffordable, maxed or locked.");
 
         var order = (_priority.Value ?? string.Empty).Split(',').Select(s => s.Trim().ToLowerInvariant()).ToList();
         int Rank(string n)
@@ -1050,6 +1061,7 @@ public class PersonalTreeTask : BotTask
         {
             if (Ui.NumberAt(Tokens) - _keepTokens.Value < up.cost) continue;
             yield return Ui.Click(up.node, 1f);
+            NodeBuyer.Forget(up.node);
             for (var n = 0; n < 5; n++)
             {
                 var cost = Ui.NumberAt(Buy + "/cost");
