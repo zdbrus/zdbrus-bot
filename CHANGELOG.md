@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.21 (2026-10-29)
+- Awaken Heroes now always logs what it did: screen failed to open, button not clickable (with cost and crystals), or a confirmed count with the crystal balance. Before, several exits were silent.
+
 ## 0.7.20 (2026-10-29)
 - War Machine Upgrade: fixed a bug where it read the currency counters on the garage list, where they are hidden, saw 0 and skipped every machine. It now opens each picked machine and decides on that machine's own screen, then also opens any other machine still showing its bell. If nothing could be bought it backs off for an hour.
 

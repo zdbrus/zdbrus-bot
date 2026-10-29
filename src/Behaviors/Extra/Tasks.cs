@@ -525,6 +525,13 @@ public class AwakenHeroesTask : BotTask
     {
         NextRunTime = DateTime.Now.AddHours(3);
         yield return Ui.OpenGuildBuilding("awakening");
+        if (!Ui.Visible(A))
+        {
+            Logger.Warning("[Awakening] The Awakening screen did not open; nothing attempted.");
+            yield break;
+        }
+
+        var awakened = 0;
         for (var i = 0; i < 10; i++)
         {
             var have = Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity");
@@ -542,7 +549,11 @@ public class AwakenHeroesTask : BotTask
                 break;
             }
 
-            if (!Ui.Clickable(Button)) break;
+            if (!Ui.Clickable(Button))
+            {
+                Logger.Warning($"[Awakening] Cost {cost}, crystals {have}, but the Awaken button is not clickable (visible: {Ui.Visible(Button)}); stopping.");
+                break;
+            }
             var confirmed = false;
             yield return Ui.ClickUntil(Ui.Find(Button),
                 () => Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity") < have,
@@ -553,9 +564,11 @@ public class AwakenHeroesTask : BotTask
                 break;
             }
 
+            awakened++;
             yield return Ui.CloseRewards();
         }
 
+        Logger.Info($"[Awakening] Confirmed {awakened} awakening(s); crystals now {Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity"):0}.");
         yield return Ui.Click(A + "/closeButton");
     }
 }
