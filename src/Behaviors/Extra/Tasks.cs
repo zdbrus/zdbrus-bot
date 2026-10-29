@@ -537,7 +537,8 @@ public class AwakenHeroesTask : BotTask
 
             if (have < cost)
             {
-                Logger.Info($"[Awakening] Need {cost} Arcane Crystals; have {have}. No awakening attempted.");
+                Logger.Info($"[Awakening] Need {cost} Arcane Crystals; have {have}. No awakening attempted; bubble left alone for 1 hour.");
+                BubbleQuietUntil = DateTime.Now.AddHours(1);
                 break;
             }
 
@@ -654,7 +655,9 @@ public class WarMachineUpgradeTask : BotTask
                                    Ui.NumberOf(blueprintCounter.Find("quantity")) > 0;
         if (!canUpgradeLevels && !canUpgradeBlueprints)
         {
-            Logger.Info("[War Machine] Skipping machine screens: no selected upgrade type has available currency.");
+            Logger.Info("[War Machine] Skipping machine screens: no selected upgrade type has available currency. " +
+                        "The bubble stays lit for a machine or upgrade type that is not selected; it is left alone for 1 hour.");
+            BubbleQuietUntil = DateTime.Now.AddHours(1);
             yield return Ui.Click(W + "/closeButton");
             yield break;
         }

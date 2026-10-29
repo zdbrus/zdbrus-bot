@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.19 (2026-10-29)
+- War Machine Upgrade and Awaken Heroes no longer re-run every 3 minutes for a bubble they cannot clear: the log showed both looping with nothing to spend. They now leave that bubble alone for 1 hour and say why. The bubble itself can stay lit if it is for a machine or upgrade type that is not selected.
+
 ## 0.7.18 (2026-10-29)
 - Bubble Rewards logs every lit bubble and which task answers it (or UNHANDLED) each run, so a bubble that stays lit can be traced by name.
 
