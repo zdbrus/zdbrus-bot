@@ -90,17 +90,17 @@ public class MagicQuartersTask : BotTask
     private IEnumerator TryTrainGuardian(GameButton guardianBtn, GameButton trainBtn, bool useStrangeDust)
     {
         yield return guardianBtn.Click();
-        if (!trainBtn.IsClickable())
+        if (trainBtn.IsClickable())
         {
-            Debug("[INFO] Training is not available for the selected guardian.");
-            yield break;
+            var before = CooldownMarker();
+            var trained = false;
+            yield return trainBtn.ClickUntil(() => !trainBtn.IsClickable() || CooldownMarker() != before,
+                value => trained = value, "Guardian training", 3f);
+            if (trained) Firebot.Core.Logger.Info("[Guardians] Training control or cooldown state changed.");
         }
+        else
+            Debug("[INFO] Training is not available for the selected guardian.");
 
-        var before = CooldownMarker();
-        var trained = false;
-        yield return trainBtn.ClickUntil(() => !trainBtn.IsClickable() || CooldownMarker() != before,
-            value => trained = value, "Guardian training", 3f);
-        if (trained) Firebot.Core.Logger.Info("[Guardians] Training control or cooldown state changed.");
         yield return ApplyEnlightenment(useStrangeDust);
     }
 
