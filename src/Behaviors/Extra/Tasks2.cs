@@ -687,6 +687,29 @@ public class BubbleRewardsTask : BotTask
             .Where(s => s.Length > 0 && !ownedByEnabledTasks.Contains(s));
     }
 
+    // Every lit bubble and who answers it, so one that nobody handles shows up in the log by name.
+    private void LogLitBubbles()
+    {
+        try
+        {
+            var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var task in BotManager.AllTasks)
+                if (task != this)
+                    foreach (var n in task.HandledNotificationNames)
+                        owners[n] = task.SectionTitle + (task.IsEnabled ? "" : " (disabled)");
+            var mine = (_bubbles?.Value ?? string.Empty).Split(',').Select(s => s.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var lit = Ui.VisibleChildren(P.Notifications).Select(t => t.name).ToList();
+            var parts = lit.Select(n => owners.TryGetValue(n, out var o) ? $"{n}->{o}"
+                : mine.Contains(n) ? $"{n}->Bubble Rewards" : $"{n}->UNHANDLED");
+            Logger.Info($"[Bubbles] Lit now ({lit.Count}): {string.Join(", ", parts)}");
+        }
+        catch (Exception e)
+        {
+            Logger.Debug($"[Bubbles] Could not list lit bubbles: {e.Message}");
+        }
+    }
+
     private static HashSet<int> OpenRoots()
     {
         var set = new HashSet<int>();
@@ -749,6 +772,7 @@ public class BubbleRewardsTask : BotTask
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddMinutes(10);
+        LogLitBubbles();
         foreach (var name in BubbleNames())
         {
             var path = P.Notifications + "/" + name;

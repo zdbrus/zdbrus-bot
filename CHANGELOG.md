@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.18 (2026-10-29)
+- Bubble Rewards logs every lit bubble and which task answers it (or UNHANDLED) each run, so a bubble that stays lit can be traced by name.
+
 ## 0.7.17 (2026-10-29)
 - Map missions, Oracle rituals, guardian training, Chaos Rift, Awakening, Holy Upgrade, Scarab milestones, Pharaoh's Vault, Event Exchange, Expeditions, Alchemist and Library research now verify a visible state change (currency, claim button, timer or slot) after each click and stop instead of looping when none is seen.
 - Chaos Rift now owns its bubbles; Bubble Rewards and Scarab Game no longer overlap tasks that handle the same bubble.
