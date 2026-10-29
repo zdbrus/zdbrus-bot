@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.22 (2026-10-29)
+- Awaken Heroes waits up to 5s for the Awaken button to become clickable again after an awakening (live log showed it stopping after 1 of several affordable awakenings).
+
 ## 0.7.21 (2026-10-29)
 - Awaken Heroes now always logs what it did: screen failed to open, button not clickable (with cost and crystals), or a confirmed count with the crystal balance. Before, several exits were silent.
 

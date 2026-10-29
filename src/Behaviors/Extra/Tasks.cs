@@ -549,6 +549,13 @@ public class AwakenHeroesTask : BotTask
                 break;
             }
 
+            var waited = 0f;
+            while (!Ui.Clickable(Button) && waited < 5f)
+            {
+                yield return new WaitForSeconds(0.5f);
+                waited += 0.5f;
+            }
+
             if (!Ui.Clickable(Button))
             {
                 Logger.Warning($"[Awakening] Cost {cost}, crystals {have}, but the Awaken button is not clickable (visible: {Ui.Visible(Button)}); stopping.");
