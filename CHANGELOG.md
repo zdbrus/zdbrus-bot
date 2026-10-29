@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.14 (2026-10-29)
+- Open Chests now recognizes only supported gear, jewel and celestial chests, respects the configured keep list, and waits for each reward screen and inventory update.
+- The task verifies chest quantities decrease and continues until no eligible supported chests remain, with explicit reasons when it must stop or leave chests unopened.
+
 ## 0.7.13 (2026-10-29)
 - Daily rewards, Warfront loot and Free Pickaxes now run as soon as their notification bubbles appear instead of waiting for their timers.
 - The free-reward bubble scanner now includes Chaos Rift Supplies and Guardian Holy Upgrade; existing custom bubble lists are preserved.

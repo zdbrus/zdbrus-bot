@@ -715,9 +715,12 @@ public class OpenChestsTask : BotTask
 {
     private const string Bag = P.Battle + "/bottomSideUIDesktop/menuButtons/inventoryButtonUI";
     private const string Inv = P.Menus + "/Inventory";
+    private const string InventoryTitle = Inv + "/titleText";
     private const string Content = Inv + "/submenus/items/ScrollView/Viewport/Content";
     private const string Preview = P.Popups + "/ChestOpenPreview/bg";
     private const string Opening = P.Menus + "/ChestOpening";
+    private static readonly HashSet<string> SupportedChests = new(StringComparer.OrdinalIgnoreCase)
+        { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" };
     private MelonPreferences_Entry<string> _skip;
     protected override bool EnabledByDefault => true;
 
@@ -732,42 +735,93 @@ public class OpenChestsTask : BotTask
         NextRunTime = DateTime.Now.AddHours(2);
         var skip = (_skip.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToHashSet();
         yield return Ui.Click(Bag, 1.5f);
-        yield return Ui.Click(Inv + "/submenuButtons/chests", 1.2f);
-        if (!Ui.Visible(Content)) yield break;
+        yield return Ui.WaitFor(Inv);
+        if (!Ui.Visible(Inv))
+        {
+            Logger.Warning("[Chests] Bag did not open; no chests were processed.");
+            yield break;
+        }
 
-        for (var round = 0; round < 25; round++)
+        if (!string.Equals(Ui.Text(InventoryTitle), "Chests", StringComparison.OrdinalIgnoreCase))
+            yield return Ui.Click(Inv + "/submenuButtons/chests", 1.2f);
+        yield return Ui.WaitFor(Content);
+        if (!Ui.Visible(Content))
+        {
+            Logger.Warning("[Chests] Chest inventory did not appear; no chests were processed.");
+            yield return Ui.Click(Inv + "/closeButton");
+            yield break;
+        }
+
+        var opened = 0;
+        var foundChest = false;
+        var kept = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        while (true)
         {
             var chest = Ui.VisibleChildren(Content).FirstOrDefault(t =>
-                !skip.Contains(t.name.ToLowerInvariant()) && Ui.NumberOf(t.Find("quantity")) > 0 && Ui.Clickable(t));
-            if (chest == null) break;
+                SupportedChests.Contains(t.name) && !skip.Contains(t.name.ToLowerInvariant()) &&
+                Ui.NumberOf(t.Find("quantity")) > 0 && Ui.Clickable(t));
+            if (chest == null)
+            {
+                if (!foundChest) Logger.Info("[Chests] No eligible clickable chest found; none opened.");
+                break;
+            }
+
+            foundChest = true;
             var name = chest.name;
+            var beforeQuantity = Ui.NumberOf(chest.Find("quantity"));
             yield return Ui.Click(chest, 1.2f);
-            if (!Ui.Visible(Preview)) break;
+            yield return Ui.WaitFor(Preview);
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Warning($"[Chests] Clicking {name} did not open its preview; stopping.");
+                break;
+            }
 
             if (Ui.Visible(Preview + "/chestRequirementBg"))
             {
                 Logger.Info($"[Chests] {name} has a requirement; keeping it.");
                 skip.Add(name.ToLowerInvariant());
+                kept[name] = "requirement";
                 yield return Ui.Click(Preview + "/closeButton", 0.6f);
                 continue;
             }
 
             Transform open = null;
-            foreach (var option in new[] { "openxMax", "openx10", "openx1" })
+            for (var attempt = 0; attempt < 20 && open == null; attempt++)
             {
-                var b = Ui.Find(Preview + "/openingOptions/" + option);
-                if (Ui.Clickable(b) && b.Find("chestIcon") != null && b.Find("chestIcon").gameObject.activeInHierarchy) { open = b; break; }
+                foreach (var option in new[] { "openxMax", "openx10", "openx1" })
+                {
+                    var b = Ui.Find(Preview + "/openingOptions/" + option);
+                    if (Ui.Clickable(b) && b.Find("chestIcon") != null && b.Find("chestIcon").gameObject.activeInHierarchy)
+                    {
+                        open = b;
+                        break;
+                    }
+                }
+
+                if (open == null) yield return new WaitForSeconds(0.25f);
             }
 
             if (open == null)
             {
+                Logger.Info($"[Chests] {name} has no safe free opening option; keeping it.");
                 skip.Add(name.ToLowerInvariant());
+                kept[name] = "no safe free opening option";
                 yield return Ui.Click(Preview + "/closeButton", 0.6f);
                 continue;
             }
 
-            yield return Ui.Click(open, 2f, $"open {name} chest {Ui.Text(open.Find("quantity"))}");
+            var quantity = Ui.Text(open.Find("quantity"));
+            yield return Ui.Click(open, 2f, $"request opening {name} chest {quantity}");
             if (Ui.MissingCurrency) break;
+            yield return Ui.WaitFor(Opening);
+            if (!Ui.Visible(Opening))
+            {
+                Logger.Warning($"[Chests] The {name} open request did not show a reward screen; stopping.");
+                break;
+            }
+
+            Logger.Info($"[Chests] Reward screen appeared for {name} chest selection {quantity}.");
 
             // Skip the animation, then close the reward screen.
             for (var w = 0; w < 30 && Ui.Visible(Opening) && !Ui.Clickable(Opening + "/closeButton"); w++)
@@ -778,9 +832,54 @@ public class OpenChestsTask : BotTask
 
             if (Ui.Clickable(Opening + "/closeButton")) yield return Ui.Click(Opening + "/closeButton", 1f);
             if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.6f);
+
+            var updateDeadline = Time.unscaledTime + 5f;
+            while (Time.unscaledTime < updateDeadline)
+            {
+                var current = Ui.Find(Content + "/" + name);
+                if (current == null || !current.gameObject.activeInHierarchy ||
+                    Ui.NumberOf(current.Find("quantity")) < beforeQuantity) break;
+                yield return new WaitForSeconds(0.25f);
+            }
+
+            var updatedChest = Ui.Find(Content + "/" + name);
+            var afterQuantity = updatedChest != null && updatedChest.gameObject.activeInHierarchy
+                ? Ui.NumberOf(updatedChest.Find("quantity"))
+                : 0;
+            if (afterQuantity >= beforeQuantity)
+            {
+                Logger.Warning($"[Chests] {name} quantity did not decrease after its reward screen; stopping to avoid retrying.");
+                break;
+            }
+
+            opened++;
+            Logger.Info($"[Chests] Confirmed {name} quantity decreased from {beforeQuantity} to {afterQuantity}.");
         }
 
+        var remaining = Ui.VisibleChildren(Content)
+            .Where(t => SupportedChests.Contains(t.name) && !skip.Contains(t.name.ToLowerInvariant()) &&
+                        Ui.NumberOf(t.Find("quantity")) > 0)
+            .ToList();
+        var owned = Ui.VisibleChildren(Content)
+            .Where(t => Ui.NumberOf(t.Find("quantity")) > 0)
+            .ToList();
+        if (remaining.Count > 0)
+            Logger.Warning($"[Chests] Stopped with eligible supported chests remaining: {string.Join(", ", remaining.Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}"))}.");
+        else
+            Logger.Info("[Chests] Verified no eligible supported chests remain.");
+        if (kept.Count > 0)
+            Logger.Info($"[Chests] Kept chests: {string.Join(", ", kept.Select(kv => $"{kv.Key} ({kv.Value})"))}.");
+        var configuredSkips = owned.Where(t => skip.Contains(t.name.ToLowerInvariant()) && !kept.ContainsKey(t.name))
+            .Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}").ToList();
+        if (configuredSkips.Count > 0)
+            Logger.Info($"[Chests] Left unopened by configured keep list: {string.Join(", ", configuredSkips)}.");
+        var unsupported = owned.Where(t => !SupportedChests.Contains(t.name))
+            .Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}").ToList();
+        if (unsupported.Count > 0)
+            Logger.Info($"[Chests] Left unopened because the chest type is unsupported: {string.Join(", ", unsupported)}.");
+
         if (Ui.Visible(Inv)) yield return Ui.Click(Inv + "/closeButton");
+        Logger.Info($"[Chests] Confirmed {opened} chest opening(s).");
     }
 }
 
