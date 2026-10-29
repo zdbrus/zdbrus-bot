@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.27 (2026-10-29)
+- Forbidden Knowledge and Talents priority chips now list every upgrade/talent name from the Firestone wiki (all three dark gods; all 46 talent tiers), not just the old defaults.
+
 ## 0.7.26 (2026-10-29)
 - Settings: the typed lists (Event Exchange items, Personal Tree, Forbidden Knowledge, Talents and Meteorite Research priorities, and which Bubbles to open) are now tick-box chips in the panel instead of text. Ticked items are saved in the list's fixed order (the default priority order). Firestone Research priority stays typed because its order is yours to choose.
 
