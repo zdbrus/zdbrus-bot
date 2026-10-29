@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.15 (2026-10-29)
+- Free reward bubbles now detect newly available claim buttons anywhere in menus, popups and events, including content opened inside an already-active screen.
+- Bubble logs distinguish clicks and follow-up button state changes from independently verified reward collection.
+
 ## 0.7.14 (2026-10-29)
 - Open Chests now recognizes only supported gear, jewel and celestial chests, respects the configured keep list, and waits for each reward screen and inventory update.
 - The task verifies chest quantities decrease and continues until no eligible supported chests remain, with explicit reasons when it must stop or leave chests unopened.

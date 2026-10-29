@@ -498,6 +498,45 @@ public class BubbleRewardsTask : BotTask
         return set;
     }
 
+    private static HashSet<int> ActiveFreeClaimButtons()
+    {
+        var set = new HashSet<int>();
+        foreach (var root in new[] { P.Menus, P.Popups, P.Events })
+        {
+            var container = Ui.Find(root);
+            if (container == null) continue;
+
+            foreach (var button in container.GetComponentsInChildren<UnityEngine.UI.Button>(true))
+                if (button != null && button.enabled && button.interactable &&
+                    button.gameObject.activeInHierarchy && FreeButton.IsMatch(button.name) &&
+                    !HasPrice(button.transform))
+                    set.Add(button.GetInstanceID());
+        }
+
+        return set;
+    }
+
+    private static UnityEngine.UI.Button FindNewFreeClaimButton(HashSet<int> existing, HashSet<int> attempted)
+    {
+        foreach (var root in new[] { P.Menus, P.Popups, P.Events })
+        {
+            var container = Ui.Find(root);
+            if (container == null) continue;
+
+            foreach (var button in container.GetComponentsInChildren<UnityEngine.UI.Button>(true))
+                if (button != null && button.enabled && button.interactable &&
+                    button.gameObject.activeInHierarchy && FreeButton.IsMatch(button.name) &&
+                    !existing.Contains(button.GetInstanceID()) && !attempted.Contains(button.GetInstanceID()) &&
+                    !HasPrice(button.transform))
+                {
+                    attempted.Add(button.GetInstanceID());
+                    return button;
+                }
+        }
+
+        return null;
+    }
+
     private static bool HasPrice(Transform b)
     {
         foreach (var tmp in b.GetComponentsInChildren<Il2CppTMPro.TMP_Text>())
@@ -519,6 +558,7 @@ public class BubbleRewardsTask : BotTask
             if (Quiet.TryGetValue(name, out var until) && DateTime.Now < until) continue;
 
             var before = OpenRoots();
+            var buttonsBefore = ActiveFreeClaimButtons();
             yield return new Firebot.GameModel.Primitives.GameNotificationButton(path).Click();
             yield return new WaitForSeconds(2f);
 
@@ -526,23 +566,30 @@ public class BubbleRewardsTask : BotTask
             foreach (var root in new[] { P.Menus, P.Popups, P.Events })
                 opened.AddRange(Ui.VisibleChildren(root).Where(t => !before.Contains(t.GetInstanceID())));
 
-            var claimed = 0;
-            foreach (var screen in opened)
+            var clicked = 0;
+            var changed = 0;
+            var attempted = new HashSet<int>();
+            for (var pass = 0; pass < 10; pass++)
             {
-                for (var pass = 0; pass < 10; pass++)
-                {
-                    var btn = screen.GetComponentsInChildren<UnityEngine.UI.Button>()
-                        .FirstOrDefault(b => b.interactable && b.gameObject.activeInHierarchy &&
-                                             FreeButton.IsMatch(b.name) && !HasPrice(b.transform));
-                    if (btn == null) break;
-                    yield return Ui.Click(btn.transform, 1.5f, $"{name}: {btn.name}");
-                    claimed++;
-                    yield return Ui.CloseRewards();
-                }
+                var button = FindNewFreeClaimButton(buttonsBefore, attempted);
+                if (button == null) break;
+
+                yield return Ui.Click(button.transform, 1.5f, $"{name}: {button.name}");
+                clicked++;
+
+                var deadline = Time.unscaledTime + 2f;
+                while (Time.unscaledTime < deadline && button != null && button.gameObject.activeInHierarchy &&
+                       button.enabled && button.interactable)
+                    yield return new WaitForSeconds(0.2f);
+                if (button == null || !button.gameObject.activeInHierarchy || !button.enabled || !button.interactable)
+                    changed++;
+
+                yield return Ui.CloseRewards();
             }
 
-            Logger.Info($"[Bubbles] {name}: opened {string.Join(", ", opened.Select(o => o.name))}; claimed {claimed}");
-            Quiet[name] = DateTime.Now.Add(claimed == 0 ? TimeSpan.FromHours(3) : TimeSpan.FromMinutes(1));
+            Logger.Info($"[Bubbles] {name}: opened {(opened.Count == 0 ? "no new top-level screen" : string.Join(", ", opened.Select(o => o.name)))}; " +
+                        $"clicked {clicked} free claim button(s); {changed} button(s) became unavailable afterward (reward not independently verified).");
+            Quiet[name] = DateTime.Now.Add(clicked == 0 ? TimeSpan.FromHours(3) : TimeSpan.FromMinutes(1));
 
             // Close what the bubble opened, newest first.
             foreach (var screen in opened.AsEnumerable().Reverse())
