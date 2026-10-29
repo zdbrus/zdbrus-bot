@@ -28,9 +28,9 @@ Zdbrus Bot (a fork of Firebot by danilogmoura) is a C# mod for Firestone Idle RP
 
 ### Building from Source
 
-See [ADVANCED.md](ADVANCED.md) → *Installation (From Source)* for detailed steps, including how to set the game path in `src/Directory.Build.props`.
+See [ADVANCED.md](ADVANCED.md) → *Installation (From Source)* for setup. See [RELEASING.md](RELEASING.md) for the tested build command, required package files, crash-prevention notes, and the GitHub draft-release checklist.
 
-Quick version: `dotnet build src -c Release -p:GameRoot="C:\Program Files (x86)\Steam\steamapps\common\Firestone"` (the game must have been started once with MelonLoader so `MelonLoader\Il2CppAssemblies` exists).
+Quick version: launch the game once with stable MelonLoader 0.7.3, close it, then run `dotnet build src -c Release -p:GameRoot="C:\Program Files (x86)\Steam\steamapps\common\Firestone"` (adjust the game path if needed).
 
 ### Mapping a screen
 
@@ -38,7 +38,7 @@ Press **F9** in game to write every object path on screen to `UserData/screenmap
 
 ### Running Your Build
 
-After building, copy `src/bin/Release/net6.0/ZdbrusBot.dll` into the game's `Mods/` folder, replacing the released version. Launch the game and test your changes.
+The build's post-build target copies the DLL into the configured game's `Mods/` folder. Use `-p:ModsDir="<staging>\Mods"` to keep a build from overwriting the installed mod. Launch the game and test your changes. For a public package, follow [RELEASING.md](RELEASING.md).
 
 ## Code Style
 

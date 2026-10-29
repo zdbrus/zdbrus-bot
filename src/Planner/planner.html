@@ -58,6 +58,7 @@ button,input,select{font:inherit;color:inherit}
 .field{display:flex;align-items:center;gap:6px;background:var(--plate-2);border:1px solid var(--seam);border-radius:var(--r);padding:4px 8px}
 .field input,.field select{background:none;border:0;width:64px;font-family:var(--f-num)}
 .field select{width:auto}
+#auto-schedule{width:auto;accent-color:var(--brass)}
 .verdict{display:flex;align-items:center;gap:8px;font:600 14px/1.2 var(--f-display);letter-spacing:.04em}
 .verdict svg{flex:none}
 
@@ -256,6 +257,16 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
     <button class="btn primary" id="apply" hidden>Apply to game</button>
     <button class="btn" id="reset-edits" hidden>Undo my edits</button>
     <button class="btn primary" id="auto">Auto-build squad</button>
+    <label class="field auto-config" id="auto-schedule-wrap" hidden title="Rebuild and apply this mode's squad on a schedule while this planner page and the game are open.">
+      <input id="auto-schedule" type="checkbox" aria-label="Enable scheduled auto-apply">
+      <span class="label">Auto-apply</span>
+      <select id="auto-hours" aria-label="Auto-apply interval">
+        <option value="2">2h</option><option value="4" selected>4h</option><option value="6">6h</option><option value="12">12h</option>
+      </select>
+      <input id="auto-gain" type="number" min="0.5" max="100" step="0.5" value="3" aria-label="Minimum power gain percentage">
+      <span class="label">% gain</span>
+    </label>
+    <span class="chip" id="auto-status" hidden></span>
   </div>
 </header>
 
@@ -650,6 +661,7 @@ function sample() {
 const LIVE = /^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const KEY = LIVE ? 'zdbrus-garage-live-v1' : 'zdbrus-garage-v1';
 const OKEY = 'zdbrus-garage-edits-v1';
+const AUTO_KEY = 'zdbrus-garage-auto-apply-v1';
 let S, G = null, liveState = LIVE ? 'connecting' : 'sample', liveAt = 0;
 try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { S = null; }
 if (!S || !S.heroes) S = sample();
@@ -657,6 +669,14 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch
 let O; try { O = JSON.parse(localStorage.getItem(OKEY) || 'null'); } catch { O = null; }
 O = O || { machines: {}, heroes: {} };
 const saveO = () => { try { localStorage.setItem(OKEY, JSON.stringify(O)); } catch {} };
+let autoApply;
+try { autoApply = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null'); } catch { autoApply = null; }
+autoApply = autoApply && typeof autoApply === 'object'
+  ? { enabled: !!autoApply.enabled, hours: [2, 4, 6, 12].includes(+autoApply.hours) ? +autoApply.hours : 4,
+      gain: Math.max(0.5, Math.min(100, Number(autoApply.gain) || 3)), nextAt: Number(autoApply.nextAt) || 0,
+      status: typeof autoApply.status === 'string' ? autoApply.status : '' }
+  : { enabled: false, hours: 4, gain: 3, nextAt: 0, status: '' };
+const saveAutoApply = () => { try { localStorage.setItem(AUTO_KEY, JSON.stringify(autoApply)); } catch {} };
 const WM_ID = (c) => { const k = String(c).toLowerCase(); return k === 'earthshatter' ? 'earthshatterer' : k; };
 const SPEC_OF = { Damage: 'damage', Tank: 'tank', Healer: 'healer' };
 
@@ -702,6 +722,20 @@ function gameSquad(g, slot) {
   const s = slot ? all.find(x => x.slot === slot) : all.find(x => x.active);
   return s ? s.machines : (slot && slot !== 1 ? [] : g.squad || []);
 }
+function gameSquadPower(g, slot, mode) {
+  const machines = gameSquad(g, slot);
+  if (!machines.length) return null;
+  let total = 0;
+  for (const entry of machines) {
+    const id = WM_ID(entry.code), wm = wmById(id);
+    if (!wm || !wm.owned) return null;
+    const crew = (entry.crew || []).map(heroById);
+    if (crew.some(h => !h)) return null;
+    const stats = E.machineStats(wm, account(), crew);
+    total += mode === 'arena' ? stats.arenaPower : stats.battlePower;
+  }
+  return total;
+}
 function loadGameSquad(g, slot) {
   const sq = [...gameSquad(g, slot)].sort((a, b) => a.spot - b.spot);
   S.squad = sq.map(s => WM_ID(s.code)).filter(id => wmById(id)?.owned);
@@ -713,15 +747,31 @@ let applying = false;
 const gameCode = (id) => { const m = G && G.machines.find(x => WM_ID(x.code) === id); return m ? (m.num ?? m.code) : id; };
 // Squad slot (1-3) to write to, remembered per mode: campaign defaults to squad 1, arena to squad 2.
 const slotFor = (mode) => ((S.slots || {})[mode]) || (mode === 'arena' ? 2 : 1);
-async function applyToGame() {
+async function applyToGame(squad = S.squad, crews = S.crews, automatic = false) {
   if (!G || applying) return;
-  const plan = S.squad.map(id => gameCode(id) + ':' + (S.crews[id] || []).join('.')).join(',');
+  const plan = squad.map(id => gameCode(id) + ':' + (crews[id] || []).join('.')).join(',');
   applying = true; render();
   try {
     const r = await fetch('/apply?slot=' + slotFor(S.mode) + '&plan=' + encodeURIComponent(plan), { cache: 'no-store' });
     const j = await r.json();
-    toast(j.result === 'Applying' ? 'Sent to the game' : j.result);
-  } catch { toast('The bot did not answer'); }
+    if (j.result === 'Applying' && automatic) {
+      S.squad = squad.slice(); S.crews = cloneCrews(crews);
+      if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
+      save();
+    }
+    if (j.result !== 'Applying' && automatic) {
+      autoApply.status = 'Auto-apply was not started: ' + j.result;
+      saveAutoApply();
+    }
+    toast(j.result === 'Applying' ? (automatic ? 'Scheduled squad sent to the game' : 'Sent to the game') : j.result);
+  } catch (e) {
+    if (automatic) {
+      autoApply.status = 'Auto-apply could not reach the bot.';
+      saveAutoApply();
+    }
+    toast('The bot did not answer');
+  }
+  render();
   setTimeout(() => { applying = false; }, 3000);
   fastPoll();
 }
@@ -734,7 +784,7 @@ async function poll() {
   try {
     const r = await fetch('/roster.json', { cache: 'no-store' });
     if (r.status === 503) { liveState = 'waiting'; }
-    else if (r.ok) { const g = await r.json(); applyGame(g); G = g; liveState = 'live'; liveAt = Date.now(); save(); }
+    else if (r.ok) { const g = await r.json(); applyGame(g); G = g; liveState = 'live'; liveAt = Date.now(); save(); await checkScheduledAutoApply(); }
     else liveState = 'offline';
   } catch { liveState = 'offline'; }
   render();
@@ -753,6 +803,52 @@ function runAuto() {
   const r = E.optimize(account(), { mode: S.mode, requireTank: true });
   S.squad = r.squad; S.crews = r.crews; if (!S.squad.includes(S.selected)) S.selected = S.squad[0];
   save(); render(); toast('Squad rebuilt');
+}
+let checkingAutoApply = false;
+async function checkScheduledAutoApply() {
+  if (!LIVE || !G || !autoApply.enabled || checkingAutoApply || Date.now() < autoApply.nextAt) return;
+  if (applying || spending || G.apply?.busy || G.spend?.busy) {
+    autoApply.status = 'Waiting for the current game action to finish.';
+    saveAutoApply(); return;
+  }
+  if (Object.keys(O.machines || {}).length || Object.keys(O.heroes || {}).length ||
+      S.artifacts.length || Object.values(S.inscriptionBonus || {}).some(v => v)) {
+    autoApply.status = 'Paused: undo planner edits before scheduled auto-apply.';
+    saveAutoApply(); return;
+  }
+
+  checkingAutoApply = true;
+  autoApply.nextAt = Date.now() + autoApply.hours * 60 * 60 * 1000;
+  try {
+    const slot = slotFor(S.mode);
+    const currentPower = gameSquadPower(G, slot, S.mode);
+    if (currentPower == null || currentPower <= 0) {
+      autoApply.status = `Skipped: squad ${slot} has no readable game formation.`;
+      return;
+    }
+
+    const candidate = E.optimize(account(), { mode: S.mode, requireTank: true });
+    const gain = candidate.squadPower / currentPower - 1;
+    if (!Number.isFinite(gain)) {
+      autoApply.status = 'Skipped: the planner could not calculate a reliable power gain.';
+      return;
+    }
+    if (gain < autoApply.gain / 100) {
+      autoApply.status = `No change: estimated gain ${(gain * 100).toFixed(1)}% is below ${autoApply.gain}%.`;
+      return;
+    }
+
+    autoApply.status = `Applying: estimated gain ${(gain * 100).toFixed(1)}% on squad ${slot}.`;
+    await applyToGame(candidate.squad, candidate.crews, true);
+    if (autoApply.status.startsWith('Applying:'))
+      autoApply.status = `Sent to squad ${slot} · estimated gain ${(gain * 100).toFixed(1)}%.`;
+  } catch (e) {
+    autoApply.status = `Auto-apply check failed: ${e.message || e}`;
+  } finally {
+    checkingAutoApply = false;
+    saveAutoApply();
+    render();
+  }
 }
 if (!LIVE && !S.squad.length) { const r = E.optimize(account(), { requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = r.squad[0]; }
 
@@ -881,6 +977,19 @@ function renderLive() {
   $('#slot-wrap').hidden = !(LIVE && G); $('#slot').value = String(slotFor(S.mode)); $('#slot').disabled = busy;
   $('#apply').textContent = busy ? 'Applying…' : 'Apply to game';
   $('#reset-edits').hidden = !(LIVE && (Object.keys(O.machines).length || Object.keys(O.heroes).length));
+  $('#auto-schedule-wrap').hidden = !LIVE;
+  $('#auto-schedule').checked = autoApply.enabled;
+  $('#auto-hours').value = String(autoApply.hours);
+  $('#auto-gain').value = autoApply.gain;
+  $('#auto-hours').disabled = !autoApply.enabled;
+  $('#auto-gain').disabled = !autoApply.enabled;
+  const autoStatus = $('#auto-status');
+  autoStatus.hidden = !(LIVE && autoApply.enabled);
+  if (!autoStatus.hidden) {
+    const minutes = Math.max(0, Math.ceil((autoApply.nextAt - Date.now()) / 60000));
+    const due = minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`;
+    autoStatus.textContent = `${autoApply.status || `Next check in ${due}`} · next ${due}`;
+  }
   const tip = $('#face-tip'); if (tip) tip.hidden = !(LIVE && G && faceMiss.size);
   const box = $('#check');
   box.hidden = !(LIVE && G);
@@ -1188,8 +1297,24 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 
 // controls
 $('#auto').onclick = runAuto;
-$('#apply').onclick = applyToGame;
+$('#apply').onclick = () => applyToGame();
 $('#spend').onclick = spendForMe;
+$('#auto-schedule').onchange = (e) => {
+  autoApply.enabled = e.target.checked;
+  autoApply.nextAt = autoApply.enabled ? Date.now() + autoApply.hours * 60 * 60 * 1000 : 0;
+  autoApply.status = autoApply.enabled ? `Enabled · waits ${autoApply.hours} hours for the first check.` : '';
+  saveAutoApply(); render();
+};
+$('#auto-hours').onchange = (e) => {
+  autoApply.hours = [2, 4, 6, 12].includes(+e.target.value) ? +e.target.value : 4;
+  if (autoApply.enabled) autoApply.nextAt = Date.now() + autoApply.hours * 60 * 60 * 1000;
+  saveAutoApply(); render();
+};
+$('#auto-gain').onchange = (e) => {
+  autoApply.gain = Math.max(0.5, Math.min(100, Number(e.target.value) || 3));
+  e.target.value = autoApply.gain;
+  saveAutoApply(); render();
+};
 $('#slot').onchange = () => { S.slots = { ...(S.slots || {}), [S.mode]: +$('#slot').value }; save(); render(); };
 $('#use-game').onclick = () => {
   if (!G) return;

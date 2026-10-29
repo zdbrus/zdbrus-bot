@@ -24,13 +24,15 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 ## Install in 4 steps
 
-1. **Install MelonLoader 0.7.3 or newer** on Firestone using the official installer: [MelonLoader releases](https://github.com/LavaGang/MelonLoader/releases/latest). Point it at `Firestone.exe`.
+1. **Install stable MelonLoader 0.7.3** on Firestone using the official installer: [MelonLoader releases](https://github.com/LavaGang/MelonLoader/releases/latest). Point it at `Firestone.exe`. Do not use a nightly build; newer nightlies crash the game.
    (Steam: right-click Firestone > Manage > Browse local files to find the folder.)
 2. **Start the game once and close it.** MelonLoader finishes setting itself up on the first run.
 3. **Download [ZdbrusBot.zip](https://github.com/zdbrus/zdbrus-bot/releases/latest/download/ZdbrusBot.zip)** and extract all of it into the Firestone folder (the one with `Firestone.exe`), replacing files when asked. It contains `Mods\ZdbrusBot.dll` plus three fixed MelonLoader files (`MelonLoader\net6\Il2CppInterop.*.dll`) that the current game needs.
 4. **Start the game.** The bot starts by itself (Auto Start). Press **F1** to pick which features to turn on, and **F7** to stop or start it.
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
+>
+> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. The automatic update check remains off because its background request was suspected of causing crashes.
 
 ## Keys
 
@@ -72,6 +74,7 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - **Game check** compares every number with the game's own, so you can trust the math.
 - **Campaign target** shows the power a mission needs and the furthest mission your squad covers.
 - **Apply to game** sets your planned squad in one click: the bot goes through Engineer, Squads, Edit and Select crew like a player would, saves, and confirms what stuck.
+- **Scheduled auto-apply** can rebuild and apply the selected mode's squad every 2, 4, 6 or 12 hours when its estimated power gain meets your threshold (3% by default). It is off by default and only runs while the game and planner page stay open; undo planner edits before enabling it.
 - **Squad 1, 2 or 3**: pick which of your squads Apply writes to. Campaign and arena remember their own (campaign squad 1, arena squad 2). Set **F1 > Battle > Arena > Arena Squad** to 2 and the bot switches to your arena squad for arena fights and back afterwards.
 - Only heroes you have unlocked are used. It only saves when the squad on screen matches the plan, so a half-done change never replaces a working squad.
 - **Hero faces** come from your own game (open Engineer > Select crew once).
@@ -101,7 +104,7 @@ Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run wh
 
 ## FAQ
 
-**The game closes right after loading.** The three MelonLoader files from the zip are missing, usually because MelonLoader was reinstalled or updated. Extract ZdbrusBot.zip into the game folder again and replace files. Use MelonLoader 0.7.3 with "Enable Nightly builds" off.
+**The game closes right after loading.** Check that all three bundled files are present under `MelonLoader\net6`: `Il2CppInterop.Common.dll`, `Il2CppInterop.Runtime.dll`, and `Il2CppInterop.HarmonySupport.dll`. Re-extract the full ZdbrusBot.zip, replacing files, and use stable MelonLoader 0.7.3 with "Enable Nightly builds" off.
 
 **The bot doesn't start.** Check `MelonLoader\Latest.log` in the game folder for a line saying `Zdbrus Bot ready`. If it isn't there, MelonLoader isn't installed correctly or the DLL isn't in `Mods`.
 

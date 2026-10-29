@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.9 (2026-10-28)
+- The planner can rebuild and apply the selected mode's squad every 2, 4, 6 or 12 hours when the estimated power gain meets a configurable threshold (3% by default). Off by default; the game and planner page must stay open.
+- Build and release notes are consolidated in `RELEASING.md`. In particular, keep the three bundled Il2CppInterop files, stable MelonLoader 0.7.3, and the main-thread-only Unity access pattern.
+
 ## 0.7.8 (2026-10-28)
 - **Fixed: auto-upgrade stopped buying (#2).** Since 0.7.6, a task waiting on its bubble looked like it was "about to run", so auto-upgrade stayed paused for good. It buys again.
 
@@ -46,6 +50,7 @@
   - Command-screen look: power gauge against the mission you target, the campaign power curve, ring gauges per machine.
   - Edit levels, rarities, blueprints or jewels to plan upgrades. Edits stay in the planner until you press Apply.
   - Only reachable from your own PC.
+  - The planner server and roster reads stay on Unity's main thread; a background web thread previously crashed the game.
 ## 0.6.8 (2026-10-27)
 - New: retries the stage boss. After a lost boss fight the game keeps farming the same stage until "Boss" is pressed; the bot now presses it every 4 minutes (adjustable), so the run keeps climbing. On by default.
 ## 0.6.7 (2026-10-27)
@@ -70,7 +75,7 @@
 
 ## 0.6.2 (2026-10-25)
 - The download now includes the three fixed MelonLoader files (Il2CppInterop) the current game needs. Without them the game closes right after loading.
-- The update check is switched off for now while it is tested for crashes.
+- The automatic update check is disabled because its background web request was suspected of crashing the game; keep it off until safely verified.
 
 ## 0.6.1 (2026-10-25)
 - Temple prestige now waits until the run stalls: no new highest stage for 3 hours (adjustable), at least +100% gold boost and 1 hour into the run. Never uses the paid 2x empower.

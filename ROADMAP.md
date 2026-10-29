@@ -10,7 +10,6 @@
 Ideas for the next updates. Nothing here is promised; it is the list we work from.
 
 ## Next up
-- **Auto-apply on a schedule.** Re-run Auto-build every few hours and apply it when the gain is worth it (for example 3% or more), so the squad stays optimal as heroes and machines grow.
 - **Upgrade advisor.** In the planner, rank every possible upgrade (machine level, blueprint, jewel) by war machine power gained per resource spent. The War Machine Upgrade task can then follow that list.
 - **Arena smart picks.** Read each opponent's squad from the battle preview and only fight the ones the math says you beat.
 

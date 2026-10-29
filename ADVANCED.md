@@ -48,7 +48,7 @@ Use these **only** if the game changes version and Zdbrus Bot stops working. If 
 ### Before You Start
 
 1. Close the game completely.
-2. Confirm your MelonLoader version is **V0.7.3 or newer**. If you are not sure which version is installed, follow Method 2 (clean reinstall).
+2. Confirm your MelonLoader version is the stable **V0.7.3**. Nightly builds have crashed the current game. If you are not sure which version is installed, follow Method 2 (clean reinstall).
 3. Back up `UserData/ZdbrusBotPreferences.cfg` if you customized it. Neither method below touches this file.
 4. In the `Mods` folder, keep only one `firebot.dll`. Delete old or duplicated copies from previous downloads (for example `firebot (1).dll` or `firebot.old.dll`).
 5. Optional: delete `MelonLoader/Latest.log` so the next launch generates a clean log for troubleshooting.
@@ -69,7 +69,7 @@ Starting from a closed game:
 Starting from a closed game:
 
 1. Delete the `MelonLoader` folder from the game root. This removes the old MelonLoader version, its generated assemblies and its logs.
-2. Reinstall MelonLoader **V0.7.3+** as described in the main README.
+2. Reinstall stable MelonLoader **V0.7.3** as described in the main README. Do not enable nightly builds.
 3. After reinstalling, delete `MelonLoader/Dependencies/AssemblyUnhollower` if it exists (leftover from older MelonLoader versions).
 4. Start the game again.
 
@@ -93,26 +93,23 @@ The folder you want is the one containing `Firestone.exe`: that is where the Mel
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/danilogmoura/firestone-bot.git
+   git clone https://github.com/zdbrus/zdbrus-bot.git
    ```
 
 2. Navigate to the project directory:
 
    ```bash
-   cd firestone-bot
+   cd zdbrus-bot
    ```
 
-3. Configure the path to your Firestone Idle RPG game directory by editing the `src/Directory.Build.props` file if needed:
-   - By default, the path is set to `C:\Program Files (x86)\Steam\Firestone` (Windows). If your game is installed elsewhere, change the `<GameRoot>` property in this file to the correct path.
-   - You can also set the environment variable `COMMON_DIR` to override the base directory. In this case, the game path will be `$(COMMON_DIR)\Firestone`.
+3. Install stable MelonLoader 0.7.3, launch the game once, then close it so `MelonLoader\Il2CppAssemblies` is generated.
+4. Build the project with the folder containing `Firestone.exe`:
 
-   Example:
-
-   ```xml
-   <GameRoot>C:\Program Files (x86)\Steam\Firestone</GameRoot>
+   ```powershell
+   dotnet build src -c Release -p:GameRoot="C:\Program Files (x86)\Steam\steamapps\common\Firestone"
    ```
 
-4. Build the project using your preferred method (e.g., Visual Studio, command line).
+   See [RELEASING.md](RELEASING.md) for staging builds, package contents, and the draft-release checklist.
 
 ---
 
