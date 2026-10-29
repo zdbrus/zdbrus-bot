@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.20 (2026-10-29)
+- War Machine Upgrade: fixed a bug where it read the currency counters on the garage list, where they are hidden, saw 0 and skipped every machine. It now opens each picked machine and decides on that machine's own screen, then also opens any other machine still showing its bell. If nothing could be bought it backs off for an hour.
+
 ## 0.7.19 (2026-10-29)
 - War Machine Upgrade and Awaken Heroes no longer re-run every 3 minutes for a bubble they cannot clear: the log showed both looping with nothing to spend. They now leave that bubble alone for 1 hour and say why. The bubble itself can stay lit if it is for a machine or upgrade type that is not selected.
 

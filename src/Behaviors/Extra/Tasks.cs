@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -647,21 +647,9 @@ public class WarMachineUpgradeTask : BotTask
         yield return Ui.Click(P.Popups + "/GarageSelection/bg/garage", 2f);
         if (!Ui.Visible(W)) yield break;
 
-        var blueprintMode = (_blueprints.Value ?? "none").Trim().ToLowerInvariant();
-        var blueprintCounter = Ui.VisibleChildren(W + "/counters")
-            .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
-        var canUpgradeLevels = _levels.Value && Ui.NumberAt(Tokens) > 0;
-        var canUpgradeBlueprints = blueprintMode != "none" && blueprintCounter != null &&
-                                   Ui.NumberOf(blueprintCounter.Find("quantity")) > 0;
-        if (!canUpgradeLevels && !canUpgradeBlueprints)
-        {
-            Logger.Info("[War Machine] Skipping machine screens: no selected upgrade type has available currency. " +
-                        "The bubble stays lit for a machine or upgrade type that is not selected; it is left alone for 1 hour.");
-            BubbleQuietUntil = DateTime.Now.AddHours(1);
-            yield return Ui.Click(W + "/closeButton");
-            yield break;
-        }
-
+        // The currency counters only exist on a machine's own screen, not on the garage list, so nothing is
+        // read here: each machine is opened and judged on its own screen.
+        _spent = 0;
         foreach (var number in targets)
         {
             var square = FindSquare(number);
@@ -674,8 +662,30 @@ public class WarMachineUpgradeTask : BotTask
             yield return UpgradeSelected();
         }
 
+        // Machines outside the picked list that still show their own bell are what keeps the bubble lit.
+        var lit = Ui.VisibleChildren(Grid).Where(s => s.name.StartsWith("warMachineSquare"))
+            .Select(s => s.GetComponent<WarMachineInteractionSquare>()?.warMachine)
+            .Where(m => m != null && !targets.Contains((int)m.machineCode))
+            .Select(m => (int)m.machineCode).ToList();
+        foreach (var number in lit)
+        {
+            var square = FindSquare(number);
+            var bell = square?.Find("notificationCircle");
+            if (bell == null || !bell.gameObject.activeInHierarchy) continue;
+            yield return Ui.Click(square, 1f);
+            yield return UpgradeSelected();
+        }
+
+        if (_spent == 0)
+        {
+            Logger.Info("[War Machine] Opened the machine screens but nothing was affordable; bubble left alone for 1 hour.");
+            BubbleQuietUntil = DateTime.Now.AddHours(1);
+        }
+
         yield return Ui.Click(W + "/closeButton");
     }
+
+    private int _spent;
 
     /// <summary>The garage tile of a machine, found by the machine it holds rather than its label.</summary>
     private static Transform FindSquare(int number)
@@ -721,6 +731,7 @@ public class WarMachineUpgradeTask : BotTask
 
                 ups++;
             }
+            _spent += ups;
             if (ups > 0) Logger.Info($"[War Machine] {name}: +{ups} level(s).");
         }
 
@@ -755,6 +766,7 @@ public class WarMachineUpgradeTask : BotTask
                 bought++;
             }
         }
+        _spent += bought;
         if (bought > 0) Logger.Info($"[War Machine] {name}: {bought} blueprint upgrade(s).");
     }
 }
