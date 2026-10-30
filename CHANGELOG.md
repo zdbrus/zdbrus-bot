@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.35 (2026-10-29)
+- Mail: with 'Delete After Claim' on, mails that have nothing to claim (event announcements, already-claimed ones) are now deleted too. Before, the first such mail stopped the run and the mailbox was opened again every 30 minutes for nothing. A mail whose claim failed is kept. If a run claims and deletes nothing, the next one waits 3 hours.
+
 ## 0.7.34 (2026-10-29)
 - Every task: a lit bubble that a run could not clear now backs off 3, 6, 12, 24, then 60 minutes instead of re-running every 3 minutes all day. The count resets when the bubble clears.
 

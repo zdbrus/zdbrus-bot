@@ -38,11 +38,16 @@ public class MailTask : BotTask
         var count = Ui.VisibleChildren(List).Count();
         var claimsWithStateChange = 0;
         var claimsUnconfirmed = 0;
-        for (var i = 0; i < count && i < 30; i++)
+        var deleted = 0;
+        var kept = 0;
+        for (var i = 0; i < 40 && i < count + kept; i++)
         {
-            var item = Ui.VisibleChildren(List).Skip(_deleteClaimed.Value ? 0 : i).FirstOrDefault();
+            // With delete on, handled mails leave the list, so the first one that is still there is next.
+            var item = Ui.VisibleChildren(List).Skip(kept).FirstOrDefault();
             if (item == null) break;
             yield return Ui.Click(item, 1f);
+
+            var claimed = true;
             if (Ui.Clickable(Claim))
             {
                 var rewardWasVisible = Ui.Visible(P.RewardsClose);
@@ -51,22 +56,26 @@ public class MailTask : BotTask
                     () => !Ui.Clickable(Claim) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
                     value => confirmed = value, "mail reward claim", 1.5f);
                 yield return Ui.CloseRewards();
-                if (confirmed)
-                {
-                    claimsWithStateChange++;
-                    if (_deleteClaimed.Value) yield return Ui.Click(Delete, 1f);
-                }
-                else
-                {
-                    claimsUnconfirmed++;
-                    if (_deleteClaimed.Value) break;
-                }
+                if (confirmed) claimsWithStateChange++;
+                else { claimsUnconfirmed++; claimed = false; }
             }
-            else if (_deleteClaimed.Value) break;
+
+            // A mail with nothing to claim (an announcement, or one already claimed) is deleted as well; one whose
+            // claim failed is kept so its rewards are not thrown away.
+            if (_deleteClaimed.Value && claimed && Ui.Clickable(Delete))
+            {
+                var before = Ui.VisibleChildren(List).Count();
+                yield return Ui.Click(Delete, 1f, "delete mail");
+                if (Ui.VisibleChildren(List).Count() < before) { deleted++; continue; }
+            }
+
+            kept++;
         }
 
-        Logger.Info($"[Mail] Claim control changed for {claimsWithStateChange} message(s); {claimsUnconfirmed} claim(s) unconfirmed. " +
-                    "Reward receipt is not independently verified.");
+        Logger.Info($"[Mail] Claimed {claimsWithStateChange}, unconfirmed {claimsUnconfirmed}, deleted {deleted}, " +
+                    "kept " + kept + ". Reward receipt is not independently verified.");
+        // With nothing to claim or delete the mailbox is not worth reopening every half hour.
+        if (claimsWithStateChange + deleted == 0) NextRunTime = DateTime.Now.AddHours(3);
         yield return Ui.Click(Mail + "/bg/closeButton");
     }
 }
