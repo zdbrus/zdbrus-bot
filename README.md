@@ -16,7 +16,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 [![Game version](https://img.shields.io/badge/Firestone-9.1.3a-red)](#requirements)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**[Website](https://zdbrus.github.io/zdbrus-bot/)** · **[Install guide](#install-in-4-steps)** · **[Features](#what-it-does)** · **[FAQ](#faq)** · **[Report a bug](https://github.com/zdbrus/zdbrus-bot/issues/new/choose)**
+**[Website](https://zdbrus.github.io/zdbrus-bot/)** · **[Discord](https://discord.gg/U4APWwTa7F)** · **[Install guide](#install-in-4-steps)** · **[Features](#what-it-does)** · **[FAQ](#faq)** · **[Report a bug](https://github.com/zdbrus/zdbrus-bot/issues/new/choose)**
 
 </div>
 

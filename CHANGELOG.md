@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.37 (2026-10-29)
+- Community Discord server is live: https://discord.gg/U4APWwTa7F (announcements, install help, bug reports, suggestions). Linked from the website, README and release readme. No code changes.
+
 ## 0.7.36 (2026-10-29)
 - Auto Update (F1 > General, on by default): when the game closes, a hidden helper downloads the newest GitHub release and swaps Mods\ZdbrusBot.dll; the new version loads on the next launch. No web code runs inside the game. The old DLL is kept as ZdbrusBot.dll.bak and the result is logged to UserData\ZdbrusBot_update.log. Everyone must install 0.7.36 by hand once; after that updates are automatic.
 

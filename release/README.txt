@@ -1,6 +1,7 @@
-﻿ZDBRUS BOT 0.7.36 - auto-play mod for Firestone: Idle Clicker Online RPG
+﻿ZDBRUS BOT 0.7.37 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
+Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
 Based on Firebot by danilogmoura (MIT).
 
 INSTALL

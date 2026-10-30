@@ -4,7 +4,7 @@
 public static class Brand
 {
     public const string Name = "Zdbrus Bot";
-    public const string Version = "0.7.36";
+    public const string Version = "0.7.37";
     public const string Author = "Zdbrus";
     public const string ConfigFile = "ZdbrusBotPreferences.cfg";
 }
