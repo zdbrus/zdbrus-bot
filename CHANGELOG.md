@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 0.7.34 (2026-10-29)
+- Every task: a lit bubble that a run could not clear now backs off 3, 6, 12, 24, then 60 minutes instead of re-running every 3 minutes all day. The count resets when the bubble clears.
+
+## 0.7.33 (2026-10-29)
+- Arena only switches squads when there are battle tokens to spend, and runs all its fights under one switch instead of switching to the arena squad and back for every fight.
+
 ## 0.7.32 (2026-10-29)
 - The 35-line task table is now printed at most once every 10 minutes instead of after every task (Boss Retry alone printed it every minute).
 

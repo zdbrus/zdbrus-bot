@@ -923,6 +923,7 @@ public class ArenaTask : BotTask
     private MelonPreferences_Entry<bool> _dailyFight;
     private MelonPreferences_Entry<string> _lastForced;
     private MelonPreferences_Entry<int> _arenaSquad;
+    private bool _fought;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
@@ -943,8 +944,33 @@ public class ArenaTask : BotTask
         var want = _arenaSquad.Value;
         var before = Planner.SquadApplier.ActiveSlot();
         var swap = want is >= 1 and <= 3 && before > 0 && before != want && Planner.SquadApplier.HasMachines(want);
-        if (swap) yield return Planner.SquadApplier.SetActive(want, "arena");
-        yield return Fight();
+        if (swap)
+        {
+            // Switching squads is slow and touches the Engineer, so it only happens when there is a fight to have.
+            var tokens = 0.0;
+            yield return Ui.OpenTownBuilding("battles");
+            yield return Ui.Click(P.Popups + "/WFMenuSelection/bg/arena", 2.5f);
+            if (Ui.Visible(A))
+            {
+                tokens = Ui.NumberAt(A + "/battleTokens/quantity");
+                yield return Ui.Click(P.Menus + "/ArenaOfKings/closeButton");
+            }
+            if (tokens <= 0)
+            {
+                NextRunTime = DateTime.Now.AddHours(3);
+                Logger.Debug("[Arena] No battle tokens; squad left alone.");
+                yield break;
+            }
+            yield return Planner.SquadApplier.SetActive(want, "arena");
+        }
+
+        // Fights run back to back under one squad switch instead of switching for each one.
+        for (var round = 0; round < 6; round++)
+        {
+            _fought = false;
+            yield return Fight();
+            if (!swap || !_fought) break;
+        }
         if (swap)
         {
             yield return Watchdog.ForceClearAll("after arena");
@@ -993,6 +1019,7 @@ public class ArenaTask : BotTask
                 yield return Ui.FinishBattle(r => won = r, 75f);
                 if (won == null) yield return new WaitForSeconds(5f);
                 NextRunTime = DateTime.Now.AddMinutes(1);
+                _fought = true;
                 yield break;
             }
 

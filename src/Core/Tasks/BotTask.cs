@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -186,6 +186,11 @@ public abstract class BotTask
     ///     because there is nothing affordable to do, from taking every scan and starving the other tasks.
     /// </summary>
     public DateTime BubbleQuietUntil { get; set; } = DateTime.MinValue;
+
+    /// <summary>Consecutive bubble-triggered runs after which the bubble was still lit. Drives the backoff.</summary>
+    public int BubbleIdleStreak { get; set; }
+
+    public bool IsBubbleStillLit() => IsNotificationVisibleCore();
 
     public abstract IEnumerator Execute();
 

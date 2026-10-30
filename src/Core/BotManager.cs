@@ -252,8 +252,17 @@ public static class BotManager
                     readyTask.LastRunTime = DateTime.Now;
                     // A bubble that is still lit right after its task ran (nothing it could do) waits a little
                     // before it can trigger again, so other tasks get their turn.
-                    if (fromBubble && readyTask.BubbleQuietUntil < DateTime.Now.AddMinutes(3))
-                        readyTask.BubbleQuietUntil = DateTime.Now.AddMinutes(3);
+                    // Each further run that leaves it lit doubles the wait (3, 6, 12, 24, then 60 minutes), so a task that
+                    // cannot act is not reopened every few minutes all day. A cleared bubble resets the count.
+                    if (fromBubble)
+                    {
+                        var stillLit = readyTask.IsBubbleStillLit();
+                        readyTask.BubbleIdleStreak = stillLit ? readyTask.BubbleIdleStreak + 1 : 0;
+                        var wait = Math.Min(60, 3 * (1 << Math.Clamp(readyTask.BubbleIdleStreak - 1, 0, 5)));
+                        var until = DateTime.Now.AddMinutes(Math.Max(3, wait));
+                        if (readyTask.BubbleQuietUntil < until) readyTask.BubbleQuietUntil = until;
+                    }
+                    else readyTask.BubbleIdleStreak = 0;
 
                     // The task owns its schedule, so it also owns the promise of leaving one behind.
                     readyTask.EnsureScheduled();
