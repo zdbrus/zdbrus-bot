@@ -46,6 +46,12 @@ public static class BotManager
 
     public static bool ShouldPauseAutoUpgrade() => IsRunning && (_shouldPauseAutoUpgrade || IsTaskExecuting);
 
+    /// <summary>Why AutoUpgrade is paused right now, for its long-pause warning.</summary>
+    public static string AutoUpgradePauseReason =>
+        IsTaskExecuting ? $"{_executingTask?.SectionTitle ?? "a task"} is running" : _autoUpgradePauseReason;
+
+    private static string _autoUpgradePauseReason = "";
+
     /// <summary>
     ///     Stops the bot when the task it is running has stopped advancing, and reports a scan that never came
     ///     back.
@@ -174,6 +180,7 @@ public static class BotManager
             {
                 var earliest = DateTime.MaxValue;
                 var nextEnabledTaskRun = DateTime.MaxValue;
+                BotTask nearestTask = null;
 
                 foreach (var task in Tasks)
                 {
@@ -183,7 +190,10 @@ public static class BotManager
                     // DueTime, not NextRunTime: a bubble task waiting on its bubble has a next run time in the past,
                     // which read as "a task is about to run" forever and kept auto-upgrade paused (0.7.6 bug).
                     if (task.IsEnabled && !task.IsLevelLocked && task.DueTime < nextEnabledTaskRun)
+                    {
                         nextEnabledTaskRun = task.DueTime;
+                        nearestTask = task;
+                    }
 
                     var notificationVisible = false;
                     if (notificationTask == null)
@@ -212,6 +222,10 @@ public static class BotManager
                                   (nextEnabledTaskRun - DateTime.Now).TotalSeconds <=
                                   AutoUpgradeMinExecutionWindowSeconds;
                 _shouldPauseAutoUpgrade = notificationTask != null || readyTask != null || hasNearTask;
+                _autoUpgradePauseReason = notificationTask != null ? $"{notificationTask.SectionTitle} bubble is lit"
+                    : readyTask != null ? $"{readyTask.SectionTitle} is ready"
+                    : hasNearTask ? $"{nearestTask?.SectionTitle ?? "a task"} is due at {nextEnabledTaskRun:HH:mm:ss}"
+                    : "";
             }
             catch (Exception e)
             {

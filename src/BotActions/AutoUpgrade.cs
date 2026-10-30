@@ -240,9 +240,11 @@ public static class AutoUpgrade
         {
             if (!BotManager.ShouldPauseAutoUpgrade())
             {
+                _pausedSince = null;
                 yield return CoroutineGuard.Run(UpgradeCycle(), "[AutoUpgrade] cycle", AbortAfterFailure);
                 if (!_isRunning) yield break;
             }
+            else ReportLongPause();
 
             if (Upgrades.IsVisible) yield return Upgrades.Close;
 
@@ -262,6 +264,14 @@ public static class AutoUpgrade
         if (!Upgrades.IsVisible)
         {
             yield return new GameButton(Paths.BattleLoc.BottomSideUIDesktopLoc.MenuButtonsLoc.UpgradesBtn).Click();
+            var opened = false;
+            yield return Firebot.Behaviors.Extra.Ui.WaitUntil(() => Upgrades.IsVisible, v => opened = v, 3f);
+            if (!opened)
+            {
+                WarnRarely("the upgrades menu did not open after clicking its button");
+                yield break;
+            }
+
             yield return Upgrades.SetUpgradeLevel(_upgradeMode?.Value ?? "milestone");
             yield return IdlePollWait;
         }
@@ -269,6 +279,7 @@ public static class AutoUpgrade
         var buttons = Buttons();
         if (buttons.Count == 0)
         {
+            WarnRarely("the upgrades menu has no upgrade buttons for the selected slots");
             yield return null;
             yield break;
         }
@@ -302,5 +313,27 @@ public static class AutoUpgrade
     {
         if (!Upgrades.IsVisible) yield break;
         yield return Upgrades.Close;
+    }
+
+    private static DateTime? _pausedSince;
+    private static DateTime _lastPauseWarning = DateTime.MinValue;
+    private static DateTime _lastCycleWarning = DateTime.MinValue;
+
+    /// <summary>A pause that never ends looks exactly like "auto upgrade does nothing"; say which task holds it.</summary>
+    private static void ReportLongPause()
+    {
+        _pausedSince ??= DateTime.Now;
+        if (DateTime.Now - _pausedSince.Value < TimeSpan.FromMinutes(10)) return;
+        if (DateTime.Now - _lastPauseWarning < TimeSpan.FromMinutes(10)) return;
+        _lastPauseWarning = DateTime.Now;
+        Logger.Warning($"[AutoUpgrade] Paused for {(DateTime.Now - _pausedSince.Value).TotalMinutes:0} min: " +
+                       $"{BotManager.AutoUpgradePauseReason}.");
+    }
+
+    private static void WarnRarely(string what)
+    {
+        if (DateTime.Now - _lastCycleWarning < TimeSpan.FromMinutes(10)) return;
+        _lastCycleWarning = DateTime.Now;
+        Logger.Warning($"[AutoUpgrade] Nothing bought: {what}.");
     }
 }

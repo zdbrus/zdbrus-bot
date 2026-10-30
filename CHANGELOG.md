@@ -4,6 +4,8 @@
 - Upgrade trees now fill configured tiers in order and stop when the current tier is unaffordable instead of spending on lower tiers. Names and costs stay cached after a purchase, so known nodes are not relearned every run.
 - Meteorite Research now reads its existing priority-chip setting; previously the UI exposed the setting but the task ignored it and defaulted to cheapest/first-found behavior.
 - Personal Tree, Talents and Event Exchange follow the same tier-first behavior.
+- Map Missions waits up to 4 seconds for the free-squad counter after the map opens. Before, with no missions running, it read the counter before it loaded and skipped every new mission start ("Could not read the free-squad counter", issue #3). The warning now logs whether the map was open and the raw counter text.
+- AutoUpgrade now explains when it buys nothing: it warns if it has been paused for 10+ minutes (naming the task holding it), if the upgrades menu does not open, or if no upgrade buttons are found.
 
 ## 0.7.37 (2026-10-29)
 - Community Discord server is live: https://discord.gg/U4APWwTa7F (announcements, install help, bug reports, suggestions). Linked from the website, README and release readme. No code changes.

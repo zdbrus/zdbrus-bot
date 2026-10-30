@@ -71,6 +71,8 @@ public class MapMissionsTask : BotTask
 
         // Start new missions only while squads are free. With every squad busy there is nothing to start,
         // so the whole list is skipped instead of opening each mission to read "not enough squads".
+        // The counter fills in a moment after the map opens: with no running missions it was read too early.
+        yield return Firebot.Behaviors.Extra.Ui.WaitUntil(() => FreeSquads >= 0, _ => { }, 4f);
         var free = FreeSquads;
         if (free > 0)
         {
@@ -106,7 +108,9 @@ public class MapMissionsTask : BotTask
             }
         }
         else if (free < 0)
-            Logger.Warning("[Map Missions] Could not read the free-squad counter; skipping mission starts.");
+            Logger.Warning("[Map Missions] Could not read the free-squad counter; skipping mission starts. " +
+                           $"Map open: {Firebot.Behaviors.Extra.Ui.Visible(Firebot.Behaviors.Extra.P.Menus + "/WorldMap")}, " +
+                           $"counter text: '{Firebot.Behaviors.Extra.Ui.Text(SquadsText)}'.");
         else
             Debug("All squads are busy; skipping new missions.");
 
