@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using MelonLoader;
 using UnityEngine;
@@ -9,6 +9,7 @@ public static class BotSettings
 {
     private static MelonPreferences_Category _category;
     private static MelonPreferences_Entry<bool> _autoStart;
+    private static MelonPreferences_Entry<bool> _autoUpdate;
     private static MelonPreferences_Entry<float> _startBotDelay;
     private static MelonPreferences_Entry<float> _scanInterval;
     private static MelonPreferences_Entry<float> _interactionDelay;
@@ -69,6 +70,7 @@ public static class BotSettings
     public static bool DebugMode => _debugMode?.Value ?? false;
     public static bool AutoScreenMap => _autoScreenMap?.Value ?? true;
     public static bool AutoCollectDrops => _autoCollect?.Value ?? true;
+    public static bool AutoUpdate => _autoUpdate?.Value ?? true;
 
     public static KeyCode ShortcutKey =>
         Enum.IsDefined(typeof(KeyCode), _shortcutKey.Value) && _shortcutKey.Value != KeyCode.None
@@ -99,6 +101,10 @@ public static class BotSettings
 
         _autoStart = _category.CreateEntry("auto_start", true, "Auto Start",
             "Determines if the bot logic should be initialized and started automatically upon game launch.");
+
+        _autoUpdate = _category.CreateEntry("auto_update", true, "Auto Update",
+            "When the game closes, downloads the newest Zdbrus Bot release from GitHub and replaces Mods\\ZdbrusBot.dll " +
+            "(old one kept as ZdbrusBot.dll.bak). The new version loads on the next launch. Log: UserData\\ZdbrusBot_update.log.");
 
         _startBotDelay = _category.CreateEntry("start_bot_delay", 10.0f, "Start Bot Delay",
             "The initial cooldown (in seconds) before the bot begins execution." +

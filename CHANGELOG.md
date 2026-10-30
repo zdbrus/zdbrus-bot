@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.36 (2026-10-29)
+- Auto Update (F1 > General, on by default): when the game closes, a hidden helper downloads the newest GitHub release and swaps Mods\ZdbrusBot.dll; the new version loads on the next launch. No web code runs inside the game. The old DLL is kept as ZdbrusBot.dll.bak and the result is logged to UserData\ZdbrusBot_update.log. Everyone must install 0.7.36 by hand once; after that updates are automatic.
+
 ## 0.7.35 (2026-10-29)
 - Mail: with 'Delete After Claim' on, mails that have nothing to claim (event announcements, already-claimed ones) are now deleted too. Before, the first such mail stopped the run and the mailbox was opened again every 30 minutes for nothing. A mail whose claim failed is kept. If a run claims and deletes nothing, the next one waits 3 hours.
 

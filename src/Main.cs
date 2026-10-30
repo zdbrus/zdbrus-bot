@@ -33,7 +33,6 @@ public class Main : MelonMod
         BotPanel.Initialize();
         BotStatusScreen.Initialize();
         Planner.PlannerServer.Start();
-        // UpdateCheck.Start(); // off: the background web request is suspected of crashing the game
 
         LoggerInstance.Msg($"{Brand.Name} ready. F1 settings, F2 status, F7 start/stop, F9 screen map, F4 war machine planner.");
     }
@@ -41,6 +40,7 @@ public class Main : MelonMod
     public override void OnApplicationQuit()
     {
         Planner.PlannerServer.Stop();
+        if (BotSettings.AutoUpdate) UpdateCheck.ScheduleOnExit();
     }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)
