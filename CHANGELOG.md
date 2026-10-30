@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.28 (2026-10-29)
+- Open Chests now closes the 'New items' (Equip) popup that gear drops leave open. Confirmed live in 0.7.27: all 10 chest types opened, but that popup stayed on screen.
+
 ## 0.7.27 (2026-10-29)
 - Forbidden Knowledge and Talents priority chips now list every upgrade/talent name from the Firestone wiki (all three dark gods; all 46 talent tiers), not just the old defaults.
 

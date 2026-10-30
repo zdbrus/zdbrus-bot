@@ -1047,6 +1047,7 @@ public class OpenChestsTask : BotTask
     private const string Content = Inv + "/submenus/items/ScrollView/Viewport/Content";
     private const string Preview = P.Popups + "/ChestOpenPreview/bg";
     private const string Opening = P.Menus + "/ChestOpening";
+    private const string NewItems = P.Popups + "/NewItem";
     private static readonly HashSet<string> SupportedChests = new(StringComparer.OrdinalIgnoreCase)
         { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" };
     private readonly Dictionary<string, MelonPreferences_Entry<bool>> _open = new(StringComparer.OrdinalIgnoreCase);
@@ -1169,6 +1170,13 @@ public class OpenChestsTask : BotTask
 
             if (Ui.Clickable(Opening + "/closeButton")) yield return Ui.Click(Opening + "/closeButton", 1f);
             if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.6f);
+
+            // Gear drops raise a "New items" popup whose Equip button is also its close button.
+            for (var n = 0; n < 5 && Ui.Visible(NewItems); n++)
+            {
+                Logger.Info($"[Chests] Closing the New items popup after {name} chests.");
+                yield return Ui.Click(NewItems + "/bg/closeButton", 1f);
+            }
 
             var updateDeadline = Time.unscaledTime + 5f;
             while (Time.unscaledTime < updateDeadline)
