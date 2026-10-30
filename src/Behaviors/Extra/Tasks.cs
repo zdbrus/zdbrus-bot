@@ -1179,7 +1179,11 @@ public class PersonalTreeTask : BotTask
 
         foreach (var up in info.Where(u => !u.maxed && u.cost > 0).OrderBy(u => Rank(u.name)).ThenBy(u => u.cost).ToList())
         {
-            if (Ui.NumberAt(Tokens) - _keepTokens.Value < up.cost) continue;
+            if (Ui.NumberAt(Tokens) - _keepTokens.Value < up.cost)
+            {
+                Logger.Info($"[Personal Tree] Stopping at {up.name}: cost {up.cost}, have {Ui.NumberAt(Tokens) - _keepTokens.Value}. Lower tiers stay untouched.");
+                break;
+            }
             yield return Ui.Click(up.node, 1f);
             for (var n = 0; n < 5; n++)
             {

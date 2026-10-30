@@ -1,7 +1,9 @@
 ﻿# Changelog
 
 ## Unreleased
-- Personal Tree: cache each upgrade's stable name for priority ordering and keep skipping known unaffordable upgrades until tokens can cover the cached cost. Open a live preview only when a node is a purchase candidate, to verify its current level and cost.
+- Upgrade trees now fill configured tiers in order and stop when the current tier is unaffordable instead of spending on lower tiers. Names and costs stay cached after a purchase, so known nodes are not relearned every run.
+- Meteorite Research now reads its existing priority-chip setting; previously the UI exposed the setting but the task ignored it and defaulted to cheapest/first-found behavior.
+- Personal Tree, Talents and Event Exchange follow the same tier-first behavior.
 
 ## 0.7.37 (2026-10-29)
 - Community Discord server is live: https://discord.gg/U4APWwTa7F (announcements, install help, bug reports, suggestions). Linked from the website, README and release readme. No code changes.

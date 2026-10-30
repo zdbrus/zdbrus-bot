@@ -13,8 +13,8 @@ using Logger = Firebot.Core.Logger;
 namespace Firebot.Behaviors.Extra;
 
 /// <summary>
-///     Shared "upgrade tree" buyer: opens each node's preview, reads name / level / cost, then buys in the
-///     priority order the user set (unlisted nodes after, cheapest first) while the currency covers the cost.
+///     Shared "upgrade tree" buyer: opens each node's preview, reads name / level / cost, then fills each
+///     priority tier completely before moving to the next tier.
 /// </summary>
 internal static class NodeBuyer
 {
@@ -122,6 +122,9 @@ internal static class NodeBuyer
         {
             if (CanSkip(node, currency() - keep))
             {
+                if (TryGetKnown(node, out var knownMaxed, out var knownCost, out var knownName) &&
+                    !knownMaxed && knownCost > 0 && !string.IsNullOrEmpty(knownName))
+                    info.Add((node, knownName, knownCost, true));
                 skipped++;
                 continue;
             }
@@ -176,9 +179,13 @@ internal static class NodeBuyer
                     $"({skipped} skipped from earlier reads), currency {currency()}");
         foreach (var up in info.Where(u => u.open).OrderBy(u => Rank(order, u.name)).ThenBy(u => u.cost).ToList())
         {
-            if (currency() - keep < up.cost) continue;
+            if (currency() - keep < up.cost)
+            {
+                Logger.Info($"[Nodes] Stopping at {up.name}: cost {up.cost}, have {currency() - keep}. Lower tiers stay untouched.");
+                break;
+            }
+
             yield return Ui.Click(up.node, 0.9f);
-            Forget(up.node);
             var buy = l.Preview + "/" + l.Buy;
             for (var n = 0; n < maxPerNode; n++)
             {
@@ -199,6 +206,12 @@ internal static class NodeBuyer
                 }
             }
 
+            var finalLevel = Ui.Text(l.Preview + "/" + l.Level);
+            var finalMatch = Regex.Match(finalLevel ?? "", @"(\d+)\s*/\s*(\d+)");
+            var finalMaxed = (finalLevel ?? "").IndexOf("max", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             (finalMatch.Success && int.Parse(finalMatch.Groups[1].Value) >= int.Parse(finalMatch.Groups[2].Value));
+            var finalCost = Ui.NumberAt(l.Preview + "/" + l.Cost);
+            Remember(up.node, finalMaxed || !Ui.Visible(buy), finalMaxed || !Ui.Visible(buy) ? 0 : finalCost, up.name);
             if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
             if (Ui.MissingCurrency) yield break;
         }
@@ -227,10 +240,14 @@ public class MeteoriteResearchTask : BotTask
     private const string M = L + "/submenus/meteoriteResearch";
     private const string Meteorites = L + "/counters/currencyInteraction (Meteorite)/quantity";
     private MelonPreferences_Entry<int> _keep;
+    private MelonPreferences_Entry<string> _priority;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
         _keep = c.CreateEntry("keep_meteorites", 0, "Meteorites To Keep", "Meteorites to leave unspent.");
+        _priority = c.CreateEntry("priority",
+            "Attribute damage,All main attributes,Raining gold,Hero level up cost,Attribute health,Attribute armor,Firestone finder,Powerless boss,Powerless enemy",
+            "Priority", "Meteorite research upgrades are filled in this order; lower tiers wait until higher tiers are maxed.");
     }
 
     public override IEnumerator Execute()
@@ -257,7 +274,7 @@ public class MeteoriteResearchTask : BotTask
             Preview = P.Popups + "/MeteoriteResearchPreview/bg",
             Name = "researchName", Level = "level", Buy = "unlocked/researchButton",
             Cost = "unlocked/researchButton/cost", Close = "closeButton"
-        }, () => Ui.NumberAt(Meteorites), string.Empty, _keep.Value, stopAtFirstAffordable: true);
+        }, () => Ui.NumberAt(Meteorites), _priority.Value, _keep.Value);
 
         yield return Ui.Click(L + "/closeButton");
     }
@@ -994,6 +1011,14 @@ public class EventExchangeTask : BotTask
             }
 
             if (stopBuying) break;
+            var remaining = Regex.Match(Ui.Text(item.Find("remainingQuantity")) ?? "", @"(\d+)\s*/\s*(\d+)");
+            var itemMaxed = remaining.Success && int.Parse(remaining.Groups[1].Value) >= int.Parse(remaining.Groups[2].Value);
+            var nextCost = Ui.NumberOf(buy?.Find("purchaseCost"));
+            if (!itemMaxed && nextCost > 0 && Have() - _keep.Value < nextCost)
+            {
+                Logger.Info($"[EventExchange] Stopping at {want}: cost {nextCost}, have {Have() - _keep.Value}. Lower tiers stay untouched.");
+                break;
+            }
         }
 
         var close = shop.Find("bg/closeButton");
@@ -1291,27 +1316,38 @@ public class TalentsTask : BotTask
         {
             var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
             var nodes = Ui.VisibleChildren(Tree).Where(t => t.name.StartsWith("talentInteraction") && Ui.Clickable(t)).ToList();
-            var later = new List<Transform>();
-
-            // Pass 1: listed talents. Pass 2: everything else that was skipped.
-            for (var pass = 0; pass < 2 && Free() != 0; pass++)
+            var discovered = new List<(Transform node, string name, bool available)>();
+            foreach (var n in nodes)
             {
-                foreach (var n in pass == 0 ? nodes : later)
-                {
-                    if (Free() == 0) break;
-                    yield return Ui.Click(n, 0.6f);
-                    if (!Ui.Visible(Preview)) continue;
-                    var name = (Ui.Text(Preview + "/talentName") ?? "").Trim();
-                    if (pass == 0 && order.Count > 0 && !order.Contains(name.ToLowerInvariant()))
-                    {
-                        // Only talents that can take a point now are worth a second visit.
-                        if (Ui.Clickable(Preview + "/talentUpgrades/upgradeTalentButton")) later.Add(n);
-                    }
-                    else yield return Upgrade(name, () => spent++);
-                    if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
-                }
+                yield return Ui.Click(n, 0.6f);
+                if (!Ui.Visible(Preview)) continue;
+                var name = (Ui.Text(Preview + "/talentName") ?? "").Trim();
+                var available = Ui.Clickable(Preview + "/talentUpgrades/upgradeTalentButton");
+                discovered.Add((n, name, available));
+                yield return Ui.Click(Preview + "/closeButton", 0.3f);
+            }
 
-                if (order.Count == 0) break;
+            var selected = new HashSet<Transform>();
+            foreach (var wanted in order)
+            {
+                if (Free() == 0) break;
+                var match = discovered.FirstOrDefault(x =>
+                    string.Equals(x.name, wanted, StringComparison.OrdinalIgnoreCase));
+                if (match.node == null || !match.available) continue;
+                selected.Add(match.node);
+                yield return Ui.Click(match.node, 0.6f);
+                if (!Ui.Visible(Preview)) continue;
+                yield return Upgrade(match.name, () => spent++);
+                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
+            }
+
+            foreach (var match in discovered.Where(x => !selected.Contains(x.node) && x.available))
+            {
+                if (Free() == 0) break;
+                yield return Ui.Click(match.node, 0.6f);
+                if (!Ui.Visible(Preview)) continue;
+                yield return Upgrade(match.name, () => spent++);
+                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
             }
         }
 
