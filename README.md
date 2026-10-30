@@ -34,7 +34,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
 >
-> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. The automatic update check remains off because its background request was suspected of causing crashes.
+> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update runs outside the game: when you close it, a hidden PowerShell helper downloads the newest release from GitHub and replaces `Mods\ZdbrusBot.dll` (the old one is kept as `.bak`; log in `UserData\ZdbrusBot_update.log`). It needs internet access and will not touch the three Il2CppInterop files. Turn it off in F1 > General > Auto Update.
 
 ## Keys
 
