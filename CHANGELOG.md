@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.32 (2026-10-29)
+- The 35-line task table is now printed at most once every 10 minutes instead of after every task (Boss Retry alone printed it every minute).
+
 ## 0.7.31 (2026-10-29)
 - Every bot click now closes the 'locked guardian' and 'locked war machine' info popups the moment they appear, so no task (Chaos Rift holy upgrades, War Machine, any tile loop) can be blocked by one. Before, only Chaos Rift closed one, and only after the task ended.
 

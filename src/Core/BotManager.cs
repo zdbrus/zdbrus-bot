@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -270,8 +270,12 @@ public static class BotManager
                             Logger.Info($"[Task] {readyTask.SectionTitle} finished in {stopwatch.Elapsed.TotalSeconds:0.###}s | Next: {readyTask.NextRunTime:dd/MM/yyyy HH:mm:ss}");
 
                             // The table is already live on the status screen (F2). The blank line is part of it.
-                            Console.WriteLine();
-                            PrintTasksStatusTable();
+                            if (DateTime.Now - _lastTableAt >= TimeSpan.FromMinutes(10))
+                            {
+                                _lastTableAt = DateTime.Now;
+                                Console.WriteLine();
+                                PrintTasksStatusTable();
+                            }
                         }
                         catch (Exception e)
                         {
@@ -349,6 +353,8 @@ public static class BotManager
     ///     <c>Info</c> on purpose, to preserve the box alignment instead of prefixing 13 lines with
     ///     [DEBUG]. The caller is what guarantees the gate.
     /// </summary>
+    private static DateTime _lastTableAt = DateTime.MinValue;
+
     private static void PrintTasksStatusTable()
     {
         var now = DateTime.Now;
