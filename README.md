@@ -22,6 +22,8 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 ---
 
+> **Already have the bot? v0.7.36 is the final manual update.** Close the game and replace `Mods\ZdbrusBot.dll` with the one from the [latest release](https://github.com/zdbrus/zdbrus-bot/releases/latest). After that the bot updates itself each time you close the game (F1 > General > Auto Update).
+
 ## Install in 4 steps
 
 1. **Install stable MelonLoader 0.7.3** on Firestone using the official installer: [MelonLoader releases](https://github.com/LavaGang/MelonLoader/releases/latest). Point it at `Firestone.exe`. Do not use a nightly build; newer nightlies crash the game.
