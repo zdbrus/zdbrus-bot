@@ -1,5 +1,9 @@
 ﻿# Changelog
 
+## 0.7.29 (2026-10-29)
+- Oracle Blessings no longer opens every blessing when you cannot afford it: unaffordable (or maxed) blessings are skipped for 6 hours, and the Oracle is not opened at all when all of them are skipped.
+- Removed the once-a-second 'lvlUpButton/buyButton' debug log line.
+
 ## 0.7.28 (2026-10-29)
 - Open Chests now closes the 'New items' (Equip) popup that gear drops leave open. Confirmed live in 0.7.27: all 10 chest types opened, but that popup stayed on screen.
 

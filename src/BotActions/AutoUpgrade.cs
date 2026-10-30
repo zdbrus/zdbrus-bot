@@ -277,7 +277,6 @@ public static class AutoUpgrade
         {
             if (BotManager.ShouldPauseAutoUpgrade()) break; // the loop closes the menu right after
 
-            Logger.Debug($"Name: {buyUpgradeBtn.Name}, IsVisible: {buyUpgradeBtn.IsVisible()}");
             yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);
             yield return GapBetweenButtonsWait;
         }

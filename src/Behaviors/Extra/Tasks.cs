@@ -1013,15 +1013,30 @@ public class OracleBlessingsTask : BotTask
 
     public override int MinimumLevel => LevelRequirements.Oracle;
 
+    // Blessings that were unaffordable are not reopened for a while; glyphs only arrive slowly.
+    private static readonly Dictionary<string, DateTime> Unaffordable = new();
+    private static int _knownCount;
+    private static readonly TimeSpan Recheck = TimeSpan.FromHours(6);
+
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddHours(3);
+        var now = DateTime.Now;
+        if (_knownCount > 0 && Unaffordable.Count(kv => kv.Value > now) >= _knownCount)
+        {
+            Logger.Info($"[Oracle] All {_knownCount} blessings were unaffordable; skipping until the recheck.");
+            yield break;
+        }
         yield return Ui.OpenTownBuilding("oracle");
         yield return Ui.Click(O + "/submenuButtons/blessings", 1.5f);
         if (!Ui.Visible(List)) yield break;
 
-        foreach (var blessing in Ui.VisibleChildren(List).Where(b => b.name.StartsWith("blessing")).ToList())
+        var tiles = Ui.VisibleChildren(List).Where(b => b.name.StartsWith("blessing")).ToList();
+        _knownCount = tiles.Count;
+        foreach (var blessing in tiles)
         {
+            if (Unaffordable.TryGetValue(blessing.name, out var until) && until > DateTime.Now) continue;
+            Unaffordable.Remove(blessing.name);
             yield return Ui.Click(blessing, 1.2f);
             // The game only enables "Bless" when you have every glyph it asks for.
             var name = Ui.Text(Preview + "/darkBlueFrame/upgradeName");
@@ -1038,6 +1053,7 @@ public class OracleBlessingsTask : BotTask
                     break;
                 }
             }
+            if (!Ui.Clickable(Bless)) Unaffordable[blessing.name] = DateTime.Now + Recheck;
             yield return Ui.Click(Preview + "/closeButton", 0.8f);
         }
 
