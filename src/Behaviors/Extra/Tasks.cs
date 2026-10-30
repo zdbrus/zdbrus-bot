@@ -1142,9 +1142,17 @@ public class PersonalTreeTask : BotTask
         var skipped = 0;
         foreach (var node in Ui.VisibleChildren(Nodes).Where(n => n.name.StartsWith("treeOfLifePersonalUpgrade")).ToList())
         {
-            if (NodeBuyer.CanSkip(node, Ui.NumberAt(Tokens) - _keepTokens.Value))
+            if (NodeBuyer.CanSkip(node, Ui.NumberAt(Tokens) - _keepTokens.Value,
+                    retryUnaffordableAfterCooldown: false))
             {
                 skipped++;
+                continue;
+            }
+
+            if (NodeBuyer.TryGetKnown(node, out var knownMaxed, out var knownCost, out var knownName) &&
+                !knownMaxed && knownCost > 0 && !string.IsNullOrEmpty(knownName))
+            {
+                info.Add((node, knownName, knownCost, false));
                 continue;
             }
 
@@ -1155,7 +1163,7 @@ public class PersonalTreeTask : BotTask
             var maxed = parts.Length == 2 && Ui.Parse(parts[0]) >= Ui.Parse(parts[1]);
             var cost = Ui.NumberAt(Buy + "/cost");
             var done = maxed || !Ui.Visible(Buy);
-            NodeBuyer.Remember(node, maxed, done ? 0 : cost);
+            NodeBuyer.Remember(node, maxed, done ? 0 : cost, name);
             info.Add((node, name, cost, done));
             yield return Ui.Click(Preview + "/closeButton", 0.6f);
         }
@@ -1173,7 +1181,6 @@ public class PersonalTreeTask : BotTask
         {
             if (Ui.NumberAt(Tokens) - _keepTokens.Value < up.cost) continue;
             yield return Ui.Click(up.node, 1f);
-            NodeBuyer.Forget(up.node);
             for (var n = 0; n < 5; n++)
             {
                 var cost = Ui.NumberAt(Buy + "/cost");
@@ -1195,6 +1202,12 @@ public class PersonalTreeTask : BotTask
                 }
             }
 
+            var finalLevel = Ui.Text(Preview + "/upgradeLevelText");
+            var finalParts = finalLevel.Split('/');
+            var finalMaxed = finalParts.Length == 2 && Ui.Parse(finalParts[0]) >= Ui.Parse(finalParts[1]);
+            var finalCost = Ui.NumberAt(Buy + "/cost");
+            NodeBuyer.Remember(up.node, finalMaxed || !Ui.Visible(Buy),
+                finalMaxed || !Ui.Visible(Buy) ? 0 : finalCost, up.name);
             yield return Ui.Click(Preview + "/closeButton", 0.6f);
         }
 

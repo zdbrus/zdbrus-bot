@@ -32,6 +32,7 @@ internal static class NodeBuyer
     {
         public bool Maxed;
         public double Cost;
+        public string Name;
         public DateTime At;
     }
 
@@ -49,17 +50,38 @@ internal static class NodeBuyer
     ///     True when a node's earlier preview already shows it cannot be bought now: maxed, a known cost above
     ///     the budget, or locked recently. Skips opening its preview again.
     /// </summary>
-    internal static bool CanSkip(Transform node, double budget)
+    internal static bool CanSkip(Transform node, double budget, bool retryUnaffordableAfterCooldown = true)
     {
         if (!Known.TryGetValue(KeyOf(node), out var k)) return false;
         if (k.Maxed) return true;
         var age = DateTime.Now - k.At;
-        if (k.Cost > 0) return budget < k.Cost && age < TimeSpan.FromHours(6);
+        if (k.Cost > 0)
+            return budget < k.Cost && (!retryUnaffordableAfterCooldown || age < TimeSpan.FromHours(6));
         return age < TimeSpan.FromHours(2);
     }
 
-    internal static void Remember(Transform node, bool maxed, double cost)
-        => Known[KeyOf(node)] = new NodeInfo { Maxed = maxed, Cost = cost, At = DateTime.Now };
+    internal static void Remember(Transform node, bool maxed, double cost, string name = null)
+    {
+        var key = KeyOf(node);
+        if (name == null && Known.TryGetValue(key, out var previous)) name = previous.Name;
+        Known[key] = new NodeInfo { Maxed = maxed, Cost = cost, Name = name, At = DateTime.Now };
+    }
+
+    internal static bool TryGetKnown(Transform node, out bool maxed, out double cost, out string name)
+    {
+        if (Known.TryGetValue(KeyOf(node), out var info))
+        {
+            maxed = info.Maxed;
+            cost = info.Cost;
+            name = info.Name;
+            return true;
+        }
+
+        maxed = false;
+        cost = 0;
+        name = null;
+        return false;
+    }
 
     internal static void Forget(Transform node) => Known.Remove(KeyOf(node));
 
@@ -114,7 +136,7 @@ internal static class NodeBuyer
             var buy = l.Preview + "/" + l.Buy;
             var cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
             var open = !maxed && Ui.Visible(buy) && cost > 0;
-            Remember(node, maxed, open ? cost : 0);
+            Remember(node, maxed, open ? cost : 0, name);
             if (stopAtFirstAffordable && open && currency() - keep >= cost)
             {
                 Logger.Info($"[Nodes] First affordable: {name} ({cost}), have {currency()}.");

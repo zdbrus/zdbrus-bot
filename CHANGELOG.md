@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## Unreleased
+- Personal Tree: cache each upgrade's stable name for priority ordering and keep skipping known unaffordable upgrades until tokens can cover the cached cost. Open a live preview only when a node is a purchase candidate, to verify its current level and cost.
+
 ## 0.7.37 (2026-10-29)
 - Community Discord server is live: https://discord.gg/U4APWwTa7F (announcements, install help, bug reports, suggestions). Linked from the website, README and release readme. No code changes.
 
