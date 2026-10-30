@@ -119,7 +119,21 @@ internal static class Ui
             if (Clickable(close)) close.GetComponent<Button>().onClick.Invoke();
             yield return new WaitForSeconds(0.5f);
         }
+
+        // Locked guardians and machines open an info popup that offers nothing; close it at once so it cannot
+        // block the clicks that follow.
+        foreach (var locked in LockedPopups)
+        {
+            if (!Visible(locked)) continue;
+            Logger.Debug($"[Extra] Closing {locked.Substring(locked.LastIndexOf('/') + 1)} popup after {label ?? t?.name}.");
+            var lockedClose = Find(locked + "/bg/closeButton");
+            if (Clickable(lockedClose)) lockedClose.GetComponent<Button>().onClick.Invoke();
+            yield return new WaitForSeconds(0.5f);
+        }
     }
+
+    private static readonly string[] LockedPopups =
+        { P.Popups + "/LockedGuardian", P.Popups + "/LockedMech" };
 
     public const string CurrencyMissing = P.Popups + "/CurrencyMissing";
 

@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.31 (2026-10-29)
+- Every bot click now closes the 'locked guardian' and 'locked war machine' info popups the moment they appear, so no task (Chaos Rift holy upgrades, War Machine, any tile loop) can be blocked by one. Before, only Chaos Rift closed one, and only after the task ended.
+
 ## 0.7.30 (2026-10-29)
 - Chaos Rift: confirmed live that Tomes of Power and holy upgrades work. Fixed the locked-guardian popup (Reach level 50 at the personal tree of life) staying open: the holy-upgrade loop clicked every guardian tile and never closed that popup for locked guardians. It now closes it and moves on.
 
