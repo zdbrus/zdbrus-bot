@@ -432,6 +432,8 @@ public class ChaosRiftTask : BotTask
         yield return Ui.Click(R + "/closeButton");
     }
 
+    private const string LockedGuardian = P.Popups + "/LockedGuardian";
+
     private IEnumerator HolyUpgrades()
     {
         if (!Ui.Visible(MQ))
@@ -447,6 +449,11 @@ public class ChaosRiftTask : BotTask
         {
             if (wanted.Count == 0) break;
             yield return Ui.Click(g, 1.2f);
+            if (Ui.Visible(LockedGuardian))
+            {
+                yield return Ui.Click(LockedGuardian + "/bg/closeButton", 0.8f);
+                continue;
+            }
             var name = Ui.Text(MQ + "/guardianPreview/info/guardianName");
             if (!wanted.Any(w => w.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
             yield return Ui.Click(MQ + "/submenus/submenuButtons/chaosRift", 1.2f);

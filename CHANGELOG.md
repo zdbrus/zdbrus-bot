@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.30 (2026-10-29)
+- Chaos Rift: confirmed live that Tomes of Power and holy upgrades work. Fixed the locked-guardian popup (Reach level 50 at the personal tree of life) staying open: the holy-upgrade loop clicked every guardian tile and never closed that popup for locked guardians. It now closes it and moves on.
+
 ## 0.7.29 (2026-10-29)
 - Oracle Blessings no longer opens every blessing when you cannot afford it: unaffordable (or maxed) blessings are skipped for 6 hours, and the Oracle is not opened at all when all of them are skipped.
 - Removed the once-a-second 'lvlUpButton/buyButton' debug log line.
