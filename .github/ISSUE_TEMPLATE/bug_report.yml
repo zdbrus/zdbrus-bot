@@ -2,19 +2,25 @@ name: Bug report
 description: Something is clicked wrong, a task fails, or the bot stops.
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: Before reporting, install the latest public release from https://github.com/zdbrus/zdbrus-bot/releases/latest and reproduce the problem. Bot v0.7.3 needs a manual update with Firestone closed. Released bot versions v0.7.36+ can update the DLL when Firestone closes if F1 > General > Auto Update is enabled; restart Firestone after the update completes.
   - type: input
     id: version
     attributes:
       label: Bot version
-      description: Shown in MelonLoader\Latest.log ("Zdbrus Bot vX.Y.Z").
-      placeholder: 0.6.0
+      description: Copy the installed bot version from Firestone\MelonLoader\Latest.log (not the MelonLoader version).
+      placeholder: e.g. 0.7.37
     validations:
       required: true
   - type: input
     id: game
     attributes:
       label: Game version and store
+      description: Copy the Firestone version shown in your client and specify Steam or Epic.
       placeholder: 9.1.3a, Steam
+    validations:
+      required: true
   - type: textarea
     id: what
     attributes:
@@ -26,4 +32,13 @@ body:
     id: files
     attributes:
       label: Log and screen map
-      description: Drag in MelonLoader\Latest.log and, if a screen is involved, the matching file from UserData\screenmaps (press F9 on that screen).
+      description: Drag in Firestone\MelonLoader\Latest.log from the affected run. If auto-update is involved, also attach Firestone\UserData\ZdbrusBot_update.log. If a screen is involved, attach the matching file from Firestone\UserData\screenmaps (press F9 on that screen).
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: F1 settings
+      description: Attach screenshots of the affected task toggles and priority settings in F1, including hero auto-upgrade if relevant. If you cannot open F1, say so. An F2 task status screenshot alone does not show these settings.
+    validations:
+      required: true

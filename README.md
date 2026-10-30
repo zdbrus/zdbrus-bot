@@ -32,6 +32,12 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
 
+### Updating an older bot
+
+The project is still supported. If you are using **bot v0.7.3**, install [v0.7.37](https://github.com/zdbrus/zdbrus-bot/releases/tag/v0.7.37) or a newer [public release](https://github.com/zdbrus/zdbrus-bot/releases/latest) manually: close Firestone, then repeat installation steps 3–4. The bot version is separate from the MelonLoader version.
+
+**Released bot versions v0.7.36+** can update the DLL automatically when Firestone closes if **F1 > General > Auto Update** is enabled. This does not update an already-running game; restart Firestone after the update completes. Older bot versions need the manual update first.
+
 ## Keys
 
 <img src="assets/panel.jpg" alt="Zdbrus Bot settings panel in game, Battle tab" width="380" align="right">
@@ -113,7 +119,17 @@ Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run wh
 
 **The game updated and the bot broke.** Check [Releases](https://github.com/zdbrus/zdbrus-bot/releases) for a newer version. Watch or star this repo to get notified when one comes out.
 
-**Nothing happens / no tasks run.** The bot is stopped. Press F7, or turn on F1 > Bot > Auto Start. The log says so when it is off.
+**Nothing happens / map missions or hero upgrades do not run.** First update an old bot using the instructions above. Check **F2** to see whether the bot is on; if it is stopped, press **F7**, or enable **F1 > Bot > Auto Start**. If it is already on, check the task toggles and priorities in **F1**, and make sure hero auto-upgrade is enabled (**F6**). A task shown as **Waiting** is not by itself an error: tasks can wait for their timer, notification, or available squads, and hero upgrades pause while tasks need the UI.
+
+**Still failing after updating?** [Open an issue](https://github.com/zdbrus/zdbrus-bot/issues/new/choose) with:
+
+- The installed **bot version** from the MelonLoader startup log and the **Firestone game version and store** shown in your client.
+- `Firestone\MelonLoader\Latest.log` from a run where the problem occurred.
+- `Firestone\UserData\ZdbrusBot_update.log` if auto-update is involved.
+- A screenshot of the bot's **F1 settings**, especially the affected task toggles and priorities. An F2 status screenshot alone does not show these settings.
+- If a screen is involved, press **F9** on that screen and attach the matching file from `Firestone\UserData\screenmaps`.
+
+The newer releases include map mission handling, hero auto-upgrades, task outcome checks, and backoff logging. The current log and settings help identify which task is being skipped or blocked.
 
 ## Credits
 
