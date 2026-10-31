@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## Unreleased
+- Balanced AutoUpgrade uses idle gaps even when a scheduled task is less than 30 seconds away. Frequent Temple and boss checks no longer keep it paused between tasks; ready and running tasks still take priority, and Focus keeps its early pause.
+
 ## 0.7.46 (2026-10-31)
 - Temple Prestige now recognizes a displayed `+0%` as a real zero boost instead of an unreadable value, while still refusing to empower until the preview shows a positive boost.
 - A zero-boost growth sample is remembered, so ordinary one-minute checks no longer reopen the Temple for that same first sample. Hourly growth reads and qualifying boss/stall checks remain active.

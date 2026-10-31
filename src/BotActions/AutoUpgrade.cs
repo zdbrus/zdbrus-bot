@@ -47,6 +47,11 @@ public static class AutoUpgrade
     public static bool IsActive => IsEnabled && _isRunning && _autoUpgradeRoutineHandle != null;
     public static bool IsBalancedCycleActive => _balancedSweepActive;
 
+    public static bool ShouldWaitForTask(bool taskReady, bool taskApproaching) =>
+        taskReady || (taskApproaching &&
+                      (!UncappedUpgradePolicy.TryParse(_priorityMode?.Value, out var mode) ||
+                       mode != UncappedUpgradeMode.Balanced));
+
     public static IEnumerator WaitForBalancedCycle()
     {
         while (_balancedSweepActive) yield return null;
@@ -117,7 +122,7 @@ public static class AutoUpgrade
             "\nORIENTATION: Slot numbering follows the list from top to bottom. " +
             "\nSLOT MAP: 0 = Specials, 1 = Guardian, 2 to 6 = Heroes 1 to 5. " +
             "\nTASK PRIORITY: Main bot tasks have priority over AutoUpgrade. " +
-            "\nAUTO PAUSE/RESUME: When a main task is approaching, Balanced finishes its short pass across selected slots before that task starts. Focus pauses as soon as a task is approaching. " +
+            "\nAUTO PAUSE/RESUME: Balanced uses gaps between tasks and finishes its short pass before a waiting task starts. Focus pauses as soon as a task is approaching. " +
             "\nHOW TO USE: In the panel, toggle the buttons to pick the targets. 'Specials' = slot 0, " +
             "'Guardian' = slot 1 and '1' to '5' = slots 2 to 6. " +
             "\nThe same choice is stored as comma-separated slot IDs, and their order is the priority. " +

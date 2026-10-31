@@ -42,7 +42,8 @@ buying crystals. Both Auto activities turn off when finished or when the bot sto
 may be split across visits to respect Max Task Runtime.
 Compatible town and guild tasks reuse their hub. Popup cleanup remains, and the bot returns to
 battle for battle tasks and idle upgrade windows. AutoUpgrade is a separate worker, not the last task.
-With Balance selected, it completes its short pass over the selected slots before the next task starts;
+With Balance selected, it uses gaps between tasks even when the next check is less than 30 seconds away,
+then finishes its short pass before handing over. Ready and running tasks still take priority;
 Focus still pauses as soon as a task is approaching.
 Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked

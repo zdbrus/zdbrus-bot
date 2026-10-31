@@ -86,6 +86,7 @@ internal static class Program
             Test("launch opt-in enables only automation switches", AutomationTests.LaunchOverrides);
             Test("F2 task switch shares the F1 enabled setting", AutomationTests.StatusTaskToggle);
             Test("scene changes resume workers without undoing manual off", AutomationTests.SceneLifecycle);
+            Test("balanced upgrades use short task gaps after account changes", AutomationTests.UpgradeTaskWindows);
             Test("F1 and hotkeys share one automation state", AutomationTests.ToggleState);
             Test("nested coroutine failures and cancellation release resources", AutomationTests.NestedGuard);
             Test("worker failures turn off truthfully and can be retried", AutomationTests.WorkerFailures);

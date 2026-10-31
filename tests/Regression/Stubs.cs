@@ -373,11 +373,13 @@ namespace Firebot.Core
         public static bool IsRunning;
         public static bool IsTaskExecuting;
         public static bool PauseAutoUpgrade;
+        public static bool TaskApproaching;
         public static void Initialize() { }
         public static void Start() => IsRunning = true;
         public static void Stop() => IsRunning = false;
         public static void WatchForStall() { }
-        public static bool ShouldPauseAutoUpgrade() => PauseAutoUpgrade || IsTaskExecuting;
+        public static bool ShouldPauseAutoUpgrade() =>
+            Firebot.BotActions.AutoUpgrade.ShouldWaitForTask(PauseAutoUpgrade, TaskApproaching) || IsTaskExecuting;
         public static string AutoUpgradePauseReason => "";
     }
     public static class HotkeyGate

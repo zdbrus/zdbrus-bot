@@ -184,6 +184,50 @@ internal static class AutomationTests
         AutoSkill.OnSceneChanged(false);
     }
 
+    public static void UpgradeTaskWindows()
+    {
+        Boot(true);
+        const string list = Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.UpgradesList;
+        GameObject.CreatePath(list + "/hero/lvlUpButton").AddComponent<Button>();
+        Entry<string>("auto_upgrade", "upgrade_target_slots").Value = "";
+        Firebot.GameModel.Features.MainScene.Upgrades.IsVisible = true;
+        BotManager.TaskApproaching = true;
+
+        try
+        {
+            void CheckWindow(string strategy, bool ready, bool executing, bool shouldBuy)
+            {
+                AutoUpgrade.OnSceneChanged(false);
+                Entry<string>("auto_upgrade", "priority_mode").Value = strategy;
+                BotManager.PauseAutoUpgrade = ready;
+                BotManager.IsTaskExecuting = executing;
+                ExecuteEvents.Events.Clear();
+                AutoUpgrade.OnSceneChanged(true);
+                var worker = MelonCoroutines.Active[Handle(typeof(AutoUpgrade), "_autoUpgradeRoutineHandle")];
+                Check(worker.MoveNext(), "The upgrade worker ended instead of waiting or buying.");
+                Check(ExecuteEvents.Events.Contains("down") == shouldBuy,
+                    $"{strategy}: wrong upgrade decision with ready={ready}, executing={executing}.");
+            }
+
+            CheckWindow("balanced", false, false, true);
+            CheckWindow("balanced", false, false, true);
+            CheckWindow("balanced", true, false, false);
+            CheckWindow("balanced", false, true, false);
+            CheckWindow("focus", false, false, false);
+            CheckWindow("invalid", false, false, false);
+            BotManager.TaskApproaching = false;
+            CheckWindow("focus", false, false, true);
+        }
+        finally
+        {
+            AutoUpgrade.OnSceneChanged(false);
+            BotManager.PauseAutoUpgrade = false;
+            BotManager.TaskApproaching = false;
+            BotManager.IsTaskExecuting = false;
+            ExecuteEvents.OnDown = null;
+        }
+    }
+
     public static void NestedGuard()
     {
         var failures = 0;

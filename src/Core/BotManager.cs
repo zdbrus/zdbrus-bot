@@ -230,11 +230,13 @@ public static class BotManager
                 var hasNearTask = nextEnabledTaskRun != DateTime.MaxValue &&
                                   (nextEnabledTaskRun - DateTime.Now).TotalSeconds <=
                                   AutoUpgradeMinExecutionWindowSeconds;
-                _shouldPauseAutoUpgrade = notificationTask != null || readyTask != null || hasNearTask;
+                _shouldPauseAutoUpgrade = AutoUpgrade.ShouldWaitForTask(
+                    notificationTask != null || readyTask != null, hasNearTask);
                 _autoUpgradePauseReason = readyTask != null && readyTask == notificationTask
                     ? $"{readyTask.SectionTitle} bubble is lit"
                     : readyTask != null ? $"{readyTask.SectionTitle} is ready"
-                    : hasNearTask ? $"{nearestTask?.SectionTitle ?? "a task"} is due at {nextEnabledTaskRun:HH:mm:ss}"
+                    : _shouldPauseAutoUpgrade && hasNearTask
+                        ? $"{nearestTask?.SectionTitle ?? "a task"} is due at {nextEnabledTaskRun:HH:mm:ss}"
                     : "";
             }
             catch (Exception e)
