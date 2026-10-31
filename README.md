@@ -111,7 +111,8 @@ average boost growth (75% by default) can prestige without waiting for a timer. 
 trigger, repeated boss attempts at the same stage can trigger next (3 by default; choose 2–5). The
 no-progress timer is the final fallback, selectable as 30 minutes or 1 hour. All triggers still respect
 your minimum gold boost and run age. The growth rule is an estimate, not a guaranteed optimum. If the
-live stage, run age, boost format, or verified free control cannot be read, the bot does not prestige;
+live stage, run age (including the game's `minutes:seconds` clock), boost format, or verified free
+control cannot be read, the bot does not prestige;
 it never chooses the paid 2x option. Stage checks use game data, so opening the Temple and hiding the
 battle HUD does not cancel a valid reset. The fallback timer starts fresh when a run has not yet been
 tracked or its age changes unexpectedly. Similar-age account switches cannot always be identified, so turn prestige

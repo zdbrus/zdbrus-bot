@@ -49,6 +49,9 @@ internal static class PrestigePolicy
     private static readonly Regex RunTimePattern = new(
         @"^(?:(?<days>\d+)\s*d\s*)?(?<hours>\d+):(?<minutes>[0-5]\d):(?<seconds>[0-5]\d)$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex ShortRunTimePattern = new(
+        @"^(?<minutes>\d+):(?<seconds>[0-5]\d)$",
+        RegexOptions.CultureInvariant);
     private static readonly Regex RunTimeUnitsPattern = new(
         @"^(?<days>\d+)\s*d\s+(?<hours>\d{1,2})\s*h\s+(?<minutes>[0-5]\d)\s*m\s+(?<seconds>[0-5]\d)\s*s$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -83,8 +86,22 @@ internal static class PrestigePolicy
     public static bool TryParseRunHours(string text, out double hours)
     {
         hours = 0;
-        var match = RunTimePattern.Match((text ?? string.Empty).Trim());
-        if (!match.Success) match = RunTimeUnitsPattern.Match((text ?? string.Empty).Trim());
+        var value = (text ?? string.Empty).Trim();
+        var match = RunTimePattern.Match(value);
+        if (!match.Success) match = RunTimeUnitsPattern.Match(value);
+        if (!match.Success)
+        {
+            var shortMatch = ShortRunTimePattern.Match(value);
+            if (shortMatch.Success &&
+                double.TryParse(shortMatch.Groups["minutes"].Value, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var shortMinutes) &&
+                int.TryParse(shortMatch.Groups["seconds"].Value, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var shortSeconds))
+            {
+                hours = shortMinutes / 60d + shortSeconds / 3600d;
+                return double.IsFinite(hours);
+            }
+        }
         if (!match.Success ||
             !double.TryParse(match.Groups["hours"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var h) ||
             !int.TryParse(match.Groups["minutes"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var m) ||

@@ -145,12 +145,20 @@ internal static class Program
         Near(hours, 25 + 33d / 60 + 24d / 3600);
         Check(PrestigePolicy.TryParseRunHours("32:00:00", out hours), "Long hour count rejected.");
         Near(hours, 32);
+        Check(PrestigePolicy.TryParseRunHours("35:47", out var previousMinute), "Observed minutes-and-seconds run age was rejected.");
+        Near(previousMinute, 35d / 60 + 47d / 3600);
+        Check(PrestigePolicy.TryParseRunHours("102:05", out hours), "Three-digit minute count was rejected.");
+        Near(hours, 102d / 60 + 5d / 3600);
+        Check(PrestigePolicy.TryParseRunHours("36:47", out var nextMinute), "Next minutes-and-seconds sample was rejected.");
+        var sampleAt = new DateTime(2026, 1, 1, 12, 0, 0);
+        Check(!PrestigePolicy.RunAgeDiscontinuous(previousMinute, nextMinute, sampleAt, sampleAt.AddMinutes(1)),
+            "A one-minute run-age increase was treated as a new run.");
         foreach (var invalid in new[] { "", "1:60:00", "1:00:60", "2d 25:00:00",
-                     "1d 24h 00m 00s", "1d 01h 60m 00s", "1d 01h 33m", "unknown" })
+                     "1:60", "35:60", "1d 24h 00m 00s", "1d 01h 60m 00s", "1d 01h 33m", "unknown" })
             Check(!PrestigePolicy.TryParseRunHours(invalid, out _), $"Accepted {invalid}.");
         Check(PrestigePolicy.IsNewRun(8, 1), "New run was not detected.");
         Check(!PrestigePolicy.IsNewRun(8, 8 - 30d / 3600), "Small clock jitter was treated as a reset.");
-        var observedAt = new DateTime(2026, 1, 1, 12, 0, 0);
+        var observedAt = sampleAt;
         Check(PrestigePolicy.RunAgeDiscontinuous(7, 25, observedAt, observedAt.AddHours(1)),
             "A run-age jump consistent with an account switch retained old samples.");
         Check(!PrestigePolicy.RunAgeDiscontinuous(7, 8, observedAt, observedAt.AddHours(1)),

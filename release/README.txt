@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.44 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.45 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -26,7 +26,8 @@ trigger: two hourly samples below the configured share of average growth can tri
 for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
 stage can trigger next (3 by default; choose 2–5); the no-progress fallback is selectable at 30 minutes
 or 1 hour. All triggers require the minimum boost and run age. The growth rule is an estimate; unreadable
-stage/boost/run-age values stop the reset. Stage checks use game data, so opening the Temple and
+stage/boost values or a run age the bot cannot read (including the game's minutes:seconds clock) stop
+the reset. Stage checks use game data, so opening the Temple and
 hiding the battle HUD does not cancel a valid reset. The paid 2x is never used. The fallback timer starts
 fresh for untracked runs. Similar-age account switches cannot always be detected; turn prestige off when
 switching accounts until you have checked its settings.
