@@ -94,6 +94,7 @@ public abstract class BotTask
             $"\nWhen disabled, this task will be ignored during the execution loop." +
             LevelRequirementNote);
 
+        if (BotSettings.EnableAllOnLaunch) _enabledEntry.Value = true;
         OnConfigure(_category);
         _category.SaveToFile();
     }

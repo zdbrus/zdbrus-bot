@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Firebot.Core;
 
@@ -12,12 +13,8 @@ namespace Firebot.Core;
 ///         mod's own flags still say the feature is running: the badge claims "on" with nothing behind it, and the
 ///         hotkey needs two presses to recover.
 ///     </para>
-///     <para>
-///         A try/catch cannot do this from the inside — <c>yield return</c> is not allowed in a try that has a
-///         catch — so the routine has to be driven from outside, one step at a time, which is what this does. Like
-///         <c>BotManager.RunSafe</c>, it only sees what the routine it drives throws between its own steps; an
-///         exception inside a nested iterator belongs to Unity's scheduler.
-///     </para>
+///     Nested iterators are driven here too, so exceptions in a click or hold reach the failure callback.
+///     Unity wait instructions still pass through to the scheduler unchanged.
 /// </summary>
 public static class CoroutineGuard
 {
@@ -27,29 +24,63 @@ public static class CoroutineGuard
     /// </summary>
     public static IEnumerator Run(IEnumerator routine, string context, Action onFailure = null)
     {
+        var failed = false;
+        void Report(string message)
+        {
+            Logger.Error($"[FAILED] {context}: {message}");
+            if (failed) return;
+            failed = true;
+            onFailure?.Invoke();
+        }
+
         if (routine == null)
         {
-            Logger.Error($"[FAILED] {context} returned null routine.");
+            Report("returned null routine.");
             yield break;
         }
 
-        while (true)
+        var stack = new Stack<IEnumerator>();
+        stack.Push(routine);
+        try
         {
-            bool movedNext;
-
-            try
+            while (stack.Count > 0)
             {
-                movedNext = routine.MoveNext();
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"[FAILED] {context} threw: {e.GetType().Name} - {e.Message}");
-                onFailure?.Invoke();
-                yield break;
-            }
+                var current = stack.Peek();
+                bool movedNext;
+                object yielded;
+                try
+                {
+                    movedNext = current.MoveNext();
+                    yielded = movedNext ? current.Current : null;
+                    if (!movedNext)
+                    {
+                        stack.Pop();
+                        (current as IDisposable)?.Dispose();
+                    }
+                    else if (yielded is IEnumerator child)
+                    {
+                        if (stack.Contains(child))
+                            throw new InvalidOperationException("A coroutine yielded an active parent iterator.");
+                        stack.Push(child);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Report($"threw: {e.GetType().Name} - {e.Message}");
+                    yield break;
+                }
 
-            if (!movedNext) yield break;
-            yield return routine.Current;
+                if (movedNext && yielded is not IEnumerator) yield return yielded;
+            }
+        }
+        finally
+        {
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                try { (current as IDisposable)?.Dispose(); }
+                catch (Exception e) { Report($"cleanup threw: {e.GetType().Name} - {e.Message}"); }
+            }
         }
     }
 }

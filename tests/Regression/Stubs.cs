@@ -82,7 +82,15 @@ namespace UnityEngine
             return component != null;
         }
 
-        public static GameObject Find(string name) => Roots.TryGetValue(name, out var root) ? root : null;
+        public T GetComponent<T>() where T : Component =>
+            TryGetComponent(out T component) ? component : null;
+
+        public static Action BeforeFind;
+        public static GameObject Find(string name)
+        {
+            BeforeFind?.Invoke();
+            return Roots.TryGetValue(name, out var root) ? root : null;
+        }
 
         public static GameObject Resolve(string path)
         {
@@ -126,8 +134,16 @@ namespace UnityEngine
         public static float unscaledTime;
     }
 
-    public enum KeyCode { None, F6 }
-    public static class Input { public static bool GetKeyDown(KeyCode key) => false; }
+    public enum KeyCode { None, F1, F2, F6, F7, F8, F9 }
+    public static class Input
+    {
+        public static KeyCode Pressed;
+        public static bool GetKeyDown(KeyCode key) => key != KeyCode.None && Pressed == key;
+    }
+    public static class Mathf
+    {
+        public static float Clamp(float value, float min, float max) => Math.Clamp(value, min, max);
+    }
 }
 
 namespace UnityEngine.UI
@@ -136,6 +152,7 @@ namespace UnityEngine.UI
     {
         public bool enabled = true;
         public bool interactable = true;
+        public bool isActiveAndEnabled => enabled && gameObject.activeInHierarchy;
         public readonly ClickEvent onClick = new();
 
         public class ClickEvent
@@ -205,6 +222,28 @@ namespace Il2Cpp
 
 namespace MelonLoader
 {
+    public class MelonInfoAttribute : Attribute
+    {
+        public MelonInfoAttribute(Type type, string name, string version, string author) { }
+    }
+    public class MelonGameAttribute : Attribute { }
+    public class MelonColorAttribute : Attribute { public MelonColorAttribute(int a, int r, int g, int b) { } }
+    public class MelonAuthorColorAttribute : Attribute { public MelonAuthorColorAttribute(int a, int r, int g, int b) { } }
+    public class MelonMod
+    {
+        public class Log
+        {
+            public void Msg(string message) { }
+            public void Warning(string message) { }
+        }
+        public Log LoggerInstance = new();
+        public virtual void OnInitializeMelon() { }
+        public virtual void OnApplicationQuit() { }
+        public virtual void OnSceneWasLoaded(int buildIndex, string sceneName) { }
+        public virtual void OnSceneWasUnloaded(int buildIndex, string sceneName) { }
+        public virtual void OnUpdate() { }
+    }
+
     public class MelonPreferences_Entry
     {
         public string Identifier;
@@ -231,7 +270,10 @@ namespace MelonLoader
         {
             var entry = new MelonPreferences_Entry<T>
             {
-                Identifier = id, DisplayName = display, Description = description, Value = value, IsHidden = is_hidden
+                Identifier = id, DisplayName = display, Description = description,
+                Value = MelonPreferences.SavedValues.TryGetValue(Identifier + "." + id, out var saved)
+                    ? (T)saved : value,
+                IsHidden = is_hidden
             };
             Entries[id] = entry;
             return entry;
@@ -244,6 +286,7 @@ namespace MelonLoader
     public static class MelonPreferences
     {
         public static readonly Dictionary<string, MelonPreferences_Category> Categories = new();
+        public static readonly Dictionary<string, object> SavedValues = new();
         public static MelonPreferences_Category CreateCategory(string id, string display)
         {
             var category = new MelonPreferences_Category { Identifier = id, DisplayName = display };
@@ -255,8 +298,19 @@ namespace MelonLoader
 
     public static class MelonCoroutines
     {
-        public static object Start(IEnumerator routine) => new();
-        public static void Stop(object handle) { }
+        public static readonly Dictionary<object, IEnumerator> Active = new();
+        public static int Starts;
+        public static object Start(IEnumerator routine)
+        {
+            var handle = new object();
+            Active[handle] = routine;
+            Starts++;
+            return handle;
+        }
+        public static void Stop(object handle)
+        {
+            if (Active.Remove(handle, out var routine)) (routine as IDisposable)?.Dispose();
+        }
     }
 }
 
@@ -276,6 +330,7 @@ namespace Firebot.Core
         public static void Debug(string message) => Messages.Add(message);
         public static void Info(string message) => Messages.Add(message);
         public static void Warning(string message) => Messages.Add(message);
+        public static void Error(string message) => Messages.Add(message);
     }
 
     public static class LevelRequirements { public const int None = 0; }
@@ -283,21 +338,50 @@ namespace Firebot.Core
     {
         public static bool TryGetCharacterLevel(out int level) { level = 9999; return true; }
     }
-    public static class BotSettings
-    {
-        public const int FreeSpeedupSeconds = 180;
-        public const string ConfigPath = "test.cfg";
-        public static bool AutoUpdate = true;
-    }
     public static class BotManager
     {
+        public static bool IsRunning;
+        public static void Initialize() { }
+        public static void Start() => IsRunning = true;
+        public static void Stop() => IsRunning = false;
+        public static void WatchForStall() { }
         public static bool ShouldPauseAutoUpgrade() => false;
         public static string AutoUpgradePauseReason => "";
     }
-    public static class HotkeyGate { public static bool IsCapturing => false; }
-    public static class CoroutineGuard
+    public static class HotkeyGate
     {
-        public static IEnumerator Run(IEnumerator routine, string label, Action onError) => routine;
+        public static bool IsCapturing;
+        public static void BeginFrame(bool capturing) => IsCapturing = capturing;
+    }
+    public static class ScreenMap { public static void Tick() { } }
+    public static class DropCollector { public static void Tick() { } }
+    public static class BubbleWatcher { public static void Tick() { } }
+}
+
+namespace Firebot.UI
+{
+    public static class BotPanel
+    {
+        public static void Initialize() { }
+        public static void OnSceneChanged() { }
+        public static void Tick() { }
+    }
+    public static class BotStatusScreen
+    {
+        public static UnityEngine.KeyCode Key => UnityEngine.KeyCode.F2;
+        public static void Initialize() { }
+        public static void OnSceneChanged() { }
+        public static void Tick() { }
+    }
+}
+namespace Firebot.UI.Widgets { public static class KeybindRow { public static bool IsListening; } }
+namespace Firebot.Planner
+{
+    public static class PlannerServer
+    {
+        public static void Start() { }
+        public static void Stop() { }
+        public static void Tick() { }
     }
 }
 
@@ -391,6 +475,12 @@ namespace Firebot.Infrastructure
             public static class BottomSideUIDesktopLoc
             {
                 public static class MenuButtonsLoc { public const string UpgradesBtn = "battle/upgrades"; }
+                public static class LeaderPanelLoc
+                {
+                    public const string HotKeyOneBtn = "battle/leader/one";
+                    public const string HotKeyTwoBtn = "battle/leader/two";
+                    public const string HotKeyThreeBtn = "battle/leader/three";
+                }
             }
             public static class NotificationsLoc
             {

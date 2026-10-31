@@ -4,8 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Main.cs" Link="Main.cs" />
+    <Compile Include="..\..\src\Core\BotSettings.cs" Link="BotSettings.cs" />
+    <Compile Include="..\..\src\Core\CoroutineGuard.cs" Link="CoroutineGuard.cs" />
+    <Compile Include="..\..\src\BotActions\AutoSkill.cs" Link="AutoSkill.cs" />
+    <Compile Include="..\..\src\BotActions\Hotkey.cs" Link="Hotkey.cs" />
     <Compile Include="..\..\src\Core\PrestigePolicy.cs" Link="PrestigePolicy.cs" />
     <Compile Include="..\..\src\Core\PriorityTier.cs" Link="PriorityTier.cs" />
     <Compile Include="..\..\src\Core\UncappedUpgradePolicy.cs" Link="UncappedUpgradePolicy.cs" />

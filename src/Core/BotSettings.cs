@@ -9,6 +9,7 @@ public static class BotSettings
 {
     private static MelonPreferences_Category _category;
     private static MelonPreferences_Entry<bool> _autoStart;
+    private static MelonPreferences_Entry<bool> _enableAllOnLaunch;
     private static MelonPreferences_Entry<bool> _autoUpdate;
     private static MelonPreferences_Entry<float> _startBotDelay;
     private static MelonPreferences_Entry<float> _scanInterval;
@@ -63,6 +64,7 @@ public static class BotSettings
 
     // Safe Properties
     public static bool AutoStart => _autoStart?.Value ?? false;
+    public static bool EnableAllOnLaunch => _enableAllOnLaunch?.Value ?? false;
     public static float StartBotDelay => Mathf.Clamp(_startBotDelay.Value, StartBotDelayMin, StartBotDelayMax);
     public static float ScanInterval => Mathf.Clamp(_scanInterval.Value, ScanIntervalMin, ScanIntervalMax);
     public static float InteractionDelay => Mathf.Clamp(_interactionDelay.Value, InteractionDelayMin, InteractionDelayMax);
@@ -101,6 +103,12 @@ public static class BotSettings
 
         _autoStart = _category.CreateEntry("auto_start", true, "Auto Start",
             "Determines if the bot logic should be initialized and started automatically upon game launch.");
+
+        _enableAllOnLaunch = _category.CreateEntry("enable_all_on_launch", false, "Enable All On Launch",
+            "At each fresh game launch, enables Bot Auto Start, AutoUpgrade, AutoSkill and every task's Enable switch. " +
+            "Manual off choices last for the current game process, including account switches. " +
+            "Does not change priorities, reserves, combos or optional spending settings. Default: off.");
+        if (EnableAllOnLaunch) _autoStart.Value = true;
 
         _autoUpdate = _category.CreateEntry("auto_update", true, "Auto Update",
             "A separate helper checks GitHub for updates. After the game closes, it installs a newer release " +

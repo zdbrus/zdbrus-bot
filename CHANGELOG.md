@@ -1,5 +1,12 @@
 ﻿# Changelog
 
+## 0.7.39 (2026-10-30)
+- Added opt-in General > Enable All On Launch (off by default). At each fresh game launch it enables Bot Auto Start, AutoUpgrade, AutoSkill and every task's Enable switch without changing priorities, reserves, combos or optional spending settings. Manual off choices remain off for the current process, including account switches.
+- AutoUpgrade and AutoSkill stop on gameplay-scene unload and rebuild workers and cached targets when gameplay returns. Bot manual stop also survives scene/account transitions. Unrelated additive scenes do not interrupt automation.
+- F6/F8 and F1 Enable switches now share the same desired state. Enabled AutoSkill starts automatically when gameplay is ready. Empty combos and worker failures turn the setting off with a warning instead of displaying a false on state or restarting every frame.
+- Coroutine guarding now catches nested iterator and Current-getter exceptions, disposes nested iterators, and reports failure once. Scene changes cancel active upgrade holds and pending menu cleanup.
+- Regression coverage exercises launch overrides, real Main scene callbacks, manual-off preservation, F1/hotkey reconciliation, nested failures, cancellation and pointer release. These fixes cover concrete failure paths; an account switch that does not reload the gameplay scene has not been live-verified.
+
 ## 0.7.38 (2026-10-30)
 - F1 has a scrolling update notice and Releases button. When Auto Update is on, a separate helper checks for newer releases; the notice explains when to close the game, wait for the updater, and reopen. The installer waits for the game to exit and skips the swap if the game was restarted too early.
 - Prestige has its own F1 tab with the last decision and run reading, exact boost and growth-threshold inputs, and clear disabled/stopped states. Its scheduled check has priority over ordinary tasks.

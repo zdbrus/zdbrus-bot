@@ -23,6 +23,9 @@ namespace Firebot;
 public class Main : MelonMod
 {
     private bool _isGameReady;
+    private bool _hasEnteredGame;
+    private bool _resumeBotAfterScene;
+    private string _gameSceneName;
 
     public override void OnInitializeMelon()
     {
@@ -39,6 +42,7 @@ public class Main : MelonMod
 
     public override void OnApplicationQuit()
     {
+        SuspendAutomation();
         Planner.PlannerServer.Stop();
         UpdateCheck.StopProbe();
         if (BotSettings.AutoUpdate) UpdateCheck.ScheduleOnExit();
@@ -49,15 +53,32 @@ public class Main : MelonMod
         BotPanel.OnSceneChanged();
         BotStatusScreen.OnSceneChanged();
 
-        _isGameReady = sceneName == "mainScene" || sceneName == "Game";
+        // An unrelated additive scene must not stop gameplay automation.
+        if (sceneName != "mainScene" && sceneName != "Game") return;
 
-        if (_isGameReady)
-        {
-            if (BotSettings.AutoStart) BotManager.Start();
-            else LoggerInstance.Warning("Bot is stopped: no tasks, bubbles or boss retries will run. Press F7 to start it, or turn on F1 > Bot > Auto Start.");
-            AutoUpgrade.AutoStart();
-        }
-        else BotManager.Stop();
+        SuspendAutomation();
+        _isGameReady = true;
+        _gameSceneName = sceneName;
+        var startBot = _hasEnteredGame ? _resumeBotAfterScene : BotSettings.AutoStart;
+        _hasEnteredGame = true;
+        if (startBot) BotManager.Start();
+        else LoggerInstance.Warning("Bot is stopped: no tasks, bubbles or boss retries will run. Press F7 to start it.");
+        AutoUpgrade.OnSceneChanged(true);
+        AutoSkill.OnSceneChanged(true);
+    }
+
+    public override void OnSceneWasUnloaded(int buildIndex, string sceneName)
+    {
+        if (_isGameReady && sceneName == _gameSceneName) SuspendAutomation();
+    }
+
+    private void SuspendAutomation()
+    {
+        if (_isGameReady) _resumeBotAfterScene = BotManager.IsRunning;
+        _isGameReady = false;
+        BotManager.Stop();
+        AutoUpgrade.OnSceneChanged(false);
+        AutoSkill.OnSceneChanged(false);
     }
 
     public override void OnUpdate()

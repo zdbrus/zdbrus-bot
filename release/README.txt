@@ -1,4 +1,4 @@
-﻿ZDBRUS BOT 0.7.38 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.39 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -37,6 +37,16 @@ The planner's read-only upgrade advisor ranks machine levels and blueprints by p
 
 KEYS
 F1 settings   F2 status   F4 planner   F6 auto-upgrade   F7 bot on/off   F8 auto-skill   F9 screen map
+
+STARTUP AND ACCOUNT SWITCHES
+F1 > General > Enable All On Launch is off by default. Opt in to turn on Bot Auto Start,
+AutoUpgrade, AutoSkill and every task's Enable switch at each fresh game launch. Priorities,
+reserves, combos and optional spending settings are not changed. Check prestige and spending
+settings before opting in. Manual off choices survive account switches for the current process;
+the next game launch turns the switches back on.
+AutoUpgrade and AutoSkill rebuild their workers when the gameplay scene reloads. F6/F8 and
+their F1 Enable switches control the same state. A worker error disables its switch and logs
+the reason; enable it once or press its hotkey to retry. An empty skill combo cannot start.
 
 TROUBLESHOOTING
 If the game closes during startup, verify the three bundled Il2CppInterop files are present and use

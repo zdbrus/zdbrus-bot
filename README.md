@@ -35,6 +35,16 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 3. **Download [ZdbrusBot.zip](https://github.com/zdbrus/zdbrus-bot/releases/latest/download/ZdbrusBot.zip)** and extract all of it into the Firestone folder (the one with `Firestone.exe`), replacing files when asked. It contains `Mods\ZdbrusBot.dll` plus three fixed MelonLoader files (`MelonLoader\net6\Il2CppInterop.*.dll`) that the current game needs.
 4. **Start the game.** The bot starts by itself (Auto Start). Press **F1** to pick which features to turn on, and **F7** to stop or start it.
 
+**Want all task switches on at every launch?** Turn on **F1 > General > Enable All On Launch**
+(off by default). At the next fresh game launch it enables Bot Auto Start, AutoUpgrade, AutoSkill and
+every task's Enable switch. It leaves priorities, reserves, combos and optional spending settings alone.
+Anything you manually turn off stays off for that game process, including account switches; restarting
+the game turns those switches back on. Check your prestige and spending settings before opting in.
+
+AutoUpgrade and AutoSkill resume with fresh workers when the gameplay scene reloads. F6/F8 and their
+F1 Enable switches now control the same state. A worker error disables its switch and logs the reason;
+enable it once in F1 or press its hotkey to retry. An empty skill combo cannot start.
+
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
 >
 > The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update uses separate PowerShell helpers to check GitHub while the game is open and install a newer DLL after it closes. F1 shows the check status and a Releases button. Wait for `UserData\ZdbrusBot_update.log` to report the result before reopening; if the game restarts too early, the update is skipped until the next close. The previous DLL is kept as `.bak`, and the three Il2CppInterop files are not changed. Turn Auto Update off in F1 > General.

@@ -28,6 +28,7 @@ internal static class Program
         try
         {
             Environment.CurrentDirectory = temp;
+            BotSettings.Initialize();
             Test("prestige gain parsing fails closed", PrestigeGainParsing);
             Test("prestige run age parsing and reset detection", PrestigeRunAge);
             Test("prestige rate requires consecutive valid samples", PrestigeRate);
@@ -53,6 +54,11 @@ internal static class Program
             Test("research handles multiple slots in priority order", ResearchMultipleSlots);
             Test("research refuses stale or failed previews", ResearchPreviewFailures);
             Test("research retries a blocked fallback with another slot running", ResearchBlockedFallback);
+            Test("launch opt-in enables only automation switches", AutomationTests.LaunchOverrides);
+            Test("scene changes resume workers without undoing manual off", AutomationTests.SceneLifecycle);
+            Test("F1 and hotkeys share one automation state", AutomationTests.ToggleState);
+            Test("nested coroutine failures and cancellation release resources", AutomationTests.NestedGuard);
+            Test("worker failures turn off truthfully and can be retried", AutomationTests.WorkerFailures);
         }
         finally
         {
@@ -816,7 +822,8 @@ if ($Mode -eq 'blocked') {
         var task = new MapMissionsTask();
         Run(task.Execute());
         Check(MapFixture.Starts == 1 && MapFixture.Missions["first"].Active, "Mission was not started.");
-        Check(Math.Abs((task.NextRunTime - end.AddMinutes(-3)).TotalSeconds) < 1, "Mission timer was not scheduled.");
+        Check(Math.Abs((task.NextRunTime - end.AddSeconds(-BotSettings.FreeSpeedupSeconds)).TotalSeconds) < 1,
+            "Mission timer did not use the configured free-speedup threshold.");
     }
 
     private sealed class ResearchFixture

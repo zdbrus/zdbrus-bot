@@ -156,6 +156,7 @@ public static class BotManager
         // released here too.
         _executingTask = null;
         if (_botRoutineHandle != null) MelonCoroutines.Stop(_botRoutineHandle);
+        _botRoutineHandle = null;
         Logger.Info("Stopped.");
     }
 

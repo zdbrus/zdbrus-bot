@@ -30,6 +30,7 @@ public static class AutoSkill
     private static List<Hotkey> _comboHotkeys;
     private static bool _isRunning;
     private static object _autoSkillRoutineHandle;
+    private static bool _sceneReady;
     private static bool _isInitialized;
     private static MelonPreferences_Entry<KeyCode> _shortcutKey;
     private static MelonPreferences_Entry<bool> _isEnabled;
@@ -39,7 +40,7 @@ public static class AutoSkill
     ///     Armed and actually running. The bot's pause is ignored on purpose: it is frequent and would
     ///     make the indicator flicker. Exposed so the UI does not recompose the rule on its own.
     /// </summary>
-    public static bool IsActive => IsEnabled && _isRunning;
+    public static bool IsActive => IsEnabled && _isRunning && _autoSkillRoutineHandle != null;
 
     private static KeyCode ShortcutKey =>
         Enum.IsDefined(typeof(KeyCode), _shortcutKey.Value) && _shortcutKey.Value != KeyCode.None
@@ -68,7 +69,7 @@ public static class AutoSkill
             "enabled",
             false,
             "Enable AutoSkill",
-            "Enables or disables the AutoSkill automation task. When disabled, this task will be ignored during the execution loop. Default: false."
+            "Starts the configured combo when the game is ready. F8 and this switch control the same state. Default: off."
         );
 
         _comboSequence = section.CreateEntry(
@@ -83,6 +84,7 @@ public static class AutoSkill
             "'1,2,3,1,1' uses repetitions. Default: 1."
         );
 
+        if (BotSettings.EnableAllOnLaunch) _isEnabled.Value = true;
         section.SaveToFile();
         _isInitialized = true;
 
@@ -201,7 +203,7 @@ public static class AutoSkill
 
     private static void Start()
     {
-        if (!IsEnabled || _isRunning) return;
+        if (!_sceneReady || !IsEnabled || _isRunning) return;
 
         // Read the sequence here as well, and not only at boot: it is editable from the panel while the
         // game runs, so the value parsed at Initialize is stale from the first edit onwards.
@@ -209,10 +211,28 @@ public static class AutoSkill
 
         // An empty combo is not a harmless no-op: ComboLoop would spin forever on the main thread and
         // freeze the game. The refusal is already explained in the log by ParseComboSequence.
-        if (_comboHotkeys.Count == 0) return;
+        if (_comboHotkeys.Count == 0)
+        {
+            _isEnabled.Value = false;
+            MelonPreferences.Save();
+            Logger.Warning("[AutoSkill] Disabled: configure a nonempty combo, then enable it again.");
+            return;
+        }
 
         _isRunning = true;
-        _autoSkillRoutineHandle = MelonCoroutines.Start(ComboLoop());
+        try
+        {
+            var handle = MelonCoroutines.Start(CoroutineGuard.Run(ComboLoop(), "[AutoSkill]", AbortAfterFailure));
+            if (handle == null) throw new InvalidOperationException("The scheduler returned no worker handle.");
+            if (_isRunning) _autoSkillRoutineHandle = handle;
+            else MelonCoroutines.Stop(handle);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"[AutoSkill] Could not start: {e.GetType().Name} - {e.Message}");
+            AbortAfterFailure();
+        }
+        if (_isRunning) Logger.Info("AutoSkill started.");
     }
 
     /// <summary>
@@ -232,32 +252,45 @@ public static class AutoSkill
 
         Logger.Warning("[AutoSkill] Combo stopped: the sequence was changed to a value with nothing to play.");
         Stop();
+        _isEnabled.Value = false;
+        MelonPreferences.Save();
     }
 
     public static void Update()
     {
+        if (!_sceneReady || _shortcutKey == null) return;
         // Before the early returns below: the value can be edited from the panel whether the combo is
         // running or not.
         SyncSequence();
 
         // Its own hotkey, being recorded, belongs to the capture and not to this action: pressing it to
         // bind it must not also start or stop AutoSkill (see HotkeyGate).
-        if (HotkeyGate.IsCapturing) return;
+        if (!HotkeyGate.IsCapturing && Input.GetKeyDown(ShortcutKey))
+        {
+            _isEnabled.Value = !IsEnabled;
+            MelonPreferences.Save();
+        }
 
-        if (!Input.GetKeyDown(ShortcutKey)) return;
+        if (IsEnabled) Start();
+        else Stop();
+    }
 
-        if (_isRunning)
-            Stop();
-        else
-            Start();
+    public static void OnSceneChanged(bool ready)
+    {
+        _sceneReady = false;
+        Stop();
+        _sceneReady = ready;
+        _comboHotkeys = null;
+        if (ready) Start();
     }
 
     private static void Stop()
     {
-        if (!_isRunning) return;
+        var wasRunning = _isRunning;
         _isRunning = false;
         if (_autoSkillRoutineHandle != null) MelonCoroutines.Stop(_autoSkillRoutineHandle);
         _autoSkillRoutineHandle = null;
+        if (wasRunning) Logger.Info("AutoSkill stopped.");
     }
 
     private static IEnumerator ComboLoop()
@@ -270,15 +303,13 @@ public static class AutoSkill
             // the list ever empties while running.
             if (_comboHotkeys.Count == 0)
             {
-                _isRunning = false;
-                _autoSkillRoutineHandle = null;
-                yield break;
+                throw new InvalidOperationException("The combo has no usable steps.");
             }
 
             // Driven through the guard: a step that throws stops the combo and says so, instead of killing this
             // coroutine with the flag still set, which would leave the badge claiming "on" until the hotkey was
             // pressed twice.
-            yield return CoroutineGuard.Run(PlayCombo(), "[AutoSkill] combo", AbortAfterFailure);
+            yield return PlayCombo();
         }
     }
 
@@ -301,6 +332,8 @@ public static class AutoSkill
     {
         _isRunning = false;
         _autoSkillRoutineHandle = null;
-        Logger.Warning("[AutoSkill] Stopped after the error above.");
+        _isEnabled.Value = false;
+        MelonPreferences.Save();
+        Logger.Warning("[AutoSkill] Disabled after the error above. Re-enable in F1 or press F8 to retry.");
     }
 }

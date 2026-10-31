@@ -27,6 +27,8 @@ public static class AutoUpgrade
     private static CachedGameButton _activeHold;
     private static bool _isRunning;
     private static object _autoUpgradeRoutineHandle;
+    private static object _closeMenuHandle;
+    private static bool _sceneReady;
     private static bool _isInitialized;
     private static MelonPreferences_Entry<KeyCode> _shortcutKey;
     private static MelonPreferences_Entry<bool> _isEnabled;
@@ -41,7 +43,7 @@ public static class AutoUpgrade
     ///     Armed and actually running. The pause during a task's execution (UpgradeLoop) is ignored on
     ///     purpose: it is frequent and would make the indicator flicker.
     /// </summary>
-    public static bool IsActive => IsEnabled && _isRunning;
+    public static bool IsActive => IsEnabled && _isRunning && _autoUpgradeRoutineHandle != null;
 
     private static bool IsShortcutDisabled => _shortcutKey?.Value == KeyCode.None;
 
@@ -119,6 +121,7 @@ public static class AutoUpgrade
             "\nInvalid values are ignored."
         );
 
+        if (BotSettings.EnableAllOnLaunch) _isEnabled.Value = true;
         section.SaveToFile();
         _isInitialized = true;
         Logger.Debug("AutoUpgrade configuration initialized.");
@@ -189,65 +192,69 @@ public static class AutoUpgrade
 
     public static void Update()
     {
-        if (_shortcutKey == null)
-            return;
-
-        if (!IsEnabled && _isRunning)
+        if (!_sceneReady || _shortcutKey == null) return;
+        if (!IsShortcutDisabled && !HotkeyGate.IsCapturing && Input.GetKeyDown(ShortcutKey))
         {
-            Stop();
-            return;
+            _isEnabled.Value = !IsEnabled;
+            MelonPreferences.Save();
         }
 
-        if (IsShortcutDisabled) return;
-
-        // Its own hotkey, being recorded, belongs to the capture and not to this action: pressing it to
-        // bind it must not also start or stop AutoUpgrade (see HotkeyGate).
-        if (HotkeyGate.IsCapturing) return;
-
-        if (!Input.GetKeyDown(ShortcutKey)) return;
-
-        if (_isRunning)
-        {
-            Stop();
-            return;
-        }
-
-        Start();
+        if (IsEnabled) Start();
+        else if (_isRunning) Stop();
     }
 
-    /// <summary>Starts AutoUpgrade once the game is ready, so it never sits idle after a restart or a prestige.</summary>
-    public static void AutoStart()
+    public static void OnSceneChanged(bool ready)
     {
-        if (!IsEnabled || _isRunning) return;
-        _pausedSince = null;
-        _isRunning = true;
-        _autoUpgradeRoutineHandle = MelonCoroutines.Start(UpgradeLoop());
-        Logger.Info("AutoUpgrade started.");
+        _sceneReady = false;
+        Stop(false);
+        _sceneReady = ready;
+        ButtonsBuffer.Clear();
+        if (ready) Start();
     }
 
     private static void Start()
     {
-        if (IsShortcutDisabled) return;
-        if (!IsEnabled) return;
-        if (_isRunning) return;
+        if (!_sceneReady || !IsEnabled || _isRunning) return;
+        StopCleanup();
         _pausedSince = null;
         _isRunning = true;
-        _autoUpgradeRoutineHandle = MelonCoroutines.Start(UpgradeLoop());
-        Logger.Debug("AutoUpgrade started.");
+        try
+        {
+            var handle = MelonCoroutines.Start(CoroutineGuard.Run(UpgradeLoop(), "[AutoUpgrade]", AbortAfterFailure));
+            if (handle == null) throw new InvalidOperationException("The scheduler returned no worker handle.");
+            if (_isRunning) _autoUpgradeRoutineHandle = handle;
+            else MelonCoroutines.Stop(handle);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"[AutoUpgrade] Could not start: {e.GetType().Name} - {e.Message}");
+            AbortAfterFailure();
+        }
+        if (_isRunning) Logger.Info("AutoUpgrade started.");
     }
 
-    private static void Stop()
+    private static void Stop(bool closeMenu = true)
     {
-        if (!_isRunning) return;
+        StopCleanup();
+        var wasRunning = _isRunning;
         _isRunning = false;
         _pausedSince = null;
         _activeHold?.CancelHold();
         _activeHold = null;
         if (_autoUpgradeRoutineHandle != null) MelonCoroutines.Stop(_autoUpgradeRoutineHandle);
         _autoUpgradeRoutineHandle = null;
-        MelonCoroutines.Start(CloseUpgradesMenu());
-        Logger.Info("AutoUpgrade stopped.");
+        if (wasRunning && closeMenu && _sceneReady) CloseMenu();
+        if (wasRunning) Logger.Info("AutoUpgrade stopped.");
     }
+
+    private static void StopCleanup()
+    {
+        if (_closeMenuHandle != null) MelonCoroutines.Stop(_closeMenuHandle);
+        _closeMenuHandle = null;
+    }
+
+    private static void CloseMenu() =>
+        _closeMenuHandle = MelonCoroutines.Start(CoroutineGuard.Run(CloseUpgradesMenu(), "[AutoUpgrade] cleanup"));
 
     private static IEnumerator UpgradeLoop()
     {
@@ -258,7 +265,7 @@ public static class AutoUpgrade
             if (!BotManager.ShouldPauseAutoUpgrade())
             {
                 _pausedSince = null;
-                yield return CoroutineGuard.Run(UpgradeCycle(), "[AutoUpgrade] cycle", AbortAfterFailure);
+                yield return UpgradeCycle();
                 if (!_isRunning) yield break;
             }
             else ReportLongPause();
@@ -346,11 +353,13 @@ public static class AutoUpgrade
         _autoUpgradeRoutineHandle = null;
         _activeHold?.CancelHold();
         _activeHold = null;
+        _isEnabled.Value = false;
+        MelonPreferences.Save();
 
         // Stop() promises the upgrades menu is not left open, and the loop that would have closed it is gone.
         // Starting a coroutine here is safe, unlike stopping this one from the inside.
-        MelonCoroutines.Start(CloseUpgradesMenu());
-        Logger.Warning("[AutoUpgrade] Stopped after the error above.");
+        if (_sceneReady) CloseMenu();
+        Logger.Warning("[AutoUpgrade] Disabled after the error above. Re-enable in F1 or press F6 to retry.");
     }
 
     private static IEnumerator CloseUpgradesMenu()
