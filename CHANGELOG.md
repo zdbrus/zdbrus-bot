@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 0.7.40 (2026-10-30)
+- Arena rejects missing, malformed, nonpositive or unsupported power readings instead of treating them as easy opponents or disabling the power limit. It selects the lowest readable opponent within the configured percentage; displayed power is not a win prediction.
+- Before starting a fight, Arena rechecks the selected opponent's name, rank and power, the preview squad power, the configured squad and the fight control. Existing or mismatched previews, changed values and unconfirmed starts or results stop the batch. Arena reads the actual win/loss indicator instead of guessing from the result popup's generic name.
+- The optional once-daily exception still permits the weakest opponent above the limit after 20:00 when all three opponents are readable and refresh is unavailable. It records an attempted exception before the click so an uncertain result cannot trigger another that day. Refreshes must produce a stable changed list.
+- Squad switches are verified, and Arena reserves task runtime for restoration and logs when it cannot verify the original squad. Stopping the bot, changing accounts or closing the game mid-task can still interrupt restoration; check the active squad afterward. Regression tests cover selection, preview and result failures, daily attempts, refreshes and squad switching. Live Arena fights were not performed for this release.
+
 ## 0.7.39 (2026-10-30)
 - Added opt-in General > Enable All On Launch (off by default). At each fresh game launch it enables Bot Auto Start, AutoUpgrade, AutoSkill and every task's Enable switch without changing priorities, reserves, combos or optional spending settings. Manual off choices remain off for the current process, including account switches.
 - AutoUpgrade and AutoSkill stop on gameplay-scene unload and rebuild workers and cached targets when gameplay returns. Bot manual stop also survives scene/account transitions. Unrelated additive scenes do not interrupt automation.

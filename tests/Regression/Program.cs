@@ -35,6 +35,13 @@ internal static class Program
             Test("prestige task uses the free control and verifies completion", PrestigeTaskFreeControl);
             Test("prestige task refuses uncertain or changed game state", PrestigeTaskSafety);
             Test("prestige task waits for two slow growth samples", PrestigeTaskGrowth);
+            Test("arena power, rank and token readings fail closed", ArenaTests.PowerParsing);
+            Test("arena selects the weakest valid in-limit opponent", ArenaTests.Selection);
+            Test("arena refuses stale, mismatched and changed previews", ArenaTests.PreviewSafety);
+            Test("arena daily exception is verified and limited to one attempt", ArenaTests.DailyException);
+            Test("arena refreshes only after the list changes", ArenaTests.Refresh);
+            Test("arena stops on unconfirmed starts and results", ArenaTests.UnconfirmedBattle);
+            Test("arena verifies and restores the configured squad within the task budget", ArenaTests.SquadRestoration);
             Test("priority tiers hold or retry before advancing", PriorityDecisions);
             Test("uncapped spending modes preserve the player's choice", UncappedUpgradeModes);
             Test("war-machine blueprint priorities preserve order and currency decisions", WarMachineBlueprints);

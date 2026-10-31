@@ -88,13 +88,26 @@ internal static class Ui
         }
     }
 
-    public static IEnumerator Click(Transform t, float wait = -1, string label = null)
+    public static IEnumerator ClickIf(string path, Func<bool> condition, Action<bool> clicked, float wait = -1,
+        string label = null)
     {
-        if (Clickable(t))
+        var target = Find(path);
+        return ClickIf(target, () => Find(path) == target && condition(), clicked, wait, label);
+    }
+
+    public static IEnumerator ClickIf(Transform target, Func<bool> condition, Action<bool> clicked, float wait = -1,
+        string label = null) => Click(target, wait, label, condition, clicked);
+
+    public static IEnumerator Click(Transform t, float wait = -1, string label = null,
+        Func<bool> condition = null, Action<bool> clicked = null)
+    {
+        var invoked = false;
+        if (Clickable(t) && (condition == null || condition()))
         {
             try
             {
                 t.GetComponent<Button>().onClick.Invoke();
+                invoked = true;
                 if (label != null && !label.Contains('/')) Logger.Info($"[Extra] {label}");
             }
             catch (Exception e)
@@ -104,9 +117,10 @@ internal static class Ui
         }
         else
         {
-            Logger.Debug($"[Extra] Not clickable: {label ?? t?.name ?? "(missing)"}");
+            Logger.Debug($"[Extra] Not clickable or validation failed: {label ?? t?.name ?? "(missing)"}");
         }
 
+        clicked?.Invoke(invoked);
         yield return new WaitForSeconds(wait >= 0 ? wait : BotSettings.InteractionDelay);
 
         // Safety net: if the game says a currency is missing, close that popup straight away (it only

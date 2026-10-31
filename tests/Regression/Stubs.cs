@@ -263,6 +263,8 @@ namespace MelonLoader
     {
         public string Identifier;
         public string DisplayName;
+        public int SaveCalls;
+        public bool FailSave;
         public readonly Dictionary<string, MelonPreferences_Entry> Entries = new();
 
         public MelonPreferences_Entry<T> CreateEntry<T>(string id, T value, string display, string description,
@@ -280,7 +282,11 @@ namespace MelonLoader
         }
 
         public void SetFilePath(string path) { }
-        public void SaveToFile() { }
+        public void SaveToFile()
+        {
+            SaveCalls++;
+            if (FailSave) throw new IOException("Preference save failed.");
+        }
     }
 
     public static class MelonPreferences
@@ -356,6 +362,10 @@ namespace Firebot.Core
     public static class ScreenMap { public static void Tick() { } }
     public static class DropCollector { public static void Tick() { } }
     public static class BubbleWatcher { public static void Tick() { } }
+    public static class Watchdog
+    {
+        public static IEnumerator ForceClearAll(string phase = null) { yield break; }
+    }
 }
 
 namespace Firebot.UI
@@ -377,6 +387,31 @@ namespace Firebot.UI
 namespace Firebot.UI.Widgets { public static class KeybindRow { public static bool IsListening; } }
 namespace Firebot.Planner
 {
+    public static class SquadApplier
+    {
+        public static int Active = 1;
+        public static readonly HashSet<int> Populated = new() { 1, 2, 3 };
+        public static readonly List<int> Requests = new();
+        public static Action<int> OnSet;
+        public static int ActiveSlot() => Active;
+        public static bool HasMachines(int slot) => Populated.Contains(slot);
+        public static IEnumerator SetActive(int slot, string why)
+        {
+            Requests.Add(slot);
+            if (OnSet != null) OnSet(slot);
+            else Active = slot;
+            yield break;
+        }
+        public static void Reset()
+        {
+            Active = 1;
+            Populated.Clear();
+            Populated.UnionWith(new[] { 1, 2, 3 });
+            Requests.Clear();
+            OnSet = null;
+        }
+    }
+
     public static class PlannerServer
     {
         public static void Start() { }
@@ -559,11 +594,14 @@ namespace Firebot.Behaviors.Extra
         public static bool OpenMapWorks = true;
         public static bool OpenTownWorks = true;
         public static int OpenMapCalls;
+        public static Action<string> BeforeGuardedClick;
         public static readonly Dictionary<string, string> Texts = new();
         public static readonly Dictionary<string, double> Numbers = new();
         public static bool Visible(string path) => GameObject.Resolve(path)?.activeInHierarchy ?? false;
         public static string Text(string path) => path.EndsWith("/squads/quantity") ? MapFixture.Free.ToString()
             : Texts.TryGetValue(path, out var value) ? value : "";
+        public static string Text(Transform target) =>
+            target != null && target.gameObject.activeInHierarchy ? Text(target.FullPath) : "";
         public static double NumberAt(string path) => path.EndsWith("/squads/quantity") ? MapFixture.Free
             : Numbers.TryGetValue(path, out var value) ? value : -1;
         public static Transform Find(string path) => GameObject.Resolve(path)?.transform;
@@ -610,13 +648,37 @@ namespace Firebot.Behaviors.Extra
             yield break;
         }
         public static IEnumerator Click(string path, float wait = -1)
+            => Click(Find(path), wait);
+        public static IEnumerator Click(Transform target, float wait = -1, string label = null)
         {
-            var target = Find(path);
             if (Clickable(target))
             {
                 target.TryGetComponent(out UnityEngine.UI.Button button);
                 button.onClick.Invoke();
             }
+            yield break;
+        }
+        public static IEnumerator ClickIf(string path, Func<bool> condition, Action<bool> clicked, float wait = -1,
+            string label = null)
+        {
+            var target = Find(path);
+            return ClickIf(target, () => target == Find(path) && condition(), clicked, wait, label);
+        }
+        public static IEnumerator ClickIf(Transform target, Func<bool> condition, Action<bool> clicked, float wait = -1,
+            string label = null)
+        {
+            BeforeGuardedClick?.Invoke(target?.FullPath);
+            if (target != null && Clickable(target) && condition())
+            {
+                try
+                {
+                    target.TryGetComponent(out UnityEngine.UI.Button button);
+                    button.onClick.Invoke();
+                    clicked(true);
+                }
+                catch { clicked(false); }
+            }
+            else clicked(false);
             yield break;
         }
     }

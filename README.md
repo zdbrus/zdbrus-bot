@@ -74,11 +74,25 @@ Every feature can be switched on or off in the F1 panel.
 | **Town** | Firestone research (your priority order), meteorite research, alchemist, Oracle rituals and blessings, engineer tools, guardian training and enlightenment, exotic merchant (sell, upgrades, emblem chests), tavern (beer to tokens, cards), Scarab's game, Pharaoh's vault and milestones |
 | **Guild** | Expeditions, free pickaxes, guild crystal, Chaos Rift (hits, eclipse stones, tomes, holy upgrades for the guardians you choose), personal tree, hero awakening, forbidden knowledge |
 | **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (keeps going after each win) |
-| **Battle** | Arena (picks the easiest opponent, uses the free refresh, tries again later), war machine levels and blueprints for any machines you pick or your active squad, switches to your arena squad for arena fights and back, clicks coal miners and double-beer dragons the moment they appear |
+| **Battle** | Arena (chooses the lowest readable opponent power within your limit and verifies the preview), war machine levels and blueprints for any machines you pick or your active squad, switches to your arena squad for arena fights and back, clicks coal miners and double-beer dragons the moment they appear |
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
 | **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
 | **Prestige** | Free Temple prestige after a stalled run or two slow growth samples, subject to your minimum boost and run age; status and controls have their own F1 tab |
+
+### Arena safety
+
+Arena compares displayed power; it does **not** predict or guarantee a win. Before fighting, it checks that
+the opponent's name, rank and power still match the selected card and that the preview squad power meets
+**F1 > Battle > Arena > Max Opponent Power %**. Unreadable or changed values, an existing preview, and
+unconfirmed fights stop the attempt. A refresh must produce a stable changed opponent list.
+
+If **One Fight Per Day** is enabled, after 20:00 local time the bot may try the weakest opponent once
+even above your limit when all three opponents are readable and refresh is unavailable. An attempted
+exception is recorded even if the outcome cannot be confirmed. A configured Arena squad must be verified;
+the bot allows time to switch back and logs if restoration fails. Stopping the bot, changing accounts or
+closing the game mid-task can interrupt the switch back, so check the active squad afterward. If the
+log says there is not enough time to switch, raise **F1 > General > Max Task Runtime**.
 
 ### Prestige and upgrade priorities
 
