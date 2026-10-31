@@ -1,4 +1,5 @@
 using System;
+using Firebot.Core.Tasks;
 
 namespace Firebot.Core;
 
@@ -12,14 +13,17 @@ namespace Firebot.Core;
 /// </summary>
 internal readonly struct TaskStatusRow
 {
-    public TaskStatusRow(string name, string status, string timeLeft, DateTime? nextRun, DateTime? lastRun)
+    public TaskStatusRow(BotTask task, string status, string timeLeft, DateTime? nextRun, DateTime? lastRun)
     {
-        Name = name;
+        Task = task;
+        Name = task.SectionTitle;
         Status = status;
         TimeLeft = timeLeft;
         NextRun = nextRun;
         LastRun = lastRun;
     }
+
+    public BotTask Task { get; }
 
     public string Name { get; }
 

@@ -45,6 +45,15 @@ public static class BotManager
     /// <summary>True while a task is in the middle of running (the planner waits for this before it clicks).</summary>
     public static bool IsBusy => IsRunning && IsTaskExecuting;
 
+    internal static bool SetTaskEnabled(BotTask task, bool enabled)
+    {
+        if (task == null || !Tasks.Contains(task) || !task.SetEnabledFromStatus(enabled)) return false;
+
+        MelonPreferences.Save();
+        Logger.Info($"[Bot] {task.SectionTitle} turned {(enabled ? "on" : "off")} from F2.");
+        return true;
+    }
+
     public static bool ShouldPauseAutoUpgrade() => IsRunning && (_shouldPauseAutoUpgrade || IsTaskExecuting);
 
     /// <summary>Why AutoUpgrade is paused right now, for its long-pause warning.</summary>
@@ -466,7 +475,7 @@ public static class BotManager
             var due = t.DueTime;
 
             buffer.Add(new TaskStatusRow(
-                t.SectionTitle,
+                t,
                 GetTaskStatus(t),
                 // A task without a next run has no time left either. Without this the subtraction runs anyway
                 // — from DateTime.MinValue for a task that never ran — and the column shows "0s" beside an

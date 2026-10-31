@@ -2,6 +2,7 @@
 
 ## 0.7.45 (2026-10-30)
 - Temple Prestige now reads the game's minutes-and-seconds run clock (for example, 35:47) as a fraction of an hour, instead of treating minutes as hours. Invalid seconds still fail closed.
+- The F2 task list now has an ON/OFF switch beside each task, connected to the same saved enabled setting used in F1.
 
 ## 0.7.44 (2026-10-30)
 - AutoUpgrade now finishes its short balanced pass across selected slots before handing the game back to the main bot tasks. A task no longer interrupts the pass after only the first few upgrades.

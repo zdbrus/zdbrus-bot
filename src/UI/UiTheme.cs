@@ -134,9 +134,8 @@ internal static class UiTheme
     public const float SectionMarkerInset = 14f;
 
     // ---- Status screen ----
-    // Wider than the panel: the 5 table columns do not fit in WindowWidth without cutting off
-    // Status, Time Left and Last Run.
-    public const float StatusWindowWidth = 925f;
+    // Wider than the settings panel so the task switch and all five status/time columns stay readable.
+    public const float StatusWindowWidth = 1030f;
     public const float StatusRowHeight = 44f;
     public const float StatusColumnHeaderHeight = 42f;
 

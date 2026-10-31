@@ -72,7 +72,7 @@ unconfirmed results are not recorded. Missing values remain null; preview stats 
 validated win prediction. Recording does not change fights. The file grows until you delete it.
 
 KEYS
-F1 settings   F2 status   F4 planner   F6 auto-upgrade   F7 bot on/off   F8 auto-skill   F9 screen map
+F1 settings   F2 status (click a task's ON/OFF switch)   F4 planner   F6 auto-upgrade   F7 bot on/off   F8 auto-skill   F9 screen map
 
 STARTUP AND ACCOUNT SWITCHES
 F1 > General > Enable All On Launch is off by default. Opt in to turn on Bot Auto Start,

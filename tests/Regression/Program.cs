@@ -83,6 +83,7 @@ internal static class Program
             Test("research refuses stale or failed previews", ResearchPreviewFailures);
             Test("research retries a blocked fallback with another slot running", ResearchBlockedFallback);
             Test("launch opt-in enables only automation switches", AutomationTests.LaunchOverrides);
+            Test("F2 task switch shares the F1 enabled setting", AutomationTests.StatusTaskToggle);
             Test("scene changes resume workers without undoing manual off", AutomationTests.SceneLifecycle);
             Test("F1 and hotkeys share one automation state", AutomationTests.ToggleState);
             Test("nested coroutine failures and cancellation release resources", AutomationTests.NestedGuard);

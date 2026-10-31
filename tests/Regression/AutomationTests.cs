@@ -82,6 +82,20 @@ internal static class AutomationTests
         Check(nextLaunch.IsEnabled, "The next launch did not restore an enabled task.");
     }
 
+    public static void StatusTaskToggle()
+    {
+        Boot(false);
+        var task = new LaunchTask();
+        task.InitializeConfig("test.cfg");
+
+        Check(task.SetEnabledFromStatus(true) && task.IsEnabled &&
+              Entry<bool>("launch", "enabled").Value,
+            "The status switch did not update the task's shared enabled setting.");
+        Check(task.SetEnabledFromStatus(false) && !task.IsEnabled &&
+              !Entry<bool>("launch", "enabled").Value,
+            "Turning the status switch off did not update the F1 enabled setting.");
+    }
+
     public static void SceneLifecycle()
     {
         Boot(true);

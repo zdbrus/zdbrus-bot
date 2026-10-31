@@ -57,7 +57,7 @@ enable it once in F1 or press its hotkey to retry. An empty skill combo cannot s
 | Key | Action |
 |-----|--------|
 | **F1** | Settings panel (turn features on or off, set priorities) |
-| **F2** | Task status (what runs next and when) |
+| **F2** | Task status (what runs next and when); click a task's ON/OFF switch to change its F1 setting |
 | **F4** | War Machine Planner (opens in your browser) |
 | **F6** | Hero auto-upgrade on / off (on by default: every minute it opens upgrades, buys to the next milestone or Max, and closes the menu again) |
 | **F7** | Start / stop the bot |

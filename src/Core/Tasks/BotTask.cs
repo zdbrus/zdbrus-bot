@@ -63,6 +63,13 @@ public abstract class BotTask
         protected set => _enabledEntry.Value = value;
     }
 
+    internal bool SetEnabledFromStatus(bool enabled)
+    {
+        if (_enabledEntry == null) return false;
+        IsEnabled = enabled;
+        return true;
+    }
+
     private GameElement NotificationElement
     {
         get

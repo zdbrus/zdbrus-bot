@@ -11,13 +11,26 @@ namespace Firebot.UI;
 /// <summary>
 ///     Task status screen: the same table the console prints, but readable without leaving the game.
 ///     <para>
-///         Unlike the configuration panel, nothing here is editable: these are text rows. The table is
-///         built once per scene and afterwards only the <c>.text</c> of the cells changes, once per
-///         second, and only when the value actually changed.
+///         The per-task switch shares the task's F1 enabled setting. The table is built once per scene and
+///         afterwards only changed cell text and switch state are updated, once per second.
 ///     </para>
 /// </summary>
 public static class BotStatusScreen
 {
+    private sealed class StatusRowView
+    {
+        public StatusRowView(TMP_Text[] cells, Button enabledButton, TMP_Text enabledLabel)
+        {
+            Cells = cells;
+            EnabledButton = enabledButton;
+            EnabledLabel = enabledLabel;
+        }
+
+        public TMP_Text[] Cells { get; }
+        public Button EnabledButton { get; }
+        public TMP_Text EnabledLabel { get; }
+    }
+
     private const string RootName = "firebotStatus";
     private const string Title = "Task Status";
 
@@ -27,18 +40,16 @@ public static class BotStatusScreen
     private const int SortingOrder = 9990;
     private const float RefreshInterval = 1f;
 
-    private static readonly string[] ColumnTitles = { "Task", "Status", "Time Left", "Next Run", "Last Run" };
+    private static readonly string[] ColumnTitles = { "Task", "On", "Status", "Time Left", "Next Run", "Last Run" };
 
-    // Proportions, not pixels. Task is sized on the longest name ("Warfront Campaign Loot"), Status on the
-    // longest value ("Locked (200)") plus the gap that keeps it from reading as glued to Time Left, Time Left
-    // on the widest duration it prints ("12h 11m 19s") and Next Run on "dd/MM HH:mm". Last Run prints the
-    // same format as Next Run and takes what is left.
-    private static readonly float[] ColumnRatios = { 0.325f, 0.158f, 0.152f, 0.197f, 0.168f };
+    // Proportions, not pixels. The On column fits the shared F1-style switch; the remaining columns
+    // retain room for the longest task name, status, duration, and timestamps.
+    private static readonly float[] ColumnRatios = { 0.285f, 0.08f, 0.145f, 0.145f, 0.175f, 0.17f };
 
     /// <summary>Buffer reused between refreshes: once per second with no new list allocated.</summary>
     private static readonly List<TaskStatusRow> Buffer = new();
 
-    private static readonly List<TMP_Text[]> Cells = new();
+    private static readonly List<StatusRowView> Rows = new();
 
     private static UiWindow _window;
     private static RectTransform _rows;
@@ -65,7 +76,7 @@ public static class BotStatusScreen
         _rows = null;
         _isOpen = false;
         _builtForHeight = 0;
-        Cells.Clear();
+        Rows.Clear();
     }
 
     /// <summary>
@@ -112,7 +123,7 @@ public static class BotStatusScreen
             Logger.Error($"[UI] Failed to build the status screen: {e.GetType().Name} - {e.Message}");
             _window = null;
             _rows = null;
-            Cells.Clear();
+            Rows.Clear();
             return;
         }
 
@@ -189,7 +200,7 @@ public static class BotStatusScreen
             titles[i].color = UiTheme.Accent;
         }
 
-        Cells.Clear();
+        Rows.Clear();
 
         var y = UiTheme.StatusColumnHeaderHeight + UiTheme.RowSpacing;
         for (var i = 0; i < rowCount; i++)
@@ -197,7 +208,19 @@ public static class BotStatusScreen
             var row = UiFactory.CreateImage($"row{i}", _rows, UiTheme.Row, false);
             UiFactory.PlaceTop(row.rectTransform, y, UiTheme.StatusRowHeight);
 
-            Cells.Add(CreateCells(row.rectTransform));
+            var rowIndex = i;
+            var cells = CreateCells(row.rectTransform);
+            var enabledButton = UiFactory.CreateButton($"enabled{rowIndex}", row.rectTransform, string.Empty,
+                UiTheme.Button, () => ToggleTask(rowIndex), UiTheme.ChipFontSize);
+            var buttonRect = enabledButton.GetComponent<RectTransform>();
+            buttonRect.anchorMin = new Vector2(ColumnRatios[0], 0f);
+            buttonRect.anchorMax = new Vector2(ColumnRatios[0] + ColumnRatios[1], 1f);
+            buttonRect.offsetMin = new Vector2(3f, 3f);
+            buttonRect.offsetMax = new Vector2(-3f, -3f);
+            var enabledLabel = UiFactory.CreateLabel(enabledButton.transform, string.Empty,
+                UiTheme.ChipFontSize, UiTheme.Text, TextAlignmentOptions.Center);
+            UiFactory.Stretch(enabledLabel.rectTransform, 4f);
+            Rows.Add(new StatusRowView(cells, enabledButton, enabledLabel));
             y += UiTheme.StatusRowHeight + UiTheme.RowSpacing;
         }
 
@@ -255,23 +278,49 @@ public static class BotStatusScreen
 
         UiBadges.Refresh();
 
-        for (var i = 0; i < Cells.Count; i++)
+        for (var i = 0; i < Rows.Count; i++)
         {
-            var cells = Cells[i];
+            var rowView = Rows[i];
+            var cells = rowView.Cells;
 
             if (i >= Buffer.Count)
             {
                 for (var c = 0; c < cells.Length; c++) SetText(cells[c], string.Empty, UiTheme.TextMuted);
+                SetTaskSwitch(rowView, false, false);
                 continue;
             }
 
             var row = Buffer[i];
             SetText(cells[0], row.Name, UiTheme.Text);
-            SetText(cells[1], row.Status, StatusColor(row.Status));
-            SetText(cells[2], row.TimeLeft, UiTheme.Text);
-            SetText(cells[3], FormatCompact(row.NextRun), UiTheme.Text);
-            SetText(cells[4], FormatCompact(row.LastRun), UiTheme.TextMuted);
+            SetText(cells[2], row.Status, StatusColor(row.Status));
+            SetText(cells[3], row.TimeLeft, UiTheme.Text);
+            SetText(cells[4], FormatCompact(row.NextRun), UiTheme.Text);
+            SetText(cells[5], FormatCompact(row.LastRun), UiTheme.TextMuted);
+            SetTaskSwitch(rowView, row.Task.IsEnabled);
         }
+    }
+
+    private static void ToggleTask(int rowIndex)
+    {
+        if ((uint)rowIndex >= (uint)Buffer.Count) return;
+
+        var task = Buffer[rowIndex].Task;
+        if (!BotManager.SetTaskEnabled(task, !task.IsEnabled))
+        {
+            Logger.Warning($"[UI] Could not change the enabled setting for {task.SectionTitle} from F2.");
+            return;
+        }
+
+        Refresh();
+    }
+
+    private static void SetTaskSwitch(StatusRowView row, bool enabled, bool interactable = true)
+    {
+        row.EnabledButton.interactable = interactable;
+        var background = row.EnabledButton.GetComponent<Image>();
+        var backgroundColor = enabled ? UiTheme.StateOn : UiTheme.Button;
+        if (background.color != backgroundColor) background.color = backgroundColor;
+        SetText(row.EnabledLabel, enabled ? "ON" : "OFF", enabled ? UiTheme.Header : UiTheme.TextMuted);
     }
 
     /// <summary>Only writes when the text changes: assigning the same value would make TMP rebuild the mesh for nothing.</summary>
