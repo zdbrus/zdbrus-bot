@@ -23,6 +23,12 @@ namespace UnityEngine
 
         public Transform GetChild(int index) => _children[index];
         public int GetSiblingIndex() => parent == null ? 0 : parent._children.IndexOf(this);
+        public void SetAsLastSibling()
+        {
+            if (parent == null) return;
+            parent._children.Remove(this);
+            parent._children.Add(this);
+        }
         public bool TryGetComponent<T>(out T component) where T : Component => gameObject.TryGetComponent(out component);
         public T GetComponent<T>() where T : Component
             => gameObject.TryGetComponent(out T component) ? component : null;
@@ -258,6 +264,7 @@ namespace MelonLoader
             public void Warning(string message) { }
         }
         public Log LoggerInstance = new();
+        public HarmonyLib.Harmony HarmonyInstance = new("regression");
         public virtual void OnInitializeMelon() { }
         public virtual void OnApplicationQuit() { }
         public virtual void OnSceneWasLoaded(int buildIndex, string sceneName) { }
@@ -361,10 +368,6 @@ namespace Firebot.Core
     }
 
     public static class LevelRequirements { public const int None = 0; }
-    public static class PlayerStats
-    {
-        public static bool TryGetCharacterLevel(out int level) { level = 9999; return true; }
-    }
     public static class BotManager
     {
         public static bool IsRunning;
@@ -612,6 +615,9 @@ namespace Firebot.Behaviors.Extra
 
     internal static class Ui
     {
+        public static bool MissingCurrency;
+        public static double Parse(string text) => double.TryParse(text, System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture, out var number) ? number : -1;
         public static bool OpenMapWorks = true;
         public static bool OpenTownWorks = true;
         public static int OpenMapCalls;
@@ -629,8 +635,13 @@ namespace Firebot.Behaviors.Extra
         }
         public static string Text(Transform target) =>
             target != null && target.gameObject.activeInHierarchy ? Text(target.FullPath) : "";
-        public static double NumberAt(string path) => path.EndsWith("/squads/quantity") ? MapFixture.Free
-            : Numbers.TryGetValue(path, out var value) ? value : -1;
+        public static double NumberAt(string path)
+        {
+            var target = GameObject.Resolve(path);
+            if (target != null && !target.activeInHierarchy) return -1;
+            return path.EndsWith("/squads/quantity") ? MapFixture.Free
+                : Numbers.TryGetValue(path, out var value) ? value : -1;
+        }
         public static Transform Find(string path)
         {
             BeforeFind?.Invoke(path);
@@ -678,6 +689,7 @@ namespace Firebot.Behaviors.Extra
                 GameObject.CreatePath("menus/TempleOfEternals").activeSelf = true;
             yield break;
         }
+        public static IEnumerator OpenGuildBuilding(string building) { yield break; }
         public static IEnumerator Click(string path, float wait = -1)
             => Click(Find(path), wait);
         public static IEnumerator Click(Transform target, float wait = -1, string label = null)
@@ -727,6 +739,117 @@ namespace Firebot.Behaviors.Extra
         public static string Selected;
         public static int Starts;
         public static string StartMode = "success";
+    }
+}
+
+namespace Il2Cpp
+{
+    public static class GameInitialize
+    {
+        public static bool Loaded = true;
+        public static HandlerLoader HandlerLoader = new();
+        public static MenuLoader MenuLoader = new();
+        public static bool HasGameLoaded() => Loaded;
+    }
+
+    public class HandlerLoader
+    {
+        public CharacterLevel CharacterLevel = new();
+        public MainBattle MainBattle = new();
+    }
+
+    public class CharacterLevel
+    {
+        public bool hasLoaded = true;
+        public int Level = 9999;
+    }
+
+    public class MainBattle
+    {
+        public int Stage = 100;
+        public bool ThrowOnRead;
+        public int CurrentStageNumber => ThrowOnRead
+            ? throw new InvalidOperationException("stage read failed") : Stage;
+    }
+
+    public class TalentsInteraction : UnityEngine.Component { public Talents talent; }
+    public class Talents
+    {
+        public string name;
+        public double tempLevel;
+        public int levelCap = 25;
+        public bool unlocked = true;
+    }
+    public enum CurrencyCode { NoblesToken, PharaohsToken, Gem }
+    public struct PlayTokenSelection
+    {
+        public CurrencyCode SelectedCurrency;
+        public double AvailableTokens;
+        public int TokensNeeded;
+        public bool HasEnoughTokens;
+    }
+    public class MenuLoader
+    {
+        public AwakeningMech AwakeningMech = new();
+        public ScarabGameMech ScarabGameMech = new();
+    }
+    public class AwakeningMech
+    {
+        public bool autoAwakenOn;
+        public int awakeningQuantity = 1;
+        public void AutoAwakenToggle() => autoAwakenOn = !autoAwakenOn;
+        public Il2CppSystem.Collections.IEnumerator AwakenHeroAskServer() => null;
+    }
+    public class ScarabGameMech
+    {
+        public bool autoPlayOn;
+        public int currentPlayQuantity = 1;
+        public bool isRolling, askedServerForRoll;
+        public PlayTokenSelection currentPlayTokenSelection;
+        public void SetAutoPlayState(bool enabled) => autoPlayOn = enabled;
+        public Il2CppSystem.Collections.IEnumerator StartRolling() => null;
+        public Il2CppSystem.Collections.IEnumerator BeginRollSequence(PlayTokenSelection selection) => null;
+    }
+}
+
+namespace HarmonyLib
+{
+    public class Harmony
+    {
+        public Harmony(string id) { }
+        public void Patch(System.Reflection.MethodInfo original, HarmonyMethod prefix)
+        {
+            if (original == null) throw new InvalidOperationException("Missing patch target.");
+        }
+    }
+    public class HarmonyMethod { public HarmonyMethod(Type type, string name) { } }
+    public static class AccessTools
+    {
+        public static System.Reflection.MethodInfo Method(Type type, string name) => type.GetMethod(name);
+    }
+}
+
+namespace Il2CppHolydayStudios
+{
+    public static class Translator
+    {
+        public static readonly Dictionary<string, string> Names = new();
+        public static string Translate(string term) => Names.TryGetValue(term, out var name) ? name : term;
+    }
+}
+
+namespace Il2CppSystem.Collections
+{
+    public interface IEnumerator : System.Collections.IEnumerator { }
+    public class ArrayList
+    {
+        private class Empty : IEnumerator
+        {
+            public object Current => null;
+            public bool MoveNext() => false;
+            public void Reset() { }
+        }
+        public IEnumerator GetEnumerator() => new Empty();
     }
 }
 

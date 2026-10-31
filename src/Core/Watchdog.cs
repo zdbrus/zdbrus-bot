@@ -196,13 +196,16 @@ public static class Watchdog
     ///     Closes whatever the game left open. <paramref name="phase" /> only labels the measurement line, so a
     ///     slow sweep can be told apart from a fast one in the log.
     /// </summary>
-    public static IEnumerator ForceClearAll(string phase = null)
+    public static IEnumerator ForceClearAll(string phase = null) => Clear(phase, TaskHub.None);
+
+    internal static IEnumerator Clear(string phase, TaskHub keepHub)
     {
         var meter = new SweepMeter(phase ?? "cleanup");
 
         for (var pass = 0; pass < Passes; pass++)
             foreach (var path in EnumerateNuisancePaths(meter))
             {
+                if (TaskNavigation.KeepOpen(path, keepHub)) continue;
                 var started = Stopwatch.GetTimestamp();
                 var gameButton = new GameButton(path);
                 var visible = gameButton.IsVisible();

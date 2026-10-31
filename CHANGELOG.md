@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 0.7.43 (2026-10-30)
+- Fixed Temple prestige cancelling itself when opening the Temple hides the battle HUD. Stage checks and boss retry tracking now read live game data, including the final safety check and reset confirmation; missing or changed data still prevents a reset.
+- Prestige cancellation logs now include the before/after stage, boost and run-age readings.
+- Free prestige handles the extra confirmation only after opening it from the verified free control. Existing, unrelated, priced, or changed confirmations are left untouched.
+- Remembered upgrade names no longer change when menus move in the UI hierarchy. Existing Oracle name mappings are reused instead of opening every preview again.
+- Scarab uses the game's Auto mode, with currency checks guarding each native spin. Pharaoh's tokens still require the separate opt-in, off by default; gems and token purchases remain excluded.
+- Awakening uses Auto with an x1, x2, x5, x10 or x20 amount selector. It spends every affordable selected batch instead of stopping after ten clicks, without falling back to another amount or buying crystals.
+- Both Auto activities confirm currency use and turn Auto off when finished, stopped, or interrupted. A task time limit can split a large balance across visits.
+- Talents read names, levels and unlock state from the live tree and open only eligible priority previews, rather than discovering every name through a popup.
+- Compatible town and guild tasks reuse their hub instead of returning to battle between each task. Popup cleanup remains; battle tasks and idle upgrade windows still return to the battle screen.
+
 ## 0.7.42 (2026-10-30)
 - Temple prestige prioritizes the growth-efficiency trigger, then repeated boss attempts at the same stage, with a selectable 30-minute or 1-hour no-progress fallback. The free preview is used only when a trigger and the minimum run age and boost are verified.
 - Liberation Missions can target Easy (1 star), Normal (2 stars) or both, and verifies difficulty changes before starting fights.

@@ -21,11 +21,14 @@ public class TemplePrestigeTask : BotTask
 
     private const string T = P.Menus + "/TempleOfEternals";
     private const string Info = T + "/submenus/bgNew/prestigeSubmenu/adventureInfo";
-    private const string Stage = P.Battle + "/topSideUI/stageProgression/currentStage/stageNum";
     private const string EmpowerPopup = P.Popups + "/EmpowerPopup";
     private const string FreeEmpower = EmpowerPopup + "/bg/empowerBg/empowerButton";
     private const string FreeGain = EmpowerPopup + "/bg/empowerBg/empowerRainingGold/value";
     private const string PrestigeComplete = P.Popups + "/TOEPrestigeComplete";
+    private const string Confirmation = P.Popups + "/ActionRequired";
+    private const string ConfirmationMessage = Confirmation + "/bg/messageText";
+    private const string ConfirmEmpower = Confirmation + "/bg/confirmButton";
+    private const string EmpowerQuestion = "Are you sure that you want to empower the temple?";
     private MelonPreferences_Entry<int> _stallMinutes;
     private MelonPreferences_Entry<int> _bossAttempts;
     private MelonPreferences_Entry<int> _minGain;
@@ -92,11 +95,8 @@ public class TemplePrestigeTask : BotTask
 
     private bool TryGetStall(out int stage, out double stalled)
     {
-        stage = 0;
         stalled = 0;
-        var stageValue = Ui.NumberAt(Stage);
-        if (stageValue <= 0 || stageValue > int.MaxValue || Math.Truncate(stageValue) != stageValue) return false;
-        stage = (int)stageValue;
+        if (!PlayerStats.TryGetCurrentStage(out stage)) return false;
         var now = DateTime.Now;
         DateTime.TryParse(_bestAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at);
         var newRun = _bestStage.Value > 0 && stage < _bestStage.Value;
@@ -137,10 +137,24 @@ public class TemplePrestigeTask : BotTask
         if (Ui.Visible(T)) yield return Ui.Click(T + "/closeButton", 0.5f);
     }
 
+    private bool StageStillQualifies(int stage, PrestigeTrigger trigger)
+        => PlayerStats.TryGetCurrentStage(out var current) && current >= stage &&
+           (trigger == PrestigeTrigger.Efficiency || current <= _bestStage.Value);
+
+    private static bool PrestigeConfirmed(int stage)
+        => Ui.Visible(PrestigeComplete) ||
+           (PlayerStats.TryGetCurrentStage(out var current) && current < stage);
+
     public override IEnumerator Execute()
     {
         BubbleQuietUntil = DateTime.Now.AddMinutes(15);
         NextRunTime = DateTime.Now.AddMinutes(1);
+        if (Ui.Visible(Confirmation))
+        {
+            Report("An existing confirmation needs attention; left untouched.");
+            Logger.Warning("Temple: a confirmation was already open; no prestige action attempted.");
+            yield break;
+        }
         if (_stallMinutes.Value is < 30 or > 60 || _bossAttempts.Value is < 2 or > 5 ||
             _minGain.Value < 0 || _minHours.Value < 0 || _efficiency.Value < 0)
         {
@@ -289,10 +303,10 @@ public class TemplePrestigeTask : BotTask
             yield break;
         }
 
-        var currentStage = Ui.NumberAt(Stage);
+        var stageKnown = PlayerStats.TryGetCurrentStage(out var currentStage);
         var latestGainText = Ui.Text(FreeGain);
         var latestAgeText = Ui.Text(Info + "/adventureTimePlayed");
-        if (currentStage <= 0 || currentStage < stage ||
+        if (!stageKnown || currentStage < stage ||
             ((trigger != PrestigeTrigger.Efficiency) && currentStage > _bestStage.Value) ||
             !PrestigePolicy.TryParseGain(latestGainText, out var latestGain) || latestGain < gain ||
             !PrestigePolicy.TryParseRunHours(latestAgeText, out var latestAge) ||
@@ -300,7 +314,9 @@ public class TemplePrestigeTask : BotTask
         {
             InvalidateRate();
             Report("Run changed during the check; waiting for a fresh reading.", reading);
-            Logger.Warning("Temple: run state or preview changed during the decision; skipped.");
+            Logger.Warning($"Temple: run state or preview changed during the decision; skipped. " +
+                $"Stage {stage} -> {(stageKnown ? currentStage.ToString(CultureInfo.InvariantCulture) : "unavailable")}; " +
+                $"boost '{gainText}' -> '{latestGainText}'; run age '{playedText}' -> '{latestAgeText}'.");
             yield return CloseTemple(closeScreen);
             yield break;
         }
@@ -315,12 +331,36 @@ public class TemplePrestigeTask : BotTask
             yield break;
         }
 
-        var confirmed = false;
-        yield return Ui.ClickUntil(freeButton, () =>
+        var freeClicked = false;
+        yield return Ui.ClickIf(FreeEmpower,
+            () => !Ui.Visible(Confirmation) && !HasPriceMarker(Ui.Find(FreeEmpower)) &&
+                  StageStillQualifies(stage, trigger),
+            value => freeClicked = value, 2f, "free temple empower");
+        var actionObserved = false;
+        if (freeClicked)
+            yield return Ui.WaitUntil(() => Ui.Visible(Confirmation) || PrestigeConfirmed(stage),
+                value => actionObserved = value, 8f);
+
+        var confirmed = actionObserved && PrestigeConfirmed(stage);
+        if (freeClicked && Ui.Visible(Confirmation))
         {
-            var currentStage = Ui.NumberAt(Stage);
-            return Ui.Visible(PrestigeComplete) || (currentStage > 0 && currentStage < stage);
-        }, value => confirmed = value, "free temple empower", 2f, 8f);
+            var confirmationClicked = false;
+            yield return Ui.ClickIf(ConfirmEmpower,
+                () => Ui.Visible(Confirmation) &&
+                      string.Equals(Ui.Text(ConfirmationMessage), EmpowerQuestion, StringComparison.Ordinal) &&
+                      !HasPriceMarker(Ui.Find(ConfirmEmpower)) && StageStillQualifies(stage, trigger),
+                value => confirmationClicked = value, 2f, "confirm free temple empower");
+            if (!confirmationClicked)
+            {
+                InvalidateRate();
+                Report("Free prestige confirmation could not be verified; left untouched.", reading);
+                Logger.Warning($"Temple: confirmation or live stage was not verified; no confirm clicked. " +
+                    $"Message: '{Ui.Text(ConfirmationMessage)}'.");
+                yield break;
+            }
+            confirmed = false;
+            yield return Ui.WaitUntil(() => PrestigeConfirmed(stage), value => confirmed = value, 8f);
+        }
         if (!confirmed)
         {
             InvalidateRate();
@@ -346,5 +386,6 @@ public class TemplePrestigeTask : BotTask
         MelonPreferences.Save();
         Report(startConfirmed ? "Prestige confirmed; tracking the new run."
             : "Prestige completed; start screen needs attention.", reading);
+        Logger.Info($"Temple: {LastDecision}");
     }
 }

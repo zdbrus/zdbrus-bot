@@ -208,6 +208,9 @@ public abstract class BotTask
 
     public abstract IEnumerator Execute();
 
+    /// <summary>Releases native actions that can outlive a stopped coroutine.</summary>
+    internal virtual void OnStopped() { }
+
     /// <summary>
     ///     Called by the manager after a run. A task that returns without scheduling itself leaves
     ///     <see cref="NextRunTime" /> at <see cref="DateTime.MinValue" /> — the earliest value there is — so from

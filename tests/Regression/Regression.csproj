@@ -13,7 +13,9 @@
     <Compile Include="..\..\src\BotActions\AutoSkill.cs" Link="AutoSkill.cs" />
     <Compile Include="..\..\src\BotActions\Hotkey.cs" Link="Hotkey.cs" />
     <Compile Include="..\..\src\Core\PrestigePolicy.cs" Link="PrestigePolicy.cs" />
+    <Compile Include="..\..\src\Core\PlayerStats.cs" Link="PlayerStats.cs" />
     <Compile Include="..\..\src\Core\BossAttemptTracker.cs" Link="BossAttemptTracker.cs" />
+    <Compile Include="..\..\src\Core\ScarabSpinPolicy.cs" Link="ScarabSpinPolicy.cs" />
     <Compile Include="..\..\src\Core\PriorityTier.cs" Link="PriorityTier.cs" />
     <Compile Include="..\..\src\Core\BattlePassPolicy.cs" Link="BattlePassPolicy.cs" />
     <Compile Include="..\..\src\Core\LiberationDifficultyPolicy.cs" Link="LiberationDifficultyPolicy.cs" />
@@ -37,6 +39,11 @@
     <Compile Include="..\..\src\Behaviors\Extra\UpgradeNames.cs" Link="UpgradeNames.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\HolyUpgradeBuyer.cs" Link="HolyUpgradeBuyer.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\TemplePrestigeTask.cs" Link="TemplePrestigeTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\TalentsTask.cs" Link="TalentsTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\AwakenHeroesTask.cs" Link="AwakenHeroesTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\ScarabAutoPlay.cs" Link="ScarabAutoPlay.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\NativeAutoPlay.cs" Link="NativeAutoPlay.cs" />
+    <Compile Include="..\..\src\Core\TaskNavigation.cs" Link="TaskNavigation.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\ArenaTask.cs" Link="ArenaTask.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\ArenaMatchupRecorder.cs" Link="ArenaMatchupRecorder.cs" />
   </ItemGroup>

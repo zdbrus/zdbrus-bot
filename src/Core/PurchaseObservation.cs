@@ -8,6 +8,14 @@ internal static class PurchaseObservation
 {
     private static readonly Regex FirstNumber = new(@"\d+", RegexOptions.CultureInvariant);
 
+    public static bool IsMaxed(string level)
+    {
+        var match = Regex.Match(level ?? "", @"(\d+)\s*/\s*(\d+)");
+        return (level ?? "").IndexOf("max", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               (match.Success && int.TryParse(match.Groups[1].Value, out var current) &&
+                int.TryParse(match.Groups[2].Value, out var maximum) && current >= maximum);
+    }
+
     public static bool LevelIncreased(string before, string after)
     {
         var oldLevel = FirstNumber.Match(before ?? string.Empty);

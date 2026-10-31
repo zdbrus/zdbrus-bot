@@ -20,13 +20,55 @@ internal static class UpgradeNames
         var parts = new List<string>();
         for (var t = node; t != null && parts.Count < 6; t = t.parent)
             parts.Add(t.name + "#" + t.GetSiblingIndex());
-        return (scope ?? "") + "|" + string.Join("/", parts);
+        return StableMenuKey((scope ?? "") + "|" + string.Join("/", parts), MenuName(node));
+    }
+
+    private static string MenuName(Transform node)
+    {
+        var depth = 0;
+        for (var t = node; t != null && depth < 6; t = t.parent, depth++)
+            if (t.parent != null && t.parent.name == "menus") return t.name;
+        return null;
+    }
+
+    private static string StableMenuKey(string key, string menu)
+    {
+        if (menu == null) return key;
+        var marker = "/" + menu + "#";
+        var start = key.LastIndexOf(marker, StringComparison.Ordinal);
+        if (start < 0) return key;
+        var number = start + marker.Length;
+        var end = key.IndexOf('/', number);
+        if (end < 0) end = key.Length;
+        if (!int.TryParse(key.Substring(number, end - number), out var index) || index < 0) return key;
+        // Opening another menu changes this sibling index, but not the upgrade's identity.
+        return key.Remove(number - 1, end - number + 1);
     }
 
     public static bool TryGet(Transform node, string scope, out string name)
     {
         Load();
-        return Names.TryGetValue(KeyOf(node, scope), out name) && !string.IsNullOrWhiteSpace(name);
+        var key = KeyOf(node, scope);
+        if (Names.TryGetValue(key, out name) && !string.IsNullOrWhiteSpace(name)) return true;
+        name = null;
+        var menu = MenuName(node);
+        if (menu == null) return false;
+
+        foreach (var saved in Names)
+        {
+            if (StableMenuKey(saved.Key, menu) != key || string.IsNullOrWhiteSpace(saved.Value)) continue;
+            if (name != null && !string.Equals(name, saved.Value, StringComparison.OrdinalIgnoreCase))
+            {
+                name = null;
+                Logger.Warning("[Upgrades] Conflicting remembered names; the preview must be read again.");
+                return false;
+            }
+            name = saved.Value;
+        }
+        if (name == null) return false;
+        Names[key] = name;
+        _dirty = true;
+        return true;
     }
 
     public static bool Matches(Transform node, string scope, string expected, string actual)

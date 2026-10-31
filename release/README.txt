@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.42 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.43 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -26,13 +26,25 @@ trigger: two hourly samples below the configured share of average growth can tri
 for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
 stage can trigger next (3 by default; choose 2–5); the no-progress fallback is selectable at 30 minutes
 or 1 hour. All triggers require the minimum boost and run age. The growth rule is an estimate; unreadable
-boost/run-age values stop the reset. The paid 2x is never used. The fallback timer starts fresh for
-untracked runs. Similar-age account switches cannot always be detected; turn prestige off when
+stage/boost/run-age values stop the reset. Stage checks use game data, so opening the Temple and
+hiding the battle HUD does not cancel a valid reset. The paid 2x is never used. The fallback timer starts
+fresh for untracked runs. Similar-age account switches cannot always be detected; turn prestige off when
 switching accounts until you have checked its settings.
+Only the free-empower confirmation opened by the bot is confirmed; existing or unrecognized prompts
+are left untouched.
+Scarab uses Noble's tokens by default. Turn on "Use Pharaoh's Tokens" to allow those tokens too.
+It uses Auto at x1, guards each spin's token permission and cost, and never buys tokens or spends gems.
+F1 > Guild > Awaken Heroes > Awaken Amount offers x1, x2, x5, x10 and x20 (default x1).
+Awakening uses Auto for every affordable selected batch, without dropping to a smaller amount or
+buying crystals. Both Auto activities turn off when finished or when the bot stops. Large balances
+may be split across visits to respect Max Task Runtime.
+Compatible town and guild tasks reuse their hub. Popup cleanup remains, and the bot returns to
+battle for battle tasks and idle upgrade windows. AutoUpgrade is a separate worker, not the last task.
 Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
 Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,
 then remembered between launches. Prices and completion state are not persisted.
+Talents read the live tree directly and open only eligible priority previews, not every talent popup.
 For hero gold and guardian holy upgrades, Balance tries all selected targets in order; Focus first
 saves for the first available target and can leave lower priorities waiting indefinitely.
 When War Machine Blueprints is set to All, separate priority chips order damage, health and armor.

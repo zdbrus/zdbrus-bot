@@ -31,6 +31,7 @@ public class Main : MelonMod
     public override void OnInitializeMelon()
     {
         BotSettings.Initialize();
+        NativeAutoPlay.Initialize(HarmonyInstance);
         BotManager.Initialize();
         AutoSkill.Initialize();
         AutoUpgrade.Initialize();

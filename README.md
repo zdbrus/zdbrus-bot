@@ -111,10 +111,26 @@ average boost growth (75% by default) can prestige without waiting for a timer. 
 trigger, repeated boss attempts at the same stage can trigger next (3 by default; choose 2–5). The
 no-progress timer is the final fallback, selectable as 30 minutes or 1 hour. All triggers still respect
 your minimum gold boost and run age. The growth rule is an estimate, not a guaranteed optimum. If the
-run age, boost format, or verified free control cannot be read, the bot does not prestige; it never
-chooses the paid 2x option. The fallback timer starts fresh when a run has not yet been tracked or its
-age changes unexpectedly. Similar-age account switches cannot always be identified, so turn prestige
+live stage, run age, boost format, or verified free control cannot be read, the bot does not prestige;
+it never chooses the paid 2x option. Stage checks use game data, so opening the Temple and hiding the
+battle HUD does not cancel a valid reset. The fallback timer starts fresh when a run has not yet been
+tracked or its age changes unexpectedly. Similar-age account switches cannot always be identified, so turn prestige
 off when switching accounts until you have checked its settings.
+The bot confirms only the free-empower prompt it just opened; an existing or unrecognized confirmation
+is left untouched.
+
+Scarab uses Noble's tokens by default. Enable **Use Pharaoh's Tokens** in its task settings to allow
+those tokens too. It uses the game's **Auto** mode at x1, checks each native spin against those
+permissions, verifies token use, and never buys tokens or spends gems.
+
+Under **F1 > Guild > Awaken Heroes**, choose **Awaken Amount**: x1, x2, x5, x10 or x20 (default x1).
+Awakening uses **Auto** until another selected batch is unaffordable; it does not drop to a smaller
+amount or buy Arcane Crystals. Both Auto activities stop when finished or when the bot stops.
+Large balances may be split across visits to respect **Max Task Runtime**.
+
+Compatible tasks in the same town or guild reuse that hub, while still closing finished activities
+and blocking popups. The bot returns to battle for battle tasks and idle upgrade windows;
+AutoUpgrade runs separately, not as the last task of a fixed cycle.
 
 Priority chips show their order as numbers. Tap an item to remove it and tap it again to add it at the
 end. Firestone Research, Personal Tree, Meteorite Research, Forbidden Knowledge, Talents, Oracle
@@ -122,7 +138,8 @@ Blessings, Exotic Merchant and selected War Machines use their priority order; E
 only selected items. A higher available tier that cannot yet be afforded holds its currency instead
 of falling through to a lower tier. Level-locked Exotic upgrades are skipped until unlocked.
 The bot remembers discovered upgrade names between launches, not prices or completion state; some
-previously unknown preview-based upgrades must still be inspected once.
+previously unknown preview-based upgrades must still be inspected once. Talents instead read names,
+levels and unlock state directly from the live tree, then verify only the selected preview before spending.
 
 Hero/guardian gold upgrades and guardian holy-damage upgrades can keep growing without a known
 cap. For each of those categories, choose **Balance** to try every selected target in order, or

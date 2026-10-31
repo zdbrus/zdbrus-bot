@@ -154,6 +154,7 @@ public static class BotManager
 
         // Stopping a coroutine does not run its finally, so the task pinned to the top of the table has to be
         // released here too.
+        ReleaseTask(_executingTask);
         _executingTask = null;
         if (_botRoutineHandle != null) MelonCoroutines.Stop(_botRoutineHandle);
         _botRoutineHandle = null;
@@ -163,6 +164,7 @@ public static class BotManager
     private static IEnumerator BotSchedulerLoop()
     {
         if (AutoStart) yield return new WaitForSeconds(StartBotDelay);
+        var retainedHub = false;
 
         while (IsRunning)
         {
@@ -238,6 +240,20 @@ public static class BotManager
             // The planner is applying a squad: let it finish its clicks before the next job starts.
             if (Planner.SquadApplier.Busy || Planner.JewelSpender.Busy) readyTask = null;
 
+            if (readyTask == null && retainedHub && !Planner.SquadApplier.Busy && !Planner.JewelSpender.Busy)
+            {
+                var pauseForNearTask = _shouldPauseAutoUpgrade;
+                _shouldPauseAutoUpgrade = true;
+                IsTaskExecuting = true;
+                try { yield return RunSafe(Watchdog.ForceClearAll("idle: return for upgrades"), "Idle cleanup"); }
+                finally
+                {
+                    IsTaskExecuting = false;
+                    _shouldPauseAutoUpgrade = pauseForNearTask;
+                    retainedHub = false;
+                }
+            }
+
             if (readyTask != null)
             {
                 IsTaskExecuting = true;
@@ -250,8 +266,10 @@ public static class BotManager
                     if (Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle))
                         Logger.Debug($"[Bot] {readyTask.SectionTitle}: already on its screen, starting from there.");
                     else
-                        yield return RunSafe(Watchdog.ForceClearAll($"before {readyTask.SectionTitle}"),
+                        yield return RunSafe(Watchdog.Clear($"before {readyTask.SectionTitle}",
+                                TaskNavigation.HubFor(readyTask.GetType().Name)),
                             $"Watchdog cleanup before {readyTask.SectionTitle}");
+                    retainedHub = false;
 
                     // Stopwatch, completion line and table are all diagnostics: with debug off none of
                     // them is needed, and the console stays quiet in normal use. The guard is single for
@@ -261,6 +279,7 @@ public static class BotManager
 
                     var fromBubble = readyTask == notificationTask;
                     yield return RunSafe(readyTask.Execute(), $"Task {readyTask.SectionTitle}");
+                    ReleaseTask(readyTask);
                     readyTask.LastRunTime = DateTime.Now;
                     // A bubble that is still lit right after its task ran (nothing it could do) waits a little
                     // before it can trigger again, so other tasks get their turn.
@@ -305,11 +324,14 @@ public static class BotManager
                         }
                     }
 
-                    yield return RunSafe(Watchdog.ForceClearAll($"after {readyTask.SectionTitle}"),
+                    var hub = TaskNavigation.HubFor(readyTask.GetType().Name);
+                    yield return RunSafe(Watchdog.Clear($"after {readyTask.SectionTitle}", hub),
                         $"Watchdog cleanup after {readyTask.SectionTitle}");
+                    retainedHub = hub != TaskHub.None;
                 }
                 finally
                 {
+                    ReleaseTask(readyTask);
                     IsTaskExecuting = false;
                     _executingTask = null;
                 }
@@ -365,6 +387,15 @@ public static class BotManager
             _lastStepAt = DateTime.Now;
 
             yield return current;
+        }
+    }
+
+    private static void ReleaseTask(BotTask task)
+    {
+        try { task?.OnStopped(); }
+        catch (Exception e)
+        {
+            Logger.Error($"[FAILED] Stopping {task?.SectionTitle}: {e.GetType().Name} - {e.Message}");
         }
     }
 
