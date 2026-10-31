@@ -258,6 +258,20 @@ public class TemplePrestigeTask : BotTask
 
         var reading = $"{stageReading} | run {played:0.0}h | boost {gainText}";
         Logger.Info($"Temple: {reading}.");
+        if (gain <= 0)
+        {
+            if (_efficiency.Value > 0)
+            {
+                _lastGain.Value = 0;
+                _lastGainAt.Value = DateTime.Now.ToString("o");
+                _slowStreak = 0;
+                MelonPreferences.Save();
+            }
+            Report("No gold boost yet; keeping the run.", reading);
+            yield return CloseTemple(closeScreen);
+            yield break;
+        }
+
         var efficiencyTriggered = false;
         var efficiencyDecision = "Growth rate unavailable; keeping the run.";
         if (sampleDue)

@@ -29,7 +29,7 @@ internal static class Program
         {
             Environment.CurrentDirectory = temp;
             BotSettings.Initialize();
-            Test("prestige gain parsing fails closed", PrestigeGainParsing);
+            Test("prestige gain parsing accepts valid values and rejects malformed input", PrestigeGainParsing);
             Test("prestige run age parsing and reset detection", PrestigeRunAge);
             Test("prestige rate requires consecutive valid samples", PrestigeRate);
             Test("prestige trigger priority favors growth before fallbacks", PrestigeTriggerPriority);
@@ -44,6 +44,7 @@ internal static class Program
             Test("prestige task refuses uncertain or changed game state", PrestigeTaskSafety);
             Test("boss retry threshold can use an already-open free preview", PrestigeBossRetryTrigger);
             Test("prestige task waits for two slow growth samples", PrestigeTaskGrowth);
+            Test("zero prestige boost waits for hourly sampling without blocking boss checks", PrestigeZeroGainSampling);
             Test("arena power, rank and token readings fail closed", ArenaTests.PowerParsing);
             Test("arena selects the weakest valid in-limit opponent", ArenaTests.Selection);
             Test("arena refuses stale, mismatched and changed previews", ArenaTests.PreviewSafety);
@@ -132,7 +133,9 @@ internal static class Program
         Near(gain, 1500);
         Check(PrestigePolicy.TryParseGain("+2M%", out gain), "M suffix was rejected.");
         Near(gain, 2000000);
-        foreach (var invalid in new[] { "", "1000%", "+15.7cz%", "+1,23%", "+0%", "+NaN%", "+9e99%" })
+        Check(PrestigePolicy.TryParseGain("+0%", out gain), "A zero preview was treated as unreadable.");
+        Near(gain, 0);
+        foreach (var invalid in new[] { "", "1000%", "+15.7cz%", "+1,23%", "+NaN%", "+9e99%" })
             Check(!PrestigePolicy.TryParseGain(invalid, out _), $"Accepted {invalid}.");
     }
 
@@ -492,6 +495,13 @@ internal static class Program
     private static void PrestigeTaskSafety()
     {
         var fixture = SetupPrestige();
+        Ui.Texts[PrestigeFixture.Gain] = "+0%";
+        ((MelonPreferences_Entry<int>)fixture.Settings["min_gain_percent"]).Value = 0;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 && TemplePrestigeTask.LastDecision.Contains("No gold boost yet"),
+            "A zero-gain preview was treated as unreadable or allowed a prestige.");
+
+        fixture = SetupPrestige();
         Ui.Texts[PrestigeFixture.Gain] = "+15.7cz%";
         Run(fixture.Task.Execute());
         Check(fixture.FreeClicks == 0 && fixture.PaidClicks == 0, "An unsupported boost triggered prestige.");
@@ -587,6 +597,37 @@ internal static class Program
         }
         Check(fixture.PaidClicks == 0 && fixture.ConfirmClicks == 1,
             "The growth trigger did not use the verified free completion flow.");
+    }
+
+    private static void PrestigeZeroGainSampling()
+    {
+        var fixture = SetupPrestige(stalled: false);
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        Ui.Texts[PrestigeFixture.Gain] = "+0%";
+        var opened = 0;
+        fixture.OnOpen = () => opened++;
+        Run(fixture.Task.Execute());
+        Check(opened == 1 &&
+              ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value == 0 &&
+              DateTime.TryParse(((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value, out _),
+            "The zero preview did not record a growth sample.");
+
+        Run(fixture.Task.Execute());
+        Check(opened == 1 && TemplePrestigeTask.LastDecision.Contains("next growth sample"),
+            "A scheduled check reopened the zero preview before the next sample was due.");
+
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value =
+            DateTime.Now.AddHours(-1).AddSeconds(-1).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_observed_run_at"]).Value =
+            DateTime.Now.AddHours(-1).AddSeconds(-1).ToString("o");
+        Ui.Texts[PrestigeFixture.Age] = "1d 02h 33m 24s";
+        Run(fixture.Task.Execute());
+        Check(opened == 2, "An hourly zero-boost sample was skipped.");
+
+        for (var attempt = 0; attempt < 3; attempt++) BossAttemptTracker.RecordAttempt(100);
+        Run(fixture.Task.Execute());
+        Check(opened == 3 && fixture.FreeClicks == 0 && fixture.PaidClicks == 0,
+            "Hourly sampling blocked a qualifying boss check or allowed zero-gain prestige.");
     }
 
     private static void ScarabSpinSafety()

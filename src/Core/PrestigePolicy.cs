@@ -80,7 +80,7 @@ internal static class PrestigePolicy
             _ => 1
         };
         gain = value * multiplier;
-        return double.IsFinite(gain) && gain > 0;
+        return double.IsFinite(gain) && gain >= 0;
     }
 
     public static bool TryParseRunHours(string text, out double hours)

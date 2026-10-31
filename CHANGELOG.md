@@ -1,5 +1,9 @@
 ﻿# Changelog
 
+## 0.7.46 (2026-10-31)
+- Temple Prestige now recognizes a displayed `+0%` as a real zero boost instead of an unreadable value, while still refusing to empower until the preview shows a positive boost.
+- A zero-boost growth sample is remembered, so ordinary one-minute checks no longer reopen the Temple for that same first sample. Hourly growth reads and qualifying boss/stall checks remain active.
+
 ## 0.7.45 (2026-10-30)
 - Temple Prestige now reads the game's minutes-and-seconds run clock (for example, 35:47) as a fraction of an hour, instead of treating minutes as hours. Invalid seconds still fail closed.
 - The F2 task list now has an ON/OFF switch beside each task, connected to the same saved enabled setting used in F1.
