@@ -10,8 +10,8 @@ using Logger = Firebot.Core.Logger;
 namespace Firebot.Behaviors.Extra;
 
 /// <summary>
-///     Prestige ("Empower now") once the run has stalled: no new highest stage for a few hours, and the temple offers at
-///     least a minimum gold boost. Never uses the paid 2x empower.
+///     Uses the free empower when growth efficiency drops, boss retries repeat at one stage, or the fallback stall timer
+///     expires. Minimum run age and gold boost still guard every trigger.
 /// </summary>
 public class TemplePrestigeTask : BotTask
 {
@@ -26,7 +26,8 @@ public class TemplePrestigeTask : BotTask
     private const string FreeEmpower = EmpowerPopup + "/bg/empowerBg/empowerButton";
     private const string FreeGain = EmpowerPopup + "/bg/empowerBg/empowerRainingGold/value";
     private const string PrestigeComplete = P.Popups + "/TOEPrestigeComplete";
-    private MelonPreferences_Entry<int> _stallHours;
+    private MelonPreferences_Entry<int> _stallMinutes;
+    private MelonPreferences_Entry<int> _bossAttempts;
     private MelonPreferences_Entry<int> _minGain;
     private MelonPreferences_Entry<int> _minHours;
     private MelonPreferences_Entry<int> _bestStage;
@@ -44,14 +45,18 @@ public class TemplePrestigeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _stallHours = c.CreateEntry("stall_hours", 3, "Hours Without Progress",
-            "Empower once no new highest stage has been reached for this many hours (the run has stalled).");
+        c.CreateEntry("stall_hours", 1, "Hours Without Progress (Legacy)",
+            "Replaced by the 30-minute or 1-hour fallback setting.", is_hidden: true);
+        _stallMinutes = c.CreateEntry("stall_minutes", 30, "Fallback Stall Timer",
+            "Fallback reset delay after no new highest stage.");
+        _bossAttempts = c.CreateEntry("boss_attempts", 3, "Boss Attempts Before Reset",
+            "Reset after this many boss attempts at the same stage.");
         _minGain = c.CreateEntry("min_gain_percent", 100, "Minimum Gold Boost %",
             "Never empower for less than this extra gold (the +% the temple shows).");
         _minHours = c.CreateEntry("min_hours_played", 1, "Minimum Hours In Run", "Never empower a run younger than this.");
         _efficiency = c.CreateEntry("efficiency_percent", 75, "Growth Rate Threshold %",
-            "After two hourly samples below this percentage of the run's average boost growth, consider empowering. " +
-            "This is an estimate, not a proven optimum. 0 disables this trigger; the stall trigger remains active.");
+            "After two hourly samples below this percentage of the run's average boost growth, empower without waiting for the fallbacks. " +
+            "This is an estimate, not a proven optimum. 0 disables this trigger.");
         _lastGain = c.CreateEntry("last_gain", -1.0, "Last Gold Boost Sample", "Kept by the bot.", is_hidden: true);
         _lastGainAt = c.CreateEntry("last_gain_at", "", "Last Sample Time", "Kept by the bot.", is_hidden: true);
         _lastRunHours = c.CreateEntry("last_observed_run_hours", -1.0, "Last Run Age", "Kept by the bot.", is_hidden: true);
@@ -95,7 +100,11 @@ public class TemplePrestigeTask : BotTask
         var now = DateTime.Now;
         DateTime.TryParse(_bestAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at);
         var newRun = _bestStage.Value > 0 && stage < _bestStage.Value;
-        if (newRun) ResetSamples();
+        if (newRun)
+        {
+            ResetSamples();
+            BossAttemptTracker.Reset();
+        }
         if (stage > _bestStage.Value || newRun || at == default || at > now)
         {
             _bestStage.Value = stage;
@@ -121,8 +130,9 @@ public class TemplePrestigeTask : BotTask
         return false;
     }
 
-    private static IEnumerator CloseTemple()
+    private static IEnumerator CloseTemple(bool closeScreen)
     {
+        if (!closeScreen) yield break;
         if (Ui.Visible(EmpowerPopup)) yield return Ui.Click(EmpowerPopup + "/bg/closeButton", 0.5f);
         if (Ui.Visible(T)) yield return Ui.Click(T + "/closeButton", 0.5f);
     }
@@ -130,12 +140,13 @@ public class TemplePrestigeTask : BotTask
     public override IEnumerator Execute()
     {
         BubbleQuietUntil = DateTime.Now.AddMinutes(15);
-        NextRunTime = DateTime.Now.AddMinutes(30);
-        if (_stallHours.Value < 1 || _minGain.Value < 0 || _minHours.Value < 0 || _efficiency.Value < 0)
+        NextRunTime = DateTime.Now.AddMinutes(1);
+        if (_stallMinutes.Value is < 30 or > 60 || _bossAttempts.Value is < 2 or > 5 ||
+            _minGain.Value < 0 || _minHours.Value < 0 || _efficiency.Value < 0)
         {
             InvalidateRate();
             Report("Invalid prestige settings; no reset attempted.");
-            Logger.Warning("Temple: a threshold is negative or the stall time is below one hour; check prestige settings.");
+            Logger.Warning("Temple: a prestige threshold is outside its supported range; check the settings.");
             yield break;
         }
         if (_efficiency.Value == 0 && (_lastGain.Value >= 0 || _slowStreak != 0))
@@ -150,28 +161,25 @@ public class TemplePrestigeTask : BotTask
             yield break;
         }
 
-        var isStalled = stalled >= _stallHours.Value;
+        var isStalled = stalled >= _stallMinutes.Value / 60d;
+        var bossAttempts = BossAttemptTracker.CountAtStage(stage);
+        var bossRetriesReached = bossAttempts >= _bossAttempts.Value;
         var hasSampleTime = DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
             DateTimeStyles.RoundtripKind, out var sampledAt);
         var sampleDue = _efficiency.Value > 0 && (!hasSampleTime || sampledAt > DateTime.Now ||
                         DateTime.Now - sampledAt >= TimeSpan.FromHours(1));
-        var stageReading = $"Stage {stage} | {stalled:0.0}h without a new best";
-        if (!isStalled && !sampleDue)
+        var stageReading = $"Stage {stage} | {stalled:0.0}h without a new best | boss tries {bossAttempts}/{_bossAttempts.Value}";
+        if (!isStalled && !sampleDue && !bossRetriesReached)
         {
             Report("Waiting for progress or the next growth sample.", stageReading);
-            Logger.Debug($"Temple: {stageReading}; stall trigger is {_stallHours.Value}h.");
+            Logger.Debug($"Temple: {stageReading}; fallback timer is {_stallMinutes.Value} minutes.");
             yield break;
         }
 
-        if (Ui.Visible(EmpowerPopup))
-        {
-            InvalidateRate();
-            Report("An empower preview is already open; leaving it untouched.", stageReading);
-            Logger.Warning("Temple: an existing empower preview was left untouched.");
-            yield break;
-        }
-
-        yield return Ui.OpenTownBuilding("templeOfEternals");
+        var previewAlreadyOpen = Ui.Visible(EmpowerPopup);
+        var templeWasVisible = Ui.Visible(T);
+        var closeScreen = !previewAlreadyOpen && !templeWasVisible;
+        if (!previewAlreadyOpen) yield return Ui.OpenTownBuilding("templeOfEternals");
         yield return Ui.WaitFor(T);
         if (!Ui.Visible(T) || !Ui.Visible(Info))
         {
@@ -179,7 +187,7 @@ public class TemplePrestigeTask : BotTask
             NextRunTime = DateTime.Now.AddMinutes(5);
             Report("Temple screen unavailable; no reset attempted.", stageReading);
             Logger.Warning("Temple: the prestige screen did not open; retrying in five minutes.");
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
@@ -189,7 +197,7 @@ public class TemplePrestigeTask : BotTask
             InvalidateRate();
             Report("Run age unreadable; no reset attempted.", stageReading);
             Logger.Warning($"Temple: run age '{playedText}' is unreadable; skipped.");
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
@@ -203,21 +211,24 @@ public class TemplePrestigeTask : BotTask
             _bestAt.Value = DateTime.Now.ToString("o");
             stalled = 0;
             isStalled = false;
+            bossRetriesReached = false;
             stageReading = $"Stage {stage} | 0.0h without a new best";
             Logger.Info("Temple: new or previously untracked run; cleared old growth samples.");
+            BossAttemptTracker.Reset();
         }
 
         _lastRunHours.Value = played;
         _lastRunAt.Value = observedAt.ToString("o");
         MelonPreferences.Save();
-        var opened = false;
-        yield return Ui.ClickUntil(Ui.Find(Info + "/openEmpowerButton"), () => Ui.Visible(EmpowerPopup),
-            value => opened = value, "open free prestige preview", 1f, 4f);
+        var opened = previewAlreadyOpen;
+        if (!opened)
+            yield return Ui.ClickUntil(Ui.Find(Info + "/openEmpowerButton"), () => Ui.Visible(EmpowerPopup),
+                value => opened = value, "open free prestige preview", 1f, 4f);
         if (!opened)
         {
             InvalidateRate();
             Report("Prestige preview unavailable; no reset attempted.", stageReading);
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
@@ -227,21 +238,16 @@ public class TemplePrestigeTask : BotTask
             InvalidateRate();
             Report("Free gold boost unreadable; no reset attempted.", stageReading + $" | run {played:0.0}h");
             Logger.Warning($"Temple: free preview boost '{gainText}' is unreadable or unsupported; skipped.");
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
         var reading = $"{stageReading} | run {played:0.0}h | boost {gainText}";
         Logger.Info($"Temple: {reading}.");
-        if (!isStalled)
+        var efficiencyTriggered = false;
+        var efficiencyDecision = "Growth rate unavailable; keeping the run.";
+        if (sampleDue)
         {
-            if (_efficiency.Value == 0)
-            {
-                Report("Waiting for the stall threshold.", reading);
-                yield return CloseTemple();
-                yield break;
-            }
-
             DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out sampledAt);
             var rate = PrestigePolicy.EvaluateRate(gain, played, _lastGain.Value, sampledAt, DateTime.Now,
                 _slowStreak, _efficiency.Value);
@@ -254,36 +260,40 @@ public class TemplePrestigeTask : BotTask
                 MelonPreferences.Save();
             }
 
-            if (rate.State != PrestigeRateState.Trigger)
+            efficiencyTriggered = rate.State == PrestigeRateState.Trigger;
+            efficiencyDecision = rate.State switch
             {
-                var reason = rate.State switch
-                {
-                    PrestigeRateState.Invalid => "Growth rate unavailable; keeping the run.",
-                    PrestigeRateState.Baseline => "First growth sample for this run.",
-                    PrestigeRateState.TooSoon => "Waiting for the next hourly growth sample.",
-                    PrestigeRateState.Slow => "Growth below threshold once; one more sample needed.",
-                    _ => "Growth remains above the threshold."
-                };
-                Report(reason, reading);
-                Logger.Info($"Temple: {reason} Rate {rate.Rate:0.##}%/h; limit {rate.Limit:0.##}%/h.");
-                yield return CloseTemple();
-                yield break;
-            }
-
-            Logger.Info($"Temple: two slow samples ({rate.Rate:0.##}%/h vs {rate.Limit:0.##}%/h); checking minimums.");
+                PrestigeRateState.Invalid => "Growth rate unavailable; keeping the run.",
+                PrestigeRateState.Baseline => "First growth sample for this run.",
+                PrestigeRateState.TooSoon => "Waiting for the next hourly growth sample.",
+                PrestigeRateState.Slow => "Growth below threshold once; one more sample needed.",
+                PrestigeRateState.Trigger => "Growth efficiency threshold reached.",
+                _ => "Growth remains above the threshold."
+            };
+            Logger.Info($"Temple: {efficiencyDecision} Rate {rate.Rate:0.##}%/h; limit {rate.Limit:0.##}%/h.");
         }
 
+        var trigger = PrestigePolicy.SelectTrigger(efficiencyTriggered, bossRetriesReached, isStalled);
+        if (trigger == PrestigeTrigger.None)
+        {
+            Report(efficiencyDecision, reading);
+            yield return CloseTemple(closeScreen);
+            yield break;
+        }
+
+        Logger.Info($"Temple: proceeding on {trigger} trigger.");
         if (gain < _minGain.Value || played < _minHours.Value)
         {
             Report(gain < _minGain.Value ? "Waiting for the minimum gold boost." : "Waiting for the minimum run age.", reading);
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
         var currentStage = Ui.NumberAt(Stage);
         var latestGainText = Ui.Text(FreeGain);
         var latestAgeText = Ui.Text(Info + "/adventureTimePlayed");
-        if (currentStage <= 0 || currentStage < stage || (isStalled && currentStage > _bestStage.Value) ||
+        if (currentStage <= 0 || currentStage < stage ||
+            ((trigger != PrestigeTrigger.Efficiency) && currentStage > _bestStage.Value) ||
             !PrestigePolicy.TryParseGain(latestGainText, out var latestGain) || latestGain < gain ||
             !PrestigePolicy.TryParseRunHours(latestAgeText, out var latestAge) ||
             PrestigePolicy.IsNewRun(played, latestAge) || latestAge < _minHours.Value)
@@ -291,7 +301,7 @@ public class TemplePrestigeTask : BotTask
             InvalidateRate();
             Report("Run changed during the check; waiting for a fresh reading.", reading);
             Logger.Warning("Temple: run state or preview changed during the decision; skipped.");
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
@@ -301,7 +311,7 @@ public class TemplePrestigeTask : BotTask
             InvalidateRate();
             Report("Free empower control unavailable; no reset attempted.", reading);
             Logger.Warning("Temple: the verified free empower button was unavailable or showed a price; skipped.");
-            yield return CloseTemple();
+            yield return CloseTemple(closeScreen);
             yield break;
         }
 
@@ -330,6 +340,7 @@ public class TemplePrestigeTask : BotTask
         }
 
         ResetSamples();
+        BossAttemptTracker.Reset();
         _bestStage.Value = 0;
         _bestAt.Value = "";
         MelonPreferences.Save();

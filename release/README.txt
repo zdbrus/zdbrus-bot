@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.41 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.42 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -19,12 +19,16 @@ Its log distinguishes button clicks and later button state changes from independ
 Upgrade tasks skip preview scans when the relevant currency is at or below its reserve, verify level,
 cost, currency or inventory changes after purchases, and stop when progress cannot be confirmed.
 Reward logs report observed state changes without claiming a reward was granted unless the game
-exposes a reliable receipt.
-F1 > Prestige shows the last decision and controls. Free temple prestige uses your minimum boost and
-run age plus a stall trigger or two slow hourly growth samples (adjustable, 0 disables growth).
-The growth rule is an estimate; unreadable boost/run-age values stop the reset. The paid 2x is never used.
-The stall timer starts fresh for untracked runs. Similar-age account switches cannot always be detected;
-turn prestige off when switching accounts until you have checked its settings.
+exposes a reliable receipt. Liberation Missions can run Easy (1 star), Normal (2 stars), or both.
+Battle Pass skips scrolling when its rewards marker is present but hidden.
+F1 > Prestige shows the last decision and controls. Growth efficiency is the primary free-prestige
+trigger: two hourly samples below the configured share of average growth can trigger without waiting
+for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
+stage can trigger next (3 by default; choose 2–5); the no-progress fallback is selectable at 30 minutes
+or 1 hour. All triggers require the minimum boost and run age. The growth rule is an estimate; unreadable
+boost/run-age values stop the reset. The paid 2x is never used. The fallback timer starts fresh for
+untracked runs. Similar-age account switches cannot always be detected; turn prestige off when
+switching accounts until you have checked its settings.
 Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
 Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,

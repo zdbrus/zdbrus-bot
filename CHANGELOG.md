@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.42 (2026-10-30)
+- Temple prestige prioritizes the growth-efficiency trigger, then repeated boss attempts at the same stage, with a selectable 30-minute or 1-hour no-progress fallback. The free preview is used only when a trigger and the minimum run age and boost are verified.
+- Liberation Missions can target Easy (1 star), Normal (2 stars) or both, and verifies difficulty changes before starting fights.
+- Battle Pass skips scrolling the reward track when its rewards marker is present but hidden; it retains the conservative scan if the marker is missing.
+
 ## 0.7.41 (2026-10-30)
 - Added opt-in local Arena matchup recording for confirmed bot-started wins and losses. It saves preview formations, available game-reported stats, displayed powers and outcomes as append-only JSON lines without player names, account IDs or changes to fight decisions. Missing values remain null.
 - Recording is off by default, including with Enable All On Launch. Write failures are logged. The per-machine preview stats have not been validated against combat and are not a win predictor. No live Arena fights were performed for this release.

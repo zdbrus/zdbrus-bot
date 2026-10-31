@@ -1029,46 +1029,123 @@ public class EventChallengesTask : BotTask
 public class LiberationMissionsTask : BotTask
 {
     private const string Map = P.Menus + "/WorldMap";
+    private const string Campaign = Map + "/submenus/warfrontCampaignSubmenu";
+    private const string Difficulty = Campaign + "/difficultySelector";
     private const string List = P.Popups + "/WFLiberationMissions";
     private const string Grid = List + "/bg/missionsScrollView/Viewport/missionGrid";
+    private const string DailyMissions = P.Popups + "/WFDailyMissions";
+    private MelonPreferences_Entry<string> _difficulty;
 
     public override int MinimumLevel => LevelRequirements.WarfrontCampaign;
+
+    protected override void OnConfigure(MelonPreferences_Category c)
+    {
+        _difficulty = c.CreateEntry("difficulty", "both", "Difficulty",
+            "Run Easy (1 star), Normal (2 stars), or both, in that order.");
+    }
 
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddHours(4);
+        if (!LiberationDifficultyPolicy.TryGetTargets(_difficulty?.Value, out var targets))
+        {
+            Logger.Warning("[Liberation] Unknown difficulty setting; choose Easy, Normal, or Both.");
+            yield break;
+        }
+
         yield return Ui.Click(P.MapButton, 2f);
         yield return Ui.Click(Map + "/submenuButtons/warfrontCampaignButton", 2f);
-        yield return Ui.Click(Map + "/submenus/warfrontCampaignSubmenu/dailyMissionsButton", 2f);
-        yield return Ui.Click(P.Popups + "/WFDailyMissions/bg/liberationMissions/openButton", 2f);
-
-        // Fight one area after another until none is left, a fight is lost, or time runs short.
-        var started = Time.unscaledTime;
-        while (Time.unscaledTime - started < 110f)
+        if (!Ui.Visible(Difficulty))
         {
-            if (!Ui.Visible(Grid)) break;
-            var fight = Ui.VisibleChildren(Grid).Select(m => m.Find("fightButton")).FirstOrDefault(Ui.Clickable);
-            if (fight == null) break;
+            Logger.Warning("[Liberation] Campaign difficulty selector did not open.");
+            yield break;
+        }
 
-            yield return Ui.Click(fight, 1.5f, "liberation fight");
-            bool? won = null;
-            yield return Ui.FinishBattle(r => won = r);
-
-            if (won == false)
+        var started = Time.unscaledTime;
+        var lost = false;
+        foreach (var targetStars in targets)
+        {
+            if (Time.unscaledTime - started >= 110f)
             {
-                Logger.Info("[Liberation] Lost a fight; trying again on a later cycle.");
+                NextRunTime = DateTime.Now.AddMinutes(1);
                 break;
             }
 
-            if (won == null)
+            var currentStars = VisibleDifficultyStars();
+            if (!LiberationDifficultyPolicy.TryGetStep(currentStars, targetStars, out var direction))
             {
-                NextRunTime = DateTime.Now.AddMinutes(2);
-                yield break;
+                Logger.Warning($"[Liberation] Could not identify the current star difficulty ({currentStars}); stopped safely.");
+                break;
             }
 
-            NextRunTime = DateTime.Now.AddMinutes(1); // more areas may be left when time runs out
-            yield return new WaitForSeconds(1.5f);
+            if (direction != 0)
+            {
+                var arrow = Difficulty + (direction > 0 ? "/nextDifficulty" : "/previousDifficulty");
+                if (!Ui.Clickable(arrow))
+                {
+                    Logger.Warning($"[Liberation] Cannot switch to {targetStars}-star missions; stopped safely.");
+                    break;
+                }
+
+                yield return Ui.Click(arrow, 1f);
+                currentStars = VisibleDifficultyStars();
+                if (currentStars != targetStars)
+                {
+                    Logger.Warning($"[Liberation] Difficulty switch was not confirmed ({currentStars} stars, wanted {targetStars}).");
+                    break;
+                }
+            }
+
+            Logger.Info($"[Liberation] Checking {(targetStars == 1 ? "Easy" : "Normal")} missions.");
+            yield return Ui.Click(Campaign + "/dailyMissionsButton", 2f);
+            if (!Ui.Visible(DailyMissions))
+            {
+                Logger.Warning("[Liberation] Daily missions did not open.");
+                break;
+            }
+
+            yield return Ui.Click(DailyMissions + "/bg/liberationMissions/openButton", 2f);
+            while (Time.unscaledTime - started < 110f)
+            {
+                if (!Ui.Visible(Grid)) break;
+                var fight = Ui.VisibleChildren(Grid).Select(m => m.Find("fightButton")).FirstOrDefault(Ui.Clickable);
+                if (fight == null) break;
+
+                yield return Ui.Click(fight, 1.5f, "liberation fight");
+                bool? won = null;
+                yield return Ui.FinishBattle(r => won = r);
+
+                if (won == false)
+                {
+                    Logger.Info("[Liberation] Lost a fight; trying again on a later cycle.");
+                    lost = true;
+                    break;
+                }
+
+                if (won == null)
+                {
+                    NextRunTime = DateTime.Now.AddMinutes(2);
+                    yield break;
+                }
+
+                NextRunTime = DateTime.Now.AddMinutes(1);
+                yield return new WaitForSeconds(1.5f);
+            }
+
+            if (Ui.Visible(List)) yield return Ui.Click(List + "/bg/closeButton");
+            if (Ui.Visible(DailyMissions)) yield return Ui.Click(DailyMissions + "/bg/closeButton");
+            if (lost) break;
         }
+
+        if (Ui.Visible(Map)) yield return Ui.Click(Map + "/closeButton");
+    }
+
+    private static int VisibleDifficultyStars()
+    {
+        var stars = 0;
+        for (var i = 0; i < 6; i++)
+            if (Ui.Visible(Difficulty + $"/star ({i})")) stars++;
+        return stars;
     }
 }
 

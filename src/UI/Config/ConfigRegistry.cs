@@ -80,7 +80,8 @@ internal static class ConfigRegistry
         ["personal_tree/keep_tokens"] = new NumberRange(0f, 5000f, true),
         ["meteorite_research/keep_meteorites"] = new NumberRange(0f, 100000f, true),
         ["temple_prestige/min_gain_percent"] = new NumberRange(0f, 100000f, true),
-        ["temple_prestige/stall_hours"] = new NumberRange(1f, 48f, true),
+        ["temple_prestige/stall_minutes"] = new NumberRange(30f, 60f, true),
+        ["temple_prestige/boss_attempts"] = new NumberRange(2f, 5f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
         ["temple_prestige/efficiency_percent"] = new NumberRange(0f, 200f, true),
         ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true),
@@ -125,6 +126,24 @@ internal static class ConfigRegistry
         {
             new ConfigChoice("asc", "Shorter first"),
             new ConfigChoice("desc", "Longer first")
+        },
+        ["temple_prestige/stall_minutes"] = new[]
+        {
+            new ConfigChoice("30", "30 minutes"),
+            new ConfigChoice("60", "1 hour")
+        },
+        ["temple_prestige/boss_attempts"] = new[]
+        {
+            new ConfigChoice("2", "2 attempts"),
+            new ConfigChoice("3", "3 attempts"),
+            new ConfigChoice("4", "4 attempts"),
+            new ConfigChoice("5", "5 attempts")
+        },
+        ["liberation_missions/difficulty"] = new[]
+        {
+            new ConfigChoice("easy", "Easy (1 star)"),
+            new ConfigChoice("normal", "Normal (2 stars)"),
+            new ConfigChoice("both", "Both")
         },
         ["exotic_merchant/sell_mode"] = new[]
         {
@@ -430,11 +449,14 @@ internal static class ConfigRegistry
         // Tasks
         ["temple_prestige/enabled"] =
             "Uses only the free empower option. The bot must also be running.\n" +
-            "The minimum boost and run age apply to both triggers.",
+            "The minimum boost and run age apply to every trigger.",
 
-        ["temple_prestige/stall_hours"] =
-            "Consider a reset after this many hours without a new highest stage.\n" +
-            "Both minimums must still be met.",
+        ["temple_prestige/stall_minutes"] =
+            "Fallback reset delay after no new highest stage. Growth and repeated boss failures can trigger sooner.\n" +
+            "The minimum boost and run age still apply.",
+
+        ["temple_prestige/boss_attempts"] =
+            "Reset after this many boss attempts at the same stage, if the minimum boost and run age are met.",
 
         ["temple_prestige/min_gain_percent"] =
             "Minimum extra gold boost on the free empower preview. 0 removes the minimum.\n" +
@@ -445,8 +467,11 @@ internal static class ConfigRegistry
             "The bot never resets when the run age is unreadable.",
 
         ["temple_prestige/efficiency_percent"] =
-            "Two hourly samples below this share of the run's average growth can trigger a reset.\n" +
+            "Two hourly samples below this share of the run's average growth trigger a reset without waiting for the timer.\n" +
             "This is an estimate, not a proven optimum. 0 disables this trigger.",
+
+        ["liberation_missions/difficulty"] =
+            "Choose Easy (1 star), Normal (2 stars), or both. Both runs Easy first, then Normal.",
 
         ["alchemist/resource_type"] =
             "HOW TO USE: Toggle which resources an experiment may use.\n" +

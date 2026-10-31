@@ -14,6 +14,14 @@ internal enum PrestigeRateState
     Trigger
 }
 
+internal enum PrestigeTrigger
+{
+    None,
+    Efficiency,
+    BossRetries,
+    StallTimer
+}
+
 internal readonly struct PrestigeRateResult
 {
     public PrestigeRateResult(PrestigeRateState state, int streak, bool saveSample, double rate = 0, double limit = 0)
@@ -44,6 +52,13 @@ internal static class PrestigePolicy
     private static readonly Regex RunTimeUnitsPattern = new(
         @"^(?<days>\d+)\s*d\s+(?<hours>\d{1,2})\s*h\s+(?<minutes>[0-5]\d)\s*m\s+(?<seconds>[0-5]\d)\s*s$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static PrestigeTrigger SelectTrigger(bool efficiencyTriggered, bool bossRetriesReached, bool stallTimerReached)
+    {
+        if (efficiencyTriggered) return PrestigeTrigger.Efficiency;
+        if (bossRetriesReached) return PrestigeTrigger.BossRetries;
+        return stallTimerReached ? PrestigeTrigger.StallTimer : PrestigeTrigger.None;
+    }
 
     public static bool TryParseGain(string text, out double gain)
     {

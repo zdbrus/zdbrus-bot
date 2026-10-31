@@ -13,7 +13,10 @@
     <Compile Include="..\..\src\BotActions\AutoSkill.cs" Link="AutoSkill.cs" />
     <Compile Include="..\..\src\BotActions\Hotkey.cs" Link="Hotkey.cs" />
     <Compile Include="..\..\src\Core\PrestigePolicy.cs" Link="PrestigePolicy.cs" />
+    <Compile Include="..\..\src\Core\BossAttemptTracker.cs" Link="BossAttemptTracker.cs" />
     <Compile Include="..\..\src\Core\PriorityTier.cs" Link="PriorityTier.cs" />
+    <Compile Include="..\..\src\Core\BattlePassPolicy.cs" Link="BattlePassPolicy.cs" />
+    <Compile Include="..\..\src\Core\LiberationDifficultyPolicy.cs" Link="LiberationDifficultyPolicy.cs" />
     <Compile Include="..\..\src\Core\UncappedUpgradePolicy.cs" Link="UncappedUpgradePolicy.cs" />
     <Compile Include="..\..\src\Core\WarMachineBlueprintPolicy.cs" Link="WarMachineBlueprintPolicy.cs" />
     <Compile Include="..\..\src\Core\UpdateStatusPolicy.cs" Link="UpdateStatusPolicy.cs" />

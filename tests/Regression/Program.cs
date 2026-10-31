@@ -32,8 +32,12 @@ internal static class Program
             Test("prestige gain parsing fails closed", PrestigeGainParsing);
             Test("prestige run age parsing and reset detection", PrestigeRunAge);
             Test("prestige rate requires consecutive valid samples", PrestigeRate);
+            Test("prestige trigger priority favors growth before fallbacks", PrestigeTriggerPriority);
+            Test("boss attempts are counted only at the same stage", BossAttemptTracking);
             Test("prestige task uses the free control and verifies completion", PrestigeTaskFreeControl);
+            Test("prestige timer fallback supports the 30-minute option", PrestigeTimerFallback);
             Test("prestige task refuses uncertain or changed game state", PrestigeTaskSafety);
+            Test("boss retry threshold can use an already-open free preview", PrestigeBossRetryTrigger);
             Test("prestige task waits for two slow growth samples", PrestigeTaskGrowth);
             Test("arena power, rank and token readings fail closed", ArenaTests.PowerParsing);
             Test("arena selects the weakest valid in-limit opponent", ArenaTests.Selection);
@@ -46,6 +50,8 @@ internal static class Program
             Test("arena recording failures do not change fight decisions", ArenaTests.MatchupRecordingFailures);
             Test("arena matchup files append anonymous JSON records", ArenaTests.MatchupStorage);
             Test("priority tiers hold or retry before advancing", PriorityDecisions);
+            Test("battle pass skips scrolling when its reward marker is hidden", BattlePassNoRewardScan);
+            Test("liberation difficulty targets and arrow steps are verified", LiberationDifficultySelection);
             Test("uncapped spending modes preserve the player's choice", UncappedUpgradeModes);
             Test("war-machine blueprint priorities preserve order and currency decisions", WarMachineBlueprints);
             Test("update notices distinguish available, current, and failed checks", UpdateNotices);
@@ -164,6 +170,29 @@ internal static class Program
         Check(invalid.State == PrestigeRateState.Invalid && invalid.Streak == 0, "Invalid gain kept a streak.");
     }
 
+    private static void PrestigeTriggerPriority()
+    {
+        Check(PrestigePolicy.SelectTrigger(true, true, true) == PrestigeTrigger.Efficiency,
+            "Efficiency did not take priority over both fallbacks.");
+        Check(PrestigePolicy.SelectTrigger(false, true, true) == PrestigeTrigger.BossRetries,
+            "Boss retries did not take priority over the timer fallback.");
+        Check(PrestigePolicy.SelectTrigger(false, false, true) == PrestigeTrigger.StallTimer,
+            "The stall timer did not remain the final fallback.");
+        Check(PrestigePolicy.SelectTrigger(false, false, false) == PrestigeTrigger.None,
+            "A missing trigger caused a reset.");
+    }
+
+    private static void BossAttemptTracking()
+    {
+        BossAttemptTracker.Reset();
+        Check(BossAttemptTracker.RecordAttempt(1054) == 1, "First boss attempt was not counted.");
+        Check(BossAttemptTracker.RecordAttempt(1054) == 2, "Second boss attempt was not counted.");
+        Check(BossAttemptTracker.CountAtStage(1054) == 2, "Attempts were not available to the prestige task.");
+        Check(BossAttemptTracker.CountAtStage(1055) == 0, "Attempts leaked to a different stage.");
+        Check(BossAttemptTracker.RecordAttempt(1055) == 1, "A new stage did not start a fresh attempt count.");
+        BossAttemptTracker.Reset();
+    }
+
     private sealed class PrestigeFixture
     {
         public const string Temple = "menus/TempleOfEternals";
@@ -175,6 +204,7 @@ internal static class Program
         public const string Age = Info + "/adventureTimePlayed";
         public readonly TemplePrestigeTask Task = new();
         public Dictionary<string, MelonPreferences_Entry> Settings;
+        public GameObject TempleScreen;
         public GameObject Popup;
         public Button FreeButton;
         public int FreeClicks;
@@ -190,10 +220,12 @@ internal static class Program
         Ui.Texts.Clear();
         Ui.Numbers.Clear();
         Ui.OpenTownWorks = true;
+        BossAttemptTracker.Reset();
         var fixture = new PrestigeFixture();
         fixture.Task.InitializeConfig("test");
         fixture.Settings = MelonPreferences.Categories["temple_prestige"].Entries;
-        ((MelonPreferences_Entry<int>)fixture.Settings["stall_hours"]).Value = 1;
+        ((MelonPreferences_Entry<int>)fixture.Settings["stall_minutes"]).Value = 60;
+        ((MelonPreferences_Entry<int>)fixture.Settings["boss_attempts"]).Value = 3;
         ((MelonPreferences_Entry<int>)fixture.Settings["min_gain_percent"]).Value = 1000;
         ((MelonPreferences_Entry<int>)fixture.Settings["min_hours_played"]).Value = 1;
         ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 0;
@@ -206,11 +238,11 @@ internal static class Program
         Ui.Numbers[PrestigeFixture.Stage] = 100;
         Ui.Texts[PrestigeFixture.Age] = "1d 01h 33m 24s";
         Ui.Texts[PrestigeFixture.Gain] = "+14,159%";
-        var temple = GameObject.CreatePath(PrestigeFixture.Temple);
-        temple.activeSelf = false;
+        fixture.TempleScreen = GameObject.CreatePath(PrestigeFixture.Temple);
+        fixture.TempleScreen.activeSelf = false;
         var open = GameObject.CreatePath(PrestigeFixture.Info + "/openEmpowerButton").AddComponent<Button>();
         GameObject.CreatePath(PrestigeFixture.Temple + "/closeButton").AddComponent<Button>().onClick.Action =
-            () => temple.activeSelf = false;
+            () => fixture.TempleScreen.activeSelf = false;
         fixture.Popup = GameObject.CreatePath(PrestigeFixture.PopupPath);
         fixture.Popup.activeSelf = false;
         open.onClick.Action = () => { fixture.Popup.activeSelf = true; fixture.OnOpen?.Invoke(); };
@@ -244,6 +276,22 @@ internal static class Program
             "A confirmed prestige was not reported.");
     }
 
+    private static void PrestigeTimerFallback()
+    {
+        var fixture = SetupPrestige(stalled: false);
+        ((MelonPreferences_Entry<int>)fixture.Settings["stall_minutes"]).Value = 30;
+        ((MelonPreferences_Entry<string>)fixture.Settings["best_stage_at"]).Value =
+            DateTime.Now.AddMinutes(-29).ToString("o");
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0, "The 30-minute fallback triggered before its delay elapsed.");
+
+        ((MelonPreferences_Entry<string>)fixture.Settings["best_stage_at"]).Value =
+            DateTime.Now.AddMinutes(-31).ToString("o");
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.ConfirmClicks == 1,
+            "The 30-minute fallback did not trigger after the delay elapsed.");
+    }
+
     private static void PrestigeTaskSafety()
     {
         var fixture = SetupPrestige();
@@ -256,7 +304,8 @@ internal static class Program
         Run(fixture.Task.Execute());
         Check(fixture.FreeClicks == 0, "An unreadable run age triggered prestige.");
 
-        fixture = SetupPrestige();
+        fixture = SetupPrestige(stalled: false);
+        fixture.TempleScreen.activeSelf = true;
         fixture.Popup.activeSelf = true;
         Run(fixture.Task.Execute());
         Check(fixture.Popup.activeSelf && fixture.FreeClicks == 0, "An existing preview was modified.");
@@ -297,6 +346,21 @@ internal static class Program
             "Unconfirmed prestige clicked another control or reported success.");
     }
 
+    private static void PrestigeBossRetryTrigger()
+    {
+        var fixture = SetupPrestige(stalled: false);
+        ((MelonPreferences_Entry<int>)fixture.Settings["boss_attempts"]).Value = 2;
+        fixture.TempleScreen.activeSelf = true;
+        fixture.Popup.activeSelf = true;
+        BossAttemptTracker.RecordAttempt(100);
+        BossAttemptTracker.RecordAttempt(100);
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.PaidClicks == 0 && fixture.ConfirmClicks == 1,
+            "The boss retry trigger did not use the already-open free preview.");
+        Check(TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
+            "Boss-triggered prestige was not confirmed.");
+    }
+
     private static void PrestigeTaskGrowth()
     {
         var fixture = SetupPrestige(stalled: false);
@@ -321,6 +385,33 @@ internal static class Program
         }
         Check(fixture.PaidClicks == 0 && fixture.ConfirmClicks == 1,
             "The growth trigger did not use the verified free completion flow.");
+    }
+
+    private static void BattlePassNoRewardScan()
+    {
+        Check(!BattlePassPolicy.ShouldScanRewards(notificationFound: true, notificationVisible: false),
+            "A hidden rewards marker still scanned the reward track.");
+        Check(BattlePassPolicy.ShouldScanRewards(notificationFound: true, notificationVisible: true),
+            "A visible rewards marker skipped the reward scan.");
+        Check(BattlePassPolicy.ShouldScanRewards(notificationFound: false, notificationVisible: false),
+            "A missing rewards marker incorrectly skipped the conservative scan.");
+    }
+
+    private static void LiberationDifficultySelection()
+    {
+        Check(LiberationDifficultyPolicy.TryGetTargets("Easy", out var easy) &&
+              easy.Length == 1 && easy[0] == 1, "Easy did not target one star.");
+        Check(LiberationDifficultyPolicy.TryGetTargets("Normal", out var normal) &&
+              normal.Length == 1 && normal[0] == 2, "Normal did not target two stars.");
+        Check(LiberationDifficultyPolicy.TryGetTargets("Both", out var both) &&
+              both.Length == 2 && both[0] == 1 && both[1] == 2, "Both did not target Easy then Normal.");
+        Check(!LiberationDifficultyPolicy.TryGetTargets("Medium", out _), "An unsupported difficulty was accepted.");
+        Check(LiberationDifficultyPolicy.TryGetStep(1, 2, out var forward) && forward == 1,
+            "The selector did not advance from one to two stars.");
+        Check(LiberationDifficultyPolicy.TryGetStep(2, 1, out var backward) && backward == -1,
+            "The selector did not retreat from two to one star.");
+        Check(!LiberationDifficultyPolicy.TryGetStep(3, 1, out _),
+            "An unsupported star count was accepted.");
     }
 
     private static void PriorityDecisions()

@@ -886,6 +886,15 @@ public class BattlePassTask : BotTask
         if (!Ui.Visible(B)) yield break;
         yield return Ui.Click(B + "/submenuButtons/rewards", 1.5f);
 
+        var rewardNotification = B + "/submenuButtons/rewards/notification";
+        var notificationFound = Ui.Find(rewardNotification) != null;
+        if (!BattlePassPolicy.ShouldScanRewards(notificationFound, Ui.Visible(rewardNotification)))
+        {
+            Logger.Info("[BattlePass] No free rewards are ready; skipped scrolling the reward track.");
+            yield return Ui.Click(B + "/closeButton");
+            yield break;
+        }
+
         var rect = Ui.Find(Scroll)?.GetComponent<UnityEngine.UI.ScrollRect>();
         var content = Ui.Find(Scroll + "/viewport/content/layout");
         var claimed = 0;
@@ -1291,18 +1300,28 @@ public class TalentsTask : BotTask
 public class BossRetryTask : BotTask
 {
     private const string Fight = P.Battle + "/rightSideUI/fightBossButton";
+    private const string Stage = P.Battle + "/topSideUI/stageProgression/currentStage/stageNum";
     private MelonPreferences_Entry<int> _minutes;
     protected override bool EnabledByDefault => true;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _minutes = c.CreateEntry("every_minutes", 4, "Minutes Between Tries", "How long to farm before trying the boss again.");
+        _minutes = c.CreateEntry("every_minutes", 1, "Minutes Between Tries", "How long to farm before trying the boss again.");
     }
 
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddMinutes(Math.Max(1, _minutes.Value));
         if (!Ui.Clickable(Fight)) yield break;
-        yield return Ui.Click(Fight, 1f, $"fight boss at stage {Ui.Text(P.Battle + "/topSideUI/stageProgression/currentStage/stageNum")}");
+        var stageValue = Ui.NumberAt(Stage);
+        var stage = stageValue > 0 && stageValue <= int.MaxValue && Math.Truncate(stageValue) == stageValue
+            ? (int)stageValue
+            : 0;
+        yield return Ui.Click(Fight, 1f, $"fight boss at stage {Ui.Text(Stage)}");
+        if (stage > 0)
+        {
+            var attempts = BossAttemptTracker.RecordAttempt(stage);
+            Logger.Info($"[Boss Retry] Attempt {attempts} at stage {stage}.");
+        }
     }
 }

@@ -70,15 +70,15 @@ Every feature can be switched on or off in the F1 panel.
 
 | Area | Automated |
 |------|-----------|
-| **Daily** | Daily rewards, check-in, free shop items, mail rewards, daily and weekly quests, battle pass free rewards, opens your chests (keeps the ones you choose) |
+| **Daily** | Daily rewards, check-in, free shop items, mail rewards, daily and weekly quests, battle pass free rewards (skips empty-track scans), opens your chests (keeps the ones you choose) |
 | **Town** | Firestone research (your priority order), meteorite research, alchemist, Oracle rituals and blessings, engineer tools, guardian training and enlightenment, exotic merchant (sell, upgrades, emblem chests), tavern (beer to tokens, cards), Scarab's game, Pharaoh's vault and milestones |
 | **Guild** | Expeditions, free pickaxes, guild crystal, Chaos Rift (hits, eclipse stones, tomes, holy upgrades for the guardians you choose), personal tree, hero awakening, forbidden knowledge |
-| **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (keeps going after each win) |
+| **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (Easy 1 star, Normal 2 stars, or both) |
 | **Battle** | Arena (chooses the lowest readable opponent power within your limit and verifies the preview), war machine levels and blueprints for any machines you pick or your active squad, switches to your arena squad for arena fights and back, clicks coal miners and double-beer dragons the moment they appear |
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
-| **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
-| **Prestige** | Free Temple prestige after a stalled run or two slow growth samples, subject to your minimum boost and run age; status and controls have their own F1 tab |
+| **Progress** | Retries the stage boss after a lost fight; repeated attempts at one stage can trigger a free prestige |
+| **Prestige** | Free Temple prestige when growth efficiency drops, after repeated boss attempts at one stage, or when the fallback stall timer expires; status and controls have their own F1 tab |
 
 ### Arena safety
 
@@ -106,13 +106,15 @@ for the file format.
 ### Prestige and upgrade priorities
 
 Open **F1 > Prestige** to enable the task and see its last decision, run reading, and check time. The
-default stall trigger is three hours without a new highest stage. The optional growth trigger compares
-two hourly samples with this run's average boost growth (75% by default; 0 disables this trigger).
-Both triggers respect your minimum gold boost and run age. The growth rule is an estimate, not a
-guaranteed optimum. If the run age, boost format, or verified free control cannot be read, the bot
-does not prestige; it never chooses the paid 2x option. The stall timer starts fresh when a run has
-not yet been tracked or its age changes unexpectedly. Similar-age account switches cannot always
-be identified, so turn prestige off when switching accounts until you have checked its settings.
+growth efficiency is the primary trigger: two hourly samples below the configured share of the run's
+average boost growth (75% by default) can prestige without waiting for a timer. If growth does not
+trigger, repeated boss attempts at the same stage can trigger next (3 by default; choose 2–5). The
+no-progress timer is the final fallback, selectable as 30 minutes or 1 hour. All triggers still respect
+your minimum gold boost and run age. The growth rule is an estimate, not a guaranteed optimum. If the
+run age, boost format, or verified free control cannot be read, the bot does not prestige; it never
+chooses the paid 2x option. The fallback timer starts fresh when a run has not yet been tracked or its
+age changes unexpectedly. Similar-age account switches cannot always be identified, so turn prestige
+off when switching accounts until you have checked its settings.
 
 Priority chips show their order as numbers. Tap an item to remove it and tap it again to add it at the
 end. Firestone Research, Personal Tree, Meteorite Research, Forbidden Knowledge, Talents, Oracle
