@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.43 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.44 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -40,6 +40,8 @@ buying crystals. Both Auto activities turn off when finished or when the bot sto
 may be split across visits to respect Max Task Runtime.
 Compatible town and guild tasks reuse their hub. Popup cleanup remains, and the bot returns to
 battle for battle tasks and idle upgrade windows. AutoUpgrade is a separate worker, not the last task.
+With Balance selected, it completes its short pass over the selected slots before the next task starts;
+Focus still pauses as soon as a task is approaching.
 Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
 Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,

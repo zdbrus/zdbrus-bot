@@ -30,6 +30,7 @@ public static class AutoUpgrade
     private static object _closeMenuHandle;
     private static bool _sceneReady;
     private static bool _isInitialized;
+    private static bool _balancedSweepActive;
     private static MelonPreferences_Entry<KeyCode> _shortcutKey;
     private static MelonPreferences_Entry<bool> _isEnabled;
     private static MelonPreferences_Entry<string> _upgradeTargetSlots;
@@ -44,6 +45,12 @@ public static class AutoUpgrade
     ///     purpose: it is frequent and would make the indicator flicker.
     /// </summary>
     public static bool IsActive => IsEnabled && _isRunning && _autoUpgradeRoutineHandle != null;
+    public static bool IsBalancedCycleActive => _balancedSweepActive;
+
+    public static IEnumerator WaitForBalancedCycle()
+    {
+        while (_balancedSweepActive) yield return null;
+    }
 
     private static bool IsShortcutDisabled => _shortcutKey?.Value == KeyCode.None;
 
@@ -109,8 +116,8 @@ public static class AutoUpgrade
             "\nSLOT IDs ARE ZERO-BASED and range from 0 to 6. " +
             "\nORIENTATION: Slot numbering follows the list from top to bottom. " +
             "\nSLOT MAP: 0 = Specials, 1 = Guardian, 2 to 6 = Heroes 1 to 5. " +
-            "\nTASK PRIORITY: Main bot tasks always have priority over AutoUpgrade. " +
-            "\nAUTO PAUSE/RESUME: When a main task is approaching, AutoUpgrade pauses about 30 seconds before that task runs, allows the task to execute, and then resumes automatically. " +
+            "\nTASK PRIORITY: Main bot tasks have priority over AutoUpgrade. " +
+            "\nAUTO PAUSE/RESUME: When a main task is approaching, Balanced finishes its short pass across selected slots before that task starts. Focus pauses as soon as a task is approaching. " +
             "\nHOW TO USE: In the panel, toggle the buttons to pick the targets. 'Specials' = slot 0, " +
             "'Guardian' = slot 1 and '1' to '5' = slots 2 to 6. " +
             "\nThe same choice is stored as comma-separated slot IDs, and their order is the priority. " +
@@ -238,6 +245,7 @@ public static class AutoUpgrade
         StopCleanup();
         var wasRunning = _isRunning;
         _isRunning = false;
+        _balancedSweepActive = false;
         _pausedSince = null;
         _activeHold?.CancelHold();
         _activeHold = null;
@@ -282,8 +290,25 @@ public static class AutoUpgrade
         }
     }
 
-    /// <summary>One pass over the upgrade buttons. The pause is checked outside, in the loop that owns it.</summary>
+    /// <summary>One bounded upgrade burst. Main tasks wait for a balanced burst to finish.</summary>
     private static IEnumerator UpgradeCycle()
+    {
+        if (!UncappedUpgradePolicy.TryParse(_priorityMode?.Value, out var priorityMode))
+        {
+            WarnRarely("the priority strategy is invalid; select Balance or Focus first in F1");
+            yield break;
+        }
+
+        _balancedSweepActive = priorityMode == UncappedUpgradeMode.Balanced;
+        try { yield return RunUpgradeCycle(priorityMode); }
+        finally
+        {
+            _activeHold = null;
+            _balancedSweepActive = false;
+        }
+    }
+
+    private static IEnumerator RunUpgradeCycle(UncappedUpgradeMode priorityMode)
     {
         if (!Upgrades.IsVisible)
         {
@@ -314,20 +339,15 @@ public static class AutoUpgrade
             yield break;
         }
 
-        if (!UncappedUpgradePolicy.TryParse(_priorityMode?.Value, out var priorityMode))
-        {
-            WarnRarely("the priority strategy is invalid; select Balance or Focus first in F1");
-            yield break;
-        }
 
         var visibleButtons = 0;
         foreach (var buyUpgradeBtn in buttons)
         {
-            if (BotManager.ShouldPauseAutoUpgrade()) break; // the loop closes the menu right after
+            if (ShouldStopSweep(priorityMode)) break;
             if (!buyUpgradeBtn.IsVisible()) continue;
             visibleButtons++;
             var limit = priorityMode == UncappedUpgradeMode.Focus ? FocusBurstLimit : 1;
-            for (var attempt = 0; attempt < limit && !BotManager.ShouldPauseAutoUpgrade() &&
+            for (var attempt = 0; attempt < limit && !ShouldStopSweep(priorityMode) &&
                  buyUpgradeBtn.IsVisible() && buyUpgradeBtn.IsClickable(); attempt++)
             {
                 _activeHold = buyUpgradeBtn;
@@ -340,7 +360,14 @@ public static class AutoUpgrade
 
         if (visibleButtons == 0 && !BotManager.ShouldPauseAutoUpgrade())
             WarnRarely("no selected upgrade buttons are visible");
+        else if (visibleButtons > 0 && _balancedSweepActive &&
+                 BotManager.ShouldPauseAutoUpgrade() && !BotManager.IsTaskExecuting)
+            Logger.Info($"[AutoUpgrade] Balanced pass finished across {visibleButtons} visible slot(s) before the next task.");
     }
+
+    private static bool ShouldStopSweep(UncappedUpgradeMode priorityMode) =>
+        BotManager.IsTaskExecuting ||
+        (priorityMode == UncappedUpgradeMode.Focus && BotManager.ShouldPauseAutoUpgrade());
 
     /// <summary>
     ///     What the guard does when a step throws: the coroutine is already ending, so the state that drives the
@@ -350,6 +377,7 @@ public static class AutoUpgrade
     private static void AbortAfterFailure()
     {
         _isRunning = false;
+        _balancedSweepActive = false;
         _autoUpgradeRoutineHandle = null;
         _activeHold?.CancelHold();
         _activeHold = null;

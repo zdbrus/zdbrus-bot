@@ -131,6 +131,8 @@ Large balances may be split across visits to respect **Max Task Runtime**.
 Compatible tasks in the same town or guild reuse that hub, while still closing finished activities
 and blocking popups. The bot returns to battle for battle tasks and idle upgrade windows;
 AutoUpgrade runs separately, not as the last task of a fixed cycle.
+With **Balance** selected, AutoUpgrade finishes its short pass across the selected upgrade slots before
+the next task starts. **Focus** still pauses as soon as a task is approaching.
 
 Priority chips show their order as numbers. Tap an item to remove it and tap it again to add it at the
 end. Firestone Research, Personal Tree, Meteorite Research, Forbidden Knowledge, Talents, Oracle

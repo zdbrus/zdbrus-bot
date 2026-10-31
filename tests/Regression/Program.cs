@@ -895,6 +895,28 @@ if ($Mode -eq 'blocked') {
             { list + "/heroSlot/lvlUpButton", list + "/customUpgrade/buyButton" }),
             "Balanced spending ignored the chosen order.");
 
+        order.Value = "2,1,0";
+        BotManager.PauseAutoUpgrade = false;
+        ExecuteEvents.OnDown = _ =>
+        {
+            Check(AutoUpgrade.IsBalancedCycleActive, "Balanced cycle was not held open through its button pass.");
+            BotManager.PauseAutoUpgrade = true;
+        };
+        RunCycle("balanced");
+        Check(ExecuteEvents.Targets.SequenceEqual(new[]
+            { list + "/heroSlot/lvlUpButton", list + "/guardianSlot/lvlUpButton",
+                list + "/customUpgrade/buyButton" }),
+            "An approaching task interrupted the balanced pass after its first target.");
+        Check(Logger.Messages.Any(message => message.Contains("Balanced pass finished")),
+            "The completed handoff pass was not reported.");
+        ExecuteEvents.OnDown = null;
+        BotManager.PauseAutoUpgrade = false;
+
+        BotManager.IsTaskExecuting = true;
+        RunCycle("balanced");
+        Check(ExecuteEvents.Targets.Count == 0, "A balanced pass continued after the task had started.");
+        BotManager.IsTaskExecuting = false;
+
         RunCycle("invalid");
         Check(ExecuteEvents.Targets.Count == 0, "Invalid strategy spent currency.");
         Check(special.interactable, "Fixture changed the lower-priority button.");

@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.44 (2026-10-30)
+- AutoUpgrade now finishes its short balanced pass across selected slots before handing the game back to the main bot tasks. A task no longer interrupts the pass after only the first few upgrades.
+
 ## 0.7.43 (2026-10-30)
 - Fixed Temple prestige cancelling itself when opening the Temple hides the battle HUD. Stage checks and boss retry tracking now read live game data, including the final safety check and reset confirmation; missing or changed data still prevents a reset.
 - Prestige cancellation logs now include the before/after stage, boost and run-age readings.

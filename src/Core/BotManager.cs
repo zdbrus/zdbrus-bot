@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using Firebot.BotActions;
 using Firebot.Core.Tasks;
 using Firebot.Utilities;
 using MelonLoader;
@@ -39,7 +40,7 @@ public static class BotManager
     public static bool IsRunning { get; private set; }
 
     internal static IReadOnlyList<BotTask> AllTasks => Tasks;
-    private static bool IsTaskExecuting { get; set; }
+    public static bool IsTaskExecuting { get; private set; }
 
     /// <summary>True while a task is in the middle of running (the planner waits for this before it clicks).</summary>
     public static bool IsBusy => IsRunning && IsTaskExecuting;
@@ -256,6 +257,12 @@ public static class BotManager
 
             if (readyTask != null)
             {
+                if (AutoUpgrade.IsBalancedCycleActive)
+                {
+                    yield return AutoUpgrade.WaitForBalancedCycle();
+                    continue;
+                }
+
                 IsTaskExecuting = true;
                 _executingTask = readyTask;
                 _lastStepAt = DateTime.Now;
