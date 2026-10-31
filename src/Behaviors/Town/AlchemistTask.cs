@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections;
 using System.Linq;
+using Firebot.Behaviors.Extra;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Town.Alchemist;
 using Firebot.GameModel.Shared;
 using Firebot.Infrastructure;
 using MelonLoader;
 using UnityEngine;
+using Logger = Firebot.Core.Logger;
 
 namespace Firebot.Behaviors.Town;
 
@@ -14,6 +17,10 @@ public class AlchemistTask : BotTask
 {
     private MelonPreferences_Entry<string> _resourceType;
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.ExperimentsBtn;
+    protected override bool UseScheduledTime => true;
+
+    private const string AlchemistMenu = P.Menus + "/Alchemist";
+    private const string ExperimentsMenu = AlchemistMenu + "/submenus/bg/experimentsSubmenu";
 
     public override int MinimumLevel => LevelRequirements.Alchemist;
 
@@ -60,7 +67,26 @@ public class AlchemistTask : BotTask
 
     public override IEnumerator Execute()
     {
-        yield return Notifications.Experiments;
+        if (!Ui.Visible(ExperimentsMenu))
+        {
+            if (Ui.Visible(NotificationPath))
+            {
+                yield return Notifications.Experiments;
+                yield return Ui.WaitFor(ExperimentsMenu, 2f);
+            }
+
+            if (!Ui.Visible(ExperimentsMenu))
+                yield return Ui.OpenTownSubmenu("alchemist", ExperimentsMenu,
+                    AlchemistMenu + "/submenus/bg/submenuButtons/experiments");
+        }
+
+        if (!Ui.Visible(ExperimentsMenu))
+        {
+            Logger.Warning("[Alchemist] Could not open the experiments screen; retrying in one hour.");
+            NextRunTime = DateTime.Now.AddHours(1);
+            if (Ui.Visible(AlchemistMenu)) yield return Alchemist.Close;
+            yield break;
+        }
 
         yield return new WaitForSeconds(3);
         var experiments = new Experiments();
@@ -81,7 +107,8 @@ public class AlchemistTask : BotTask
 
         if (startableResources.Length == 0)
         {
-            NextRunTime = DateTime.Now.AddHours(1);
+            var nextExperiment = experiments.NextRunTime(Experiments.ValidResourceIds);
+            NextRunTime = nextExperiment < DateTime.Now.AddHours(1) ? nextExperiment : DateTime.Now.AddHours(1);
             Debug("[INFO] No configured resources are available for a new experiment. " +
                   "Retrying resource check in one hour.");
             yield return Alchemist.Close;
@@ -90,7 +117,7 @@ public class AlchemistTask : BotTask
 
         yield return new WaitForSeconds(1);
         yield return experiments.Start(startableResources);
-        NextRunTime = experiments.NextRunTime(resources);
+        NextRunTime = experiments.NextRunTime(Experiments.ValidResourceIds);
         yield return Alchemist.Close;
     }
 }

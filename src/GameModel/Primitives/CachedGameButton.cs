@@ -12,6 +12,9 @@ public class CachedGameButton : GameButton
     private static readonly System.Collections.Generic.HashSet<string> LoggedMissing = new();
 
     private Transform _cachedRoot;
+    private GameObject _heldTarget;
+    private PointerEventData _heldData;
+    private bool _holdCancelled;
 
     public CachedGameButton(string path = null, GameElement parent = null, Transform transform = null)
         : base(path, parent, transform) { }
@@ -99,14 +102,42 @@ public class CachedGameButton : GameButton
             yield break;
         }
 
-        var eventData = new PointerEventData(eventSystem);
+        var eventData = new PointerEventData(eventSystem) { button = PointerEventData.InputButton.Left };
+        var target = button.gameObject;
+        _heldTarget = target;
+        _heldData = eventData;
+        _holdCancelled = false;
 
-        ExecuteEvents.Execute(button.gameObject, eventData, ExecuteEvents.pointerDownHandler);
+        try
+        {
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerDownHandler);
+            var startTime = Time.unscaledTime;
+            while (!_holdCancelled && button != null && target != null && target.activeInHierarchy &&
+                   button.enabled && button.interactable && Time.unscaledTime - startTime < maxSeconds)
+                yield return null;
+        }
+        finally
+        {
+            ReleaseHold();
+        }
 
-        // Unscaled time, unlike the waits around it: this is a deadline, not pacing. On Time.time, a stopped
-        // game clock would leave it under its limit forever and the hold would never end.
-        var startTime = Time.unscaledTime;
-        while (button != null && button.enabled && button.interactable && Time.unscaledTime - startTime < maxSeconds)
-            yield return null;
+        if (!_holdCancelled && button != null && target != null && button.enabled &&
+            button.interactable && target.activeInHierarchy)
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerClickHandler);
+    }
+
+    public void CancelHold()
+    {
+        _holdCancelled = true;
+        ReleaseHold();
+    }
+
+    private void ReleaseHold()
+    {
+        var target = _heldTarget;
+        var data = _heldData;
+        _heldTarget = null;
+        _heldData = null;
+        if (target != null && data != null) ExecuteEvents.Execute(target, data, ExecuteEvents.pointerUpHandler);
     }
 }

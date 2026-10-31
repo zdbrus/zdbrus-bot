@@ -9,6 +9,7 @@ using Firebot.Infrastructure;
 using Firebot.Utilities;
 using MelonLoader;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using Logger = Firebot.Core.Logger;
 
 namespace Firebot.BotActions;
@@ -18,10 +19,12 @@ public static class AutoUpgrade
     private const float HoldPerButtonSeconds = 0.5f;
     private const float GapBetweenButtonsSeconds = 0.5f;
     private const float IdlePollSeconds = 0.5f;
+    private const int FocusBurstLimit = 20;
 
     private static readonly WaitForSeconds GapBetweenButtonsWait = new(GapBetweenButtonsSeconds);
     private static readonly WaitForSeconds IdlePollWait = new(IdlePollSeconds);
     private static readonly List<CachedGameButton> ButtonsBuffer = new();
+    private static CachedGameButton _activeHold;
     private static bool _isRunning;
     private static object _autoUpgradeRoutineHandle;
     private static bool _isInitialized;
@@ -29,6 +32,7 @@ public static class AutoUpgrade
     private static MelonPreferences_Entry<bool> _isEnabled;
     private static MelonPreferences_Entry<string> _upgradeTargetSlots;
     private static MelonPreferences_Entry<string> _upgradeMode;
+    private static MelonPreferences_Entry<string> _priorityMode;
     private static MelonPreferences_Entry<int> _everySeconds;
 
     private static bool IsEnabled => _isEnabled?.Value ?? false;
@@ -79,6 +83,14 @@ public static class AutoUpgrade
             "How many levels each press buys: milestone (up to the next milestone, the best value), max (as many as you can afford), x100, x25, x10 or x1."
         );
 
+        _priorityMode = section.CreateEntry(
+            "priority_mode",
+            "balanced",
+            "Priority Strategy",
+            "Balance upgrades each selected slot in order. Focus first spends only on the first visible " +
+            "selected slot and saves gold for it when it cannot afford another upgrade."
+        );
+
         _everySeconds = section.CreateEntry(
             "every_seconds",
             60,
@@ -99,8 +111,8 @@ public static class AutoUpgrade
             "\nAUTO PAUSE/RESUME: When a main task is approaching, AutoUpgrade pauses about 30 seconds before that task runs, allows the task to execute, and then resumes automatically. " +
             "\nHOW TO USE: In the panel, toggle the buttons to pick the targets. 'Specials' = slot 0, " +
             "'Guardian' = slot 1 and '1' to '5' = slots 2 to 6. " +
-            "\nThe same choice is stored as comma-separated slot IDs, and the .cfg order is the order they are " +
-            "upgraded. The panel writes it in ascending order. " +
+            "\nThe same choice is stored as comma-separated slot IDs, and their order is the priority. " +
+            "In the panel, remove and re-add a slot to place it last. " +
             "\nEXAMPLES: '0,6' = only Specials and Hero 5. '3,1,5' = only slots 3, 1 and 5. " +
             "\nTo upgrade every slot, mark all of them ('0,1,2,3,4,5,6'). " +
             "\nIf empty, AutoUpgrade will upgrade all visible slots. " +
@@ -207,6 +219,7 @@ public static class AutoUpgrade
     public static void AutoStart()
     {
         if (!IsEnabled || _isRunning) return;
+        _pausedSince = null;
         _isRunning = true;
         _autoUpgradeRoutineHandle = MelonCoroutines.Start(UpgradeLoop());
         Logger.Info("AutoUpgrade started.");
@@ -217,6 +230,7 @@ public static class AutoUpgrade
         if (IsShortcutDisabled) return;
         if (!IsEnabled) return;
         if (_isRunning) return;
+        _pausedSince = null;
         _isRunning = true;
         _autoUpgradeRoutineHandle = MelonCoroutines.Start(UpgradeLoop());
         Logger.Debug("AutoUpgrade started.");
@@ -226,6 +240,9 @@ public static class AutoUpgrade
     {
         if (!_isRunning) return;
         _isRunning = false;
+        _pausedSince = null;
+        _activeHold?.CancelHold();
+        _activeHold = null;
         if (_autoUpgradeRoutineHandle != null) MelonCoroutines.Stop(_autoUpgradeRoutineHandle);
         _autoUpgradeRoutineHandle = null;
         MelonCoroutines.Start(CloseUpgradesMenu());
@@ -284,13 +301,38 @@ public static class AutoUpgrade
             yield break;
         }
 
+        if (EventSystem.current == null)
+        {
+            WarnRarely("the game's input event system is unavailable");
+            yield break;
+        }
+
+        if (!UncappedUpgradePolicy.TryParse(_priorityMode?.Value, out var priorityMode))
+        {
+            WarnRarely("the priority strategy is invalid; select Balance or Focus first in F1");
+            yield break;
+        }
+
+        var visibleButtons = 0;
         foreach (var buyUpgradeBtn in buttons)
         {
             if (BotManager.ShouldPauseAutoUpgrade()) break; // the loop closes the menu right after
-
-            yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);
-            yield return GapBetweenButtonsWait;
+            if (!buyUpgradeBtn.IsVisible()) continue;
+            visibleButtons++;
+            var limit = priorityMode == UncappedUpgradeMode.Focus ? FocusBurstLimit : 1;
+            for (var attempt = 0; attempt < limit && !BotManager.ShouldPauseAutoUpgrade() &&
+                 buyUpgradeBtn.IsVisible() && buyUpgradeBtn.IsClickable(); attempt++)
+            {
+                _activeHold = buyUpgradeBtn;
+                yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);
+                _activeHold = null;
+                yield return GapBetweenButtonsWait;
+            }
+            if (!UncappedUpgradePolicy.ContinueAfterTarget(priorityMode, true)) break;
         }
+
+        if (visibleButtons == 0 && !BotManager.ShouldPauseAutoUpgrade())
+            WarnRarely("no selected upgrade buttons are visible");
     }
 
     /// <summary>
@@ -302,6 +344,8 @@ public static class AutoUpgrade
     {
         _isRunning = false;
         _autoUpgradeRoutineHandle = null;
+        _activeHold?.CancelHold();
+        _activeHold = null;
 
         // Stop() promises the upgrades menu is not left open, and the loop that would have closed it is gone.
         // Starting a coroutine here is safe, unlike stopping this one from the inside.

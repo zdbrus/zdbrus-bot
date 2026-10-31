@@ -1,5 +1,8 @@
-﻿using System.Collections;
+using System;
+using System.Collections;
 using System.Linq;
+using Firebot.Behaviors.Extra;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Town.Library.FirestoneResearch;
 using Firebot.GameModel.Shared;
@@ -10,12 +13,35 @@ namespace Firebot.Behaviors.Town;
 
 public class FirestoneResearchTask : BotTask
 {
+    private enum Attempt { Unavailable, Started, Blocked }
     private MelonPreferences_Entry<string> _researchPriority;
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.FirestoneResearchBtn;
+    protected override bool UseScheduledTime => true;
+
+    private const string Library = P.Menus + "/Library";
+    private const string Research = Library + "/submenus/firestoneResearch";
 
     public override IEnumerator Execute()
     {
-        yield return Notifications.FirestoneResearch;
+        if (!Ui.Visible(Research))
+        {
+            if (Ui.Visible(NotificationPath))
+            {
+                yield return Notifications.FirestoneResearch;
+                yield return Ui.WaitFor(Research, 2f);
+            }
+
+            if (!Ui.Visible(Research))
+                yield return Ui.OpenTownSubmenu("library", Research, Library + "/submenuButtons/firestoneResearch");
+        }
+
+        if (!Ui.Visible(Research))
+        {
+            Logger.Warning("[Firestone Research] Could not open the research screen; retrying in one hour.");
+            NextRunTime = DateTime.Now.AddHours(1);
+            if (Ui.Visible(Library)) yield return Ui.Click(Library + "/closeButton");
+            yield break;
+        }
 
         var panel = new ResearchPanel();
         yield return panel.Claim();
@@ -27,17 +53,57 @@ public class FirestoneResearchTask : BotTask
             yield break;
         }
 
-        yield return RunSelection();
+        var blocked = false;
+        yield return RunSelection(value => blocked = value);
         NextRunTime = panel.NextRunTime();
+        if (blocked && NextRunTime > DateTime.Now.AddMinutes(15))
+            NextRunTime = DateTime.Now.AddMinutes(15);
     }
 
-    private IEnumerator SelectWithPreview(Node node, int index)
+    private IEnumerator SelectWithPreview(Node node, int? index, Action<Attempt> result)
     {
-        yield return node.Select(index);
-        yield return TryStartPreview();
+        if (Preview.IsVisible)
+        {
+            var closed = false;
+            yield return Preview.Close(value => closed = value);
+            if (!closed)
+            {
+                Logger.Warning("[Firestone Research] Existing preview could not be closed; no research was started.");
+                result(Attempt.Blocked);
+                yield break;
+            }
+        }
+
+        var selection = ResearchSelectionResult.Failed;
+        if (index.HasValue)
+            yield return node.Select(index.Value, value => selection = value);
+        else
+            yield return node.SelectAny(value => selection = value);
+
+        var attempt = selection == ResearchSelectionResult.Unavailable ? Attempt.Unavailable : Attempt.Blocked;
+        if (selection == ResearchSelectionResult.Selected && Preview.IsUnlocked && !Preview.IsMaxed)
+        {
+            var started = false;
+            yield return Preview.Start(value => started = value);
+            attempt = started ? Attempt.Started : Attempt.Blocked;
+        }
+        else if (selection == ResearchSelectionResult.Selected)
+            attempt = Attempt.Unavailable;
+
+        if (Preview.IsVisible)
+        {
+            var closed = false;
+            yield return Preview.Close(value => closed = value);
+            if (!closed)
+            {
+                Logger.Warning("[Firestone Research] Preview did not close; stopping selection.");
+                attempt = Attempt.Blocked;
+            }
+        }
+        result(attempt);
     }
 
-    private IEnumerator RunSelection()
+    private IEnumerator RunSelection(Action<bool> blocked)
     {
         var priority = GetResearchPriority();
         var node = new Node();
@@ -54,29 +120,29 @@ public class FirestoneResearchTask : BotTask
                 foreach (var priorityIndex in priority)
                     if (int.TryParse(priorityIndex, out var index))
                     {
-                        yield return SelectWithPreview(node, index);
-
-                        if (ResearchPanel.HasEmptySlot) continue;
-
+                        var attempt = Attempt.Unavailable;
+                        yield return SelectWithPreview(node, index, value => attempt = value);
+                        if (attempt == Attempt.Blocked)
+                        {
+                            blocked(true);
+                            yield break;
+                        }
+                        if (attempt != Attempt.Started) continue;
                         started = true;
                         break;
                     }
 
             if (started || !ResearchPanel.HasEmptySlot) continue;
-            yield return SelectAnyWithPreview(node);
-            if (ResearchPanel.HasEmptySlot) break;
+            var fallback = Attempt.Unavailable;
+            yield return SelectWithPreview(node, null, value => fallback = value);
+            if (fallback == Attempt.Blocked)
+            {
+                blocked(true);
+                yield break;
+            }
+            if (fallback != Attempt.Started) break;
         }
-    }
-
-    private IEnumerator SelectAnyWithPreview(Node node)
-    {
-        yield return node.SelectAny();
-        yield return TryStartPreview();
-    }
-
-    private IEnumerator TryStartPreview()
-    {
-        if (Preview.IsUnlocked && !Preview.IsMaxed) yield return Preview.Start;
+        blocked(false);
     }
 
     protected override void OnConfigure(MelonPreferences_Category category)

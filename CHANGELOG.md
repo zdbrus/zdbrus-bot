@@ -1,11 +1,16 @@
 ﻿# Changelog
 
-## Unreleased
-- Upgrade trees now fill configured tiers in order and stop when the current tier is unaffordable instead of spending on lower tiers. Names and costs stay cached after a purchase, so known nodes are not relearned every run.
-- Meteorite Research now reads its existing priority-chip setting; previously the UI exposed the setting but the task ignored it and defaulted to cheapest/first-found behavior.
-- Personal Tree, Talents and Event Exchange follow the same tier-first behavior.
-- Map Missions waits up to 4 seconds for the free-squad counter after the map opens. Before, with no missions running, it read the counter before it loaded and skipped every new mission start ("Could not read the free-squad counter", issue #3). The warning now logs whether the map was open and the raw counter text.
-- AutoUpgrade now explains when it buys nothing: it warns if it has been paused for 10+ minutes (naming the task holding it), if the upgrades menu does not open, or if no upgrade buttons are found.
+## 0.7.38 (2026-10-30)
+- F1 has a scrolling update notice and Releases button. When Auto Update is on, a separate helper checks for newer releases; the notice explains when to close the game, wait for the updater, and reopen. The installer waits for the game to exit and skips the swap if the game was restarted too early.
+- Prestige has its own F1 tab with the last decision and run reading, exact boost and growth-threshold inputs, and clear disabled/stopped states. Its scheduled check has priority over ordinary tasks.
+- Prestige checks only the observed free empower control, rechecks the run before resetting, supports the game's day/hour/minute/second run timer, rejects unreadable boost or run-age values, and starts fresh for an untracked or discontinuous run. Similar-age account switches cannot always be detected. The growth-rate rule remains an adjustable estimate, not a guaranteed optimum; the paid 2x option is never used.
+- Priority chips now preserve and display the order you choose. Meteorite Research, Personal Tree, Forbidden Knowledge, Talents, Oracle Blessings, Exotic Merchant and War Machines fill available higher tiers before lower tiers; Event Exchange follows its selected order. A purchase cap or an unaffordable higher tier no longer causes those buyers to spend on a lower tier.
+- AutoUpgrade and guardian holy-damage upgrades now offer separate **Balance** and **Focus first** strategies for their uncapped choices. Balance remains the default; Focus first saves for the highest available selected slot or guardian. Both use the chosen order.
+- War-machine blueprint types can be ordered when upgrading all types. The bot opens the relevant workshop or blueprint tab before reading its corresponding currency, and keeps independent retry decisions for the two currencies.
+- The Exotic Merchant reads upgrade names and levels from the game's upgrade components and skips level-locked entries. Other preview-based trees remember discovered names across launches, and verify an already-open preview still matches before spending; prices and completion state are not persisted.
+- Firestone Research selects its documented one-based priority IDs and verifies preview and research-slot changes, including multiple open slots.
+- Task status and persisted schedules now use the actual due time for bubble-based fallback checks. Map Missions, research, Alchemist, Engineer and Warfront use direct navigation where a bubble does not open the required screen; unreadable counters and timers are retried instead of being treated as success.
+- Map Missions waits up to four seconds for the free-squad counter. AutoUpgrade reports common reasons for idle cycles and sends a balanced pointer-down, pointer-up and click sequence, including releasing a held button when stopped. These changes address observed code paths, not a confirmed diagnosis of issue #3's current report.
 
 ## 0.7.37 (2026-10-29)
 - Community Discord server is live: https://discord.gg/U4APWwTa7F (announcements, install help, bug reports, suggestions). Linked from the website, README and release readme. No code changes.

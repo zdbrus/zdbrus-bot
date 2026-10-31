@@ -139,6 +139,13 @@ internal sealed class ConfigEntry
 
     public string Key => $"{Category.Identifier}/{Entry.Identifier}";
 
+    public bool IsOrderedSelection => Key is "event_exchange/priority" or "personal_tree/priority" or
+        "forbidden_knowledge/priority" or "talents/priority" or "meteorite_research/priority" or
+        "firestone_research/research_priority" or "oracle_blessings/priority" or
+        "exotic_merchant/priority" or "war_machine_upgrade/war_machine" or
+        "war_machine_upgrade/blueprint_priority" or "chaos_rift/holy_guardians" or
+        "auto_upgrade/upgrade_target_slots";
+
     public string Label => string.IsNullOrWhiteSpace(Entry.DisplayName) ? Entry.Identifier : Entry.DisplayName;
 
     /// <summary>Text MelonLoader stores as a comment in the .cfg — the tasks use real "\n" breaks.</summary>
@@ -157,6 +164,8 @@ internal sealed class ConfigEntry
 
     public bool ReadBool() => ReadRaw() is bool value && value;
 
+    public int ReadInt() => ReadRaw() is int value ? value : 0;
+
     public float ReadNumber()
     {
         var raw = ReadRaw();
@@ -166,9 +175,8 @@ internal sealed class ConfigEntry
     public string ReadText() => ReadRaw() as string ?? string.Empty;
 
     /// <summary>
-    ///     Ids marked in the current value. Ids outside the declared list are dropped — the same rule
-    ///     AlchemistTask applies when reading the .cfg, so the panel never shows an option the task
-    ///     would ignore.
+    ///     Ids marked in the current value. Ordered priority lists also retain custom names not present
+    ///     in the panel, so editing a known choice does not discard the player's other priorities.
     /// </summary>
     public List<string> ReadSelection()
     {
@@ -179,27 +187,32 @@ internal sealed class ConfigEntry
         foreach (var part in value.Split(','))
         {
             var id = part.Trim();
-            if (id.Length == 0 || selected.Contains(id)) continue;
-
+            if (id.Length == 0) continue;
+            string matched = null;
             foreach (var choice in Choices)
-                if (choice.Id == id)
+                if (string.Equals(choice.Id, id, StringComparison.OrdinalIgnoreCase))
                 {
-                    selected.Add(id);
+                    matched = choice.Id;
                     break;
                 }
+
+            var candidate = matched ?? (IsOrderedSelection ? id : null);
+            if (candidate == null || selected.Exists(x =>
+                    string.Equals(x, candidate, StringComparison.OrdinalIgnoreCase))) continue;
+            selected.Add(candidate);
         }
 
         return selected;
     }
 
     /// <summary>
-    ///     Serializes the selection in declaration order, not in click order, so the .cfg comes out
-    ///     the same regardless of how the user marked the boxes.
+    ///     Serializes ordinary selections in declaration order, and priority selections in the player's order.
     ///     With nothing marked it writes an empty string: exactly the case AlchemistTask treats as
     ///     "no resources" (its test is IsNullOrWhiteSpace, so empty and null land in the same branch).
     /// </summary>
     public string EncodeSelection(List<string> selected)
     {
+        if (IsOrderedSelection) return string.Join(",", selected);
         var parts = new List<string>();
 
         foreach (var choice in Choices)

@@ -82,6 +82,7 @@ internal static class ConfigRegistry
         ["temple_prestige/min_gain_percent"] = new NumberRange(0f, 100000f, true),
         ["temple_prestige/stall_hours"] = new NumberRange(1f, 48f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
+        ["temple_prestige/efficiency_percent"] = new NumberRange(0f, 200f, true),
         ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true),
         ["auto_upgrade/every_seconds"] = new NumberRange(10f, 600f, true),
         ["boss_retry/every_minutes"] = new NumberRange(1f, 60f, true)
@@ -102,6 +103,16 @@ internal static class ConfigRegistry
             new ConfigChoice("x25", "x25"),
             new ConfigChoice("x10", "x10"),
             new ConfigChoice("x1", "x1")
+        },
+        ["auto_upgrade/priority_mode"] = new[]
+        {
+            new ConfigChoice("balanced", "Balance"),
+            new ConfigChoice("focus", "Focus first")
+        },
+        ["chaos_rift/holy_priority_mode"] = new[]
+        {
+            new ConfigChoice("balanced", "Balance"),
+            new ConfigChoice("focus", "Focus first")
         },
         ["magic_quarters/guardian_index"] = new[]
         {
@@ -138,6 +149,66 @@ internal static class ConfigRegistry
     /// </summary>
     private static readonly Dictionary<string, ConfigChoice[]> MultiChoices = new()
     {
+        ["exotic_merchant/priority"] = new[]
+        {
+            new ConfigChoice("Prestigious", "Prestigious"),
+            new ConfigChoice("Firestone Finder", "Firestone Finder"),
+            new ConfigChoice("Raining gold", "Raining gold"),
+            new ConfigChoice("Heroes' damage", "Heroes' damage"),
+            new ConfigChoice("Team bonus", "Team bonus"),
+            new ConfigChoice("All main attributes", "All main attributes"),
+            new ConfigChoice("Firestone effect", "Firestone effect"),
+            new ConfigChoice("Damage specialization", "Damage specialization"),
+            new ConfigChoice("Leadership", "Leadership"),
+            new ConfigChoice("Guardian power", "Guardian power"),
+            new ConfigChoice("Energy Heroes", "Energy Heroes"),
+            new ConfigChoice("Mana Heroes", "Mana Heroes"),
+            new ConfigChoice("Rage Heroes", "Rage Heroes"),
+            new ConfigChoice("Fist fight", "Fist fight"),
+            new ConfigChoice("Magic spells", "Magic spells"),
+            new ConfigChoice("Precision", "Precision"),
+            new ConfigChoice("Skip stage", "Skip stage"),
+            new ConfigChoice("Skip wave", "Skip wave"),
+            new ConfigChoice("Healer specialization", "Healer specialization"),
+            new ConfigChoice("Tank specialization", "Tank specialization"),
+            new ConfigChoice("Attribute health", "Attribute health"),
+            new ConfigChoice("Attribute armor", "Attribute armor")
+        },
+        ["oracle_blessings/priority"] = new[]
+        {
+            new ConfigChoice("Fate", "Fate"),
+            new ConfigChoice("Prestigious", "Prestigious"),
+            new ConfigChoice("Raining gold", "Raining gold"),
+            new ConfigChoice("Damage Specialization", "Damage specialization"),
+            new ConfigChoice("Guardian Power", "Guardian power"),
+            new ConfigChoice("Mana Heroes", "Mana heroes"),
+            new ConfigChoice("Energy Heroes", "Energy heroes"),
+            new ConfigChoice("Rage Heroes", "Rage heroes"),
+            new ConfigChoice("Melee Heroes", "Melee heroes"),
+            new ConfigChoice("Ranged Heroes", "Ranged heroes"),
+            new ConfigChoice("Spellcaster Heroes", "Spellcaster heroes"),
+            new ConfigChoice("Tank Specialization", "Tank specialization"),
+            new ConfigChoice("Healer Specialization", "Healer specialization")
+        },
+        ["firestone_research/research_priority"] = new[]
+        {
+            new ConfigChoice("1", "1: Attribute damage"),
+            new ConfigChoice("2", "2: Attribute health"),
+            new ConfigChoice("3", "3: Attribute armor"),
+            new ConfigChoice("4", "4: Fist fight"),
+            new ConfigChoice("5", "5: Guardian power"),
+            new ConfigChoice("6", "6: Projectiles"),
+            new ConfigChoice("7", "7: Raining gold"),
+            new ConfigChoice("8", "8: Critical loot bonus"),
+            new ConfigChoice("9", "9: Critical loot chance"),
+            new ConfigChoice("10", "10: Weaklings"),
+            new ConfigChoice("11", "11: Expose weakness"),
+            new ConfigChoice("12", "12: Medal of honor"),
+            new ConfigChoice("13", "13: Firestone Finder"),
+            new ConfigChoice("14", "14: Trainer skills"),
+            new ConfigChoice("15", "15: Skip wave"),
+            new ConfigChoice("16", "16: Expeditioner")
+        },
         ["war_machine_upgrade/war_machine"] = new[]
         {
             new ConfigChoice("squad", "Active squad"),
@@ -154,6 +225,12 @@ internal static class ConfigRegistry
             new ConfigChoice("7", "Sentinel"),
             new ConfigChoice("9", "Talos"),
             new ConfigChoice("2", "Thunderclap")
+        },
+        ["war_machine_upgrade/blueprint_priority"] = new[]
+        {
+            new ConfigChoice("damage", "Damage"),
+            new ConfigChoice("health", "Health"),
+            new ConfigChoice("armor", "Armor")
         },
         ["chaos_rift/holy_guardians"] = new[]
         {
@@ -351,15 +428,79 @@ internal static class ConfigRegistry
             "Affects research, missions, experiments and map reset.",
 
         // Tasks
+        ["temple_prestige/enabled"] =
+            "Uses only the free empower option. The bot must also be running.\n" +
+            "The minimum boost and run age apply to both triggers.",
+
+        ["temple_prestige/stall_hours"] =
+            "Consider a reset after this many hours without a new highest stage.\n" +
+            "Both minimums must still be met.",
+
+        ["temple_prestige/min_gain_percent"] =
+            "Minimum extra gold boost on the free empower preview. 0 removes the minimum.\n" +
+            "The bot never resets when the boost is unreadable.",
+
+        ["temple_prestige/min_hours_played"] =
+            "Minimum age of the current run in hours. 0 removes the minimum.\n" +
+            "The bot never resets when the run age is unreadable.",
+
+        ["temple_prestige/efficiency_percent"] =
+            "Two hourly samples below this share of the run's average growth can trigger a reset.\n" +
+            "This is an estimate, not a proven optimum. 0 disables this trigger.",
+
         ["alchemist/resource_type"] =
             "HOW TO USE: Toggle which resources an experiment may use.\n" +
             "'Dragon blood' = 0, 'Strange dust' = 1, 'Exotic coin' = 2.\n" +
             "No resource marked disables the task.",
 
         ["firestone_research/research_priority"] =
-            "HOW TO USE: Type the talent ids in research order, comma-separated.\n" +
-            "Ids 1-16 (top to bottom per tree); unavailable ids are skipped.\n" +
-            "Empty lets the bot pick any available talent.",
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Names describe Tree I; positions also apply to other trees.\n" +
+            "An empty list picks any available research.",
+
+        ["personal_tree/priority"] =
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Fill each available listed upgrade before the next.",
+
+        ["forbidden_knowledge/priority"] =
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Fill each available listed upgrade before the next.",
+
+        ["meteorite_research/priority"] =
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Fill each available listed upgrade before the next.",
+
+        ["talents/priority"] =
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Fill each available listed talent before the next.",
+
+        ["oracle_blessings/priority"] =
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Prioritize the blessings that suit your party.",
+
+        ["exotic_merchant/priority"] =
+            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Level-locked upgrades wait until you can unlock them.",
+
+        ["war_machine_upgrade/war_machine"] =
+            "Numbers show machine order. Tap to remove, then tap to add last.\n" +
+            "Active squad expands to the machines in your current squad.",
+
+        ["war_machine_upgrade/blueprint_priority"] =
+            "When Blueprints is set to All, buy these types in numbered order.\n" +
+            "Tap to remove, then tap to add last; an empty list buys none.",
+
+        ["chaos_rift/holy_guardians"] =
+            "Numbers show guardian priority. Tap to remove, then tap to add last.\n" +
+            "The holy upgrade strategy decides whether lower priorities can spend.",
+
+        ["chaos_rift/holy_priority_mode"] =
+            "Balance checks each selected guardian in order.\n" +
+            "Focus first saves orbs for the first unlocked guardian, even when it cannot afford an upgrade.",
+
+        ["event_exchange/priority"] =
+            "Numbers show buying order. Tap to remove, then tap to add last.\n" +
+            "Unlisted items are not bought.",
 
         ["free_pickaxes/pickaxe_claim_threshold"] =
             "Claim only when at least this many free pickaxes are stored.\n" +
@@ -371,9 +512,12 @@ internal static class ConfigRegistry
             "An empty sequence plays nothing.",
 
         ["auto_upgrade/upgrade_target_slots"] =
-            "HOW TO USE: Toggle the buttons to pick which slots are upgraded.\n" +
-            "'Specials' = slot 0, 'Guardian' = slot 1, '1'-'5' = heroes 1-5.\n" +
-            "Mark all 7 to upgrade every slot; empty also means all."
+            "Numbers show upgrade order. Tap to remove, then tap to add last.\n" +
+            "An empty list uses all slots in screen order.",
+
+        ["auto_upgrade/priority_mode"] =
+            "Balance upgrades selected slots in order each burst.\n" +
+            "Focus first saves gold for the first visible slot, even when it cannot afford an upgrade."
     };
 
     /// <summary>Reads the sections of our file, in the order MelonLoader registered them.</summary>

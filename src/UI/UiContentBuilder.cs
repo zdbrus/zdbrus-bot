@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Firebot.Behaviors.Extra;
 using Firebot.Core;
 using Firebot.UI.Config;
 using Firebot.UI.Widgets;
@@ -47,6 +48,7 @@ internal static class UiContentBuilder
     private static readonly (string Name, string[] Keys)[] TabDefs =
     {
         ("Bot", new[] { "general", "autoskill", "autoupgrade" }),
+        ("Prestige", new[] { "templeprestige", "prestige" }),
         ("Daily", new[] { "dailyrewards", "quests", "mail", "battlepass", "bubblerewards", "openchests" }),
         ("Town", new[] { "alchemist", "firestoneresearch", "meteoriteresearch", "magicquarters", "oracle", "engineertools",
             "exoticmerchant", "tavern", "scarab", "pharaoh" }),
@@ -54,7 +56,7 @@ internal static class UiContentBuilder
             "forbiddenknowledge" }),
         ("Battle", new[] { "mapmissions", "warfront", "liberation", "arena", "warmachine", "bossretry" }),
         ("Events", new[] { "event" }),
-        ("Progress", new[] { "talents", "templeprestige", "prestige" }),
+        ("Progress", new[] { "talents" }),
         ("Other", new string[0])
     };
 
@@ -87,6 +89,12 @@ internal static class UiContentBuilder
     private static int _shownRowId = int.MinValue;
     private static bool _raycasterMissingLogged;
     private static float _lastHoverReport;
+    private static TMP_Text _prestigeState;
+    private static TMP_Text _prestigeDecision;
+    private static TMP_Text _prestigeReading;
+    private static TMP_Text _prestigeChecked;
+    private static ConfigEntry _prestigeEnabled;
+    private static float _lastPrestigeRefresh;
 
     public static void Build(RectTransform rows, GraphicRaycaster raycaster, Action<string, string> describe)
     {
@@ -95,6 +103,12 @@ internal static class UiContentBuilder
         _describe = describe;
         _shownRowId = int.MinValue;
         _lastPointer = Vector3.zero;
+        _prestigeState = null;
+        _prestigeDecision = null;
+        _prestigeReading = null;
+        _prestigeChecked = null;
+        _prestigeEnabled = null;
+        _lastPrestigeRefresh = -1f;
 
         Blocks.Clear();
         SectionTab.Clear();
@@ -115,6 +129,7 @@ internal static class UiContentBuilder
             SectionTab.Add(TabFor(group.Title));
 
             AddSectionHeader(group, section);
+            if (group.Category.Identifier == "temple_prestige") AddPrestigeOverview(group, section);
 
             for (var i = 0; i < group.Entries.Count; i++)
             {
@@ -291,6 +306,50 @@ internal static class UiContentBuilder
         });
     }
 
+    private static void AddPrestigeOverview(ConfigGroup group, int section)
+    {
+        _prestigeEnabled = group.Entries.Find(entry => entry.Entry.Identifier == "enabled");
+        var panel = UiFactory.CreateImage("prestigeStatus", _rows, UiTheme.Detail, false);
+        var header = UiFactory.CreateLabel(panel.transform, "Prestige status", UiTheme.DetailTitleFontSize,
+            UiTheme.Accent, TextAlignmentOptions.Left);
+        UiFactory.PlaceTop(header.rectTransform, 12f, 28f, 15f);
+        header.rectTransform.offsetMax = new Vector2(-200f, header.rectTransform.offsetMax.y);
+
+        _prestigeState = UiFactory.CreateLabel(panel.transform, "", UiTheme.ChipFontSize,
+            UiTheme.Cyan, TextAlignmentOptions.Right);
+        UiFactory.PlaceTop(_prestigeState.rectTransform, 12f, 28f, 15f);
+        _prestigeState.rectTransform.offsetMin = new Vector2(200f, _prestigeState.rectTransform.offsetMin.y);
+
+        _prestigeDecision = UiFactory.CreateLabel(panel.transform, "", UiTheme.DetailFontSize,
+            UiTheme.Text, TextAlignmentOptions.Left, true);
+        UiFactory.PlaceTop(_prestigeDecision.rectTransform, 45f, 32f, 15f);
+
+        _prestigeReading = UiFactory.CreateLabel(panel.transform, "", UiTheme.ChipFontSize,
+            UiTheme.TextMuted, TextAlignmentOptions.Left, true);
+        UiFactory.PlaceTop(_prestigeReading.rectTransform, 82f, 31f, 15f);
+
+        _prestigeChecked = UiFactory.CreateLabel(panel.transform, "", UiTheme.ChipFontSize,
+            UiTheme.TextMuted, TextAlignmentOptions.Left);
+        UiFactory.PlaceTop(_prestigeChecked.rectTransform, 116f, 26f, 15f);
+
+        Blocks.Add(new Block { Rect = panel.rectTransform, Height = 150f, Section = section });
+        RefreshPrestigeStatus();
+    }
+
+    private static void RefreshPrestigeStatus()
+    {
+        if (_prestigeState == null || _prestigeDecision == null || _prestigeReading == null || _prestigeChecked == null)
+            return;
+
+        var enabled = _prestigeEnabled?.ReadBool() ?? false;
+        _prestigeState.text = !enabled ? "OFF" : BotManager.IsRunning ? "ON" : "BOT STOPPED";
+        _prestigeState.color = enabled && BotManager.IsRunning ? UiTheme.Cyan : UiTheme.TextMuted;
+        _prestigeDecision.text = TemplePrestigeTask.LastDecision;
+        _prestigeReading.text = TemplePrestigeTask.LastReading;
+        _prestigeChecked.text = TemplePrestigeTask.LastCheckedAt is DateTime checkedAt
+            ? $"Last check: {checkedAt:MMM d, HH:mm}" : "No check in this session";
+    }
+
     /// <summary>
     ///     Warns about a text the description box cannot show in full. The box truncates with an ellipsis,
     ///     which is silent by nature: the chip rows already warn when their options overflow the column, and
@@ -355,6 +414,12 @@ internal static class UiContentBuilder
     public static void Poll()
     {
         if (_rows == null) return;
+
+        if (Time.unscaledTime - _lastPrestigeRefresh >= 0.5f)
+        {
+            _lastPrestigeRefresh = Time.unscaledTime;
+            RefreshPrestigeStatus();
+        }
 
         if (_raycaster == null)
         {

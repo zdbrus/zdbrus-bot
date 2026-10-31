@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Core\PrestigePolicy.cs" Link="PrestigePolicy.cs" />
+    <Compile Include="..\..\src\Core\PriorityTier.cs" Link="PriorityTier.cs" />
+    <Compile Include="..\..\src\Core\UncappedUpgradePolicy.cs" Link="UncappedUpgradePolicy.cs" />
+    <Compile Include="..\..\src\Core\WarMachineBlueprintPolicy.cs" Link="WarMachineBlueprintPolicy.cs" />
+    <Compile Include="..\..\src\Core\UpdateStatusPolicy.cs" Link="UpdateStatusPolicy.cs" />
+    <Compile Include="..\..\src\Core\UpdateCheck.cs" Link="UpdateCheck.cs" />
+    <Compile Include="..\..\src\Core\Brand.cs" Link="Brand.cs" />
+    <Compile Include="..\..\src\Core\ExoticUpgradePolicy.cs" Link="ExoticUpgradePolicy.cs" />
+    <Compile Include="..\..\src\Core\PurchaseObservation.cs" Link="PurchaseObservation.cs" />
+    <Compile Include="..\..\src\Core\ScheduleStore.cs" Link="ScheduleStore.cs" />
+    <Compile Include="..\..\src\Core\Tasks\BotTask.cs" Link="BotTask.cs" />
+    <Compile Include="..\..\src\UI\Config\ConfigEntry.cs" Link="ConfigEntry.cs" />
+    <Compile Include="..\..\src\GameModel\Primitives\CachedGameButton.cs" Link="CachedGameButton.cs" />
+    <Compile Include="..\..\src\BotActions\AutoUpgrade.cs" Link="AutoUpgrade.cs" />
+    <Compile Include="..\..\src\Behaviors\Map\MapMissionsTask.cs" Link="MapMissionsTask.cs" />
+    <Compile Include="..\..\src\GameModel\Features\Town\Library\FirestoneResearch\Node.cs" Link="Node.cs" />
+    <Compile Include="..\..\src\GameModel\Features\Town\Library\FirestoneResearch\Preview.cs" Link="Preview.cs" />
+    <Compile Include="..\..\src\GameModel\Features\Town\Library\FirestoneResearch\ResearchPanel.cs" Link="ResearchPanel.cs" />
+    <Compile Include="..\..\src\Behaviors\Town\FirestoneResearchTask.cs" Link="FirestoneResearchTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\UpgradeNames.cs" Link="UpgradeNames.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\HolyUpgradeBuyer.cs" Link="HolyUpgradeBuyer.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\TemplePrestigeTask.cs" Link="TemplePrestigeTask.cs" />
+  </ItemGroup>
+</Project>

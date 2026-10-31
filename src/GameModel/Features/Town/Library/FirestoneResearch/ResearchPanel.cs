@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Linq;
 using Firebot.Core;
 using Firebot.GameModel.Base;
 using Firebot.GameModel.Primitives;
@@ -14,6 +15,10 @@ public class ResearchPanel : GameElement
     public static bool HasEmptySlot =>
         new GameElement(Paths.MenusLoc.CanvasLoc.TownLoc.LibraryLoc.ResearchPanelLoc.SelectResearchTable)
             .IsVisible();
+
+    public static int ActiveSlotCount => new ResearchPanel().GetChildren()
+        .Count(child => child.IsVisible() && child.Name.StartsWith("researchSlot", StringComparison.Ordinal) &&
+                        new GameElement("/container/researchInfo", child).IsVisible());
 
     public IEnumerator Claim()
     {

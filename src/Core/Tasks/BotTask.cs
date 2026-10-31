@@ -40,6 +40,12 @@ public abstract class BotTask
 
     protected virtual string NotificationPath => null;
 
+    /// <summary>True when a task must revisit its screen at its calculated timer, even without a bubble.</summary>
+    protected virtual bool UseScheduledTime => false;
+
+    /// <summary>Higher values run first when more than one task is ready.</summary>
+    internal virtual int SchedulerPriority => 0;
+
     internal virtual IEnumerable<string> HandledNotificationNames
     {
         get
@@ -156,9 +162,8 @@ public abstract class BotTask
         : $"\nHeld back until the character is level {MinimumLevel}.";
 
     /// <summary>
-    ///     Tasks with a bubble or bell run when it shows, not on a loop: no bubble means nothing to do, so the bot
-    ///     does not open the screen to look. As a safety net (a bubble the game hides, or a path that changed) the
-    ///     timer still runs it, but only 6 hours after it was due.
+    ///     Bubble tasks normally wait for a notification, with a six-hour safety check. Tasks that need a
+    ///     precise timer can opt in to running at their scheduled time as well.
     /// </summary>
     public bool IsReady()
         => !IsLevelLocked && (IsNotificationVisibleCore() || (IsEnabled && DateTime.Now >= DueTime));
@@ -167,8 +172,16 @@ public abstract class BotTask
     public bool IsReady(bool notificationVisible)
         => !IsLevelLocked && (notificationVisible || (IsEnabled && DateTime.Now >= DueTime));
 
-    /// <summary>When the timer next runs this task: its next run time, or 6 hours later for a bubble task.</summary>
-    public DateTime DueTime => string.IsNullOrEmpty(NotificationPath) ? NextRunTime : NextRunTime.AddHours(6);
+    /// <summary>When the timer next runs this task, independent of an earlier notification.</summary>
+    public DateTime DueTime => DueAt(NextRunTime);
+
+    internal DateTime DueAt(DateTime scheduled)
+    {
+        if (scheduled == DateTime.MinValue || string.IsNullOrEmpty(NotificationPath) || UseScheduledTime)
+            return scheduled;
+
+        return scheduled > DateTime.MaxValue.AddHours(-6) ? DateTime.MaxValue : scheduled.AddHours(6);
+    }
 
     /// <summary>
     ///     The check the scheduler makes before it even looks at readiness: a popup can be clicked from here,

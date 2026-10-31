@@ -195,34 +195,31 @@ public static class BotManager
                         nearestTask = task;
                     }
 
-                    var notificationVisible = false;
-                    if (notificationTask == null)
-                    {
-                        notificationVisible = task.IsNotificationVisible();
-                        if (notificationVisible)
-                        {
-                            notificationTask = task;
-                            continue;
-                        }
-                    }
+                    var notificationVisible = task.IsNotificationVisible();
+                    if (notificationVisible &&
+                        (notificationTask == null || task.SchedulerPriority > notificationTask.SchedulerPriority))
+                        notificationTask = task;
 
-                    if (!(notificationTask == null
-                            ? task.IsReady(notificationVisible)
-                            : task.IsReady()))
+                    if (!task.IsReady(notificationVisible)) continue;
+                    if (readyTask != null &&
+                        (task.SchedulerPriority < readyTask.SchedulerPriority ||
+                         (task.SchedulerPriority == readyTask.SchedulerPriority && task.DueTime >= earliest)))
                         continue;
-                    if (task.NextRunTime >= earliest) continue;
 
-                    earliest = task.NextRunTime;
+                    earliest = task.DueTime;
                     readyTask = task;
                 }
 
-                if (notificationTask != null) readyTask = notificationTask;
+                if (notificationTask != null &&
+                    (readyTask == null || notificationTask.SchedulerPriority >= readyTask.SchedulerPriority))
+                    readyTask = notificationTask;
 
                 var hasNearTask = nextEnabledTaskRun != DateTime.MaxValue &&
                                   (nextEnabledTaskRun - DateTime.Now).TotalSeconds <=
                                   AutoUpgradeMinExecutionWindowSeconds;
                 _shouldPauseAutoUpgrade = notificationTask != null || readyTask != null || hasNearTask;
-                _autoUpgradePauseReason = notificationTask != null ? $"{notificationTask.SectionTitle} bubble is lit"
+                _autoUpgradePauseReason = readyTask != null && readyTask == notificationTask
+                    ? $"{readyTask.SectionTitle} bubble is lit"
                     : readyTask != null ? $"{readyTask.SectionTitle} is ready"
                     : hasNearTask ? $"{nearestTask?.SectionTitle ?? "a task"} is due at {nextEnabledTaskRun:HH:mm:ss}"
                     : "";
@@ -423,10 +420,11 @@ public static class BotManager
         // would otherwise be decided by the order the tasks happen to be loaded in.
         foreach (var t in Tasks
                      .OrderBy(t => t == _executingTask ? 0 : HasPendingRun(t) ? 1 : 2)
-                     .ThenBy(t => t.NextRunTime)
+                     .ThenBy(t => t.DueTime)
                      .ThenBy(t => t.SectionTitle))
         {
-            var hasPendingRun = HasPendingRun(t);
+            var hasPendingRun = HasPendingRun(t) && t.NextRunTime != DateTime.MinValue;
+            var due = t.DueTime;
 
             buffer.Add(new TaskStatusRow(
                 t.SectionTitle,
@@ -434,8 +432,8 @@ public static class BotManager
                 // A task without a next run has no time left either. Without this the subtraction runs anyway
                 // — from DateTime.MinValue for a task that never ran — and the column shows "0s" beside an
                 // empty Next Run.
-                hasPendingRun ? TimeParser.FormatFriendlyDuration(t.NextRunTime - now) : TaskStatusRow.NoValue,
-                hasPendingRun ? t.NextRunTime : (DateTime?)null,
+                hasPendingRun ? TimeParser.FormatFriendlyDuration(due - now) : TaskStatusRow.NoValue,
+                hasPendingRun ? due : (DateTime?)null,
                 t.LastRunTime));
         }
     }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using MelonLoader;
@@ -38,21 +37,14 @@ internal static class NodeBuyer
 
     private static readonly Dictionary<string, NodeInfo> Known = new();
 
-    private static string KeyOf(Transform node)
-    {
-        var parts = new List<string>();
-        for (var t = node; t != null && parts.Count < 6; t = t.parent)
-            parts.Add(t.name + "#" + t.GetSiblingIndex());
-        return string.Join("/", parts);
-    }
-
     /// <summary>
     ///     True when a node's earlier preview already shows it cannot be bought now: maxed, a known cost above
     ///     the budget, or locked recently. Skips opening its preview again.
     /// </summary>
-    internal static bool CanSkip(Transform node, double budget, bool retryUnaffordableAfterCooldown = true)
+    internal static bool CanSkip(Transform node, double budget, bool retryUnaffordableAfterCooldown = true,
+        string scope = "")
     {
-        if (!Known.TryGetValue(KeyOf(node), out var k)) return false;
+        if (!Known.TryGetValue(UpgradeNames.KeyOf(node, scope), out var k)) return false;
         if (k.Maxed) return true;
         var age = DateTime.Now - k.At;
         if (k.Cost > 0)
@@ -60,16 +52,21 @@ internal static class NodeBuyer
         return age < TimeSpan.FromHours(2);
     }
 
-    internal static void Remember(Transform node, bool maxed, double cost, string name = null)
+    internal static void Remember(Transform node, bool maxed, double cost, string name = null, string scope = "")
     {
-        var key = KeyOf(node);
+        var key = UpgradeNames.KeyOf(node, scope);
         if (name == null && Known.TryGetValue(key, out var previous)) name = previous.Name;
         Known[key] = new NodeInfo { Maxed = maxed, Cost = cost, Name = name, At = DateTime.Now };
+        UpgradeNames.Remember(node, scope, name);
     }
 
-    internal static bool TryGetKnown(Transform node, out bool maxed, out double cost, out string name)
+    internal static void Forget(Transform node, string scope)
+        => Known.Remove(UpgradeNames.KeyOf(node, scope));
+
+    internal static bool TryGetKnown(Transform node, out bool maxed, out double cost, out string name,
+        string scope = "")
     {
-        if (Known.TryGetValue(KeyOf(node), out var info))
+        if (Known.TryGetValue(UpgradeNames.KeyOf(node, scope), out var info))
         {
             maxed = info.Maxed;
             cost = info.Cost;
@@ -83,14 +80,6 @@ internal static class NodeBuyer
         return false;
     }
 
-    internal static void Forget(Transform node) => Known.Remove(KeyOf(node));
-
-    private static int Rank(List<string> order, string name)
-    {
-        var i = order.IndexOf((name ?? string.Empty).Trim().ToLowerInvariant());
-        return i < 0 ? order.Count : i;
-    }
-
     private static IEnumerator BuyOne(Layout layout, string name, Func<double> currency, double keep,
         Action<bool> result)
     {
@@ -101,14 +90,22 @@ internal static class NodeBuyer
         var costBefore = Ui.NumberAt(costPath);
         var currencyBefore = currency();
         yield return Ui.ClickUntil(Ui.Find(buyPath),
-            () => Ui.Text(levelPath) != levelBefore ||
-                  Ui.NumberAt(costPath) != costBefore ||
-                  currency() < currencyBefore,
+            () => PurchaseObservation.LevelIncreased(levelBefore, Ui.Text(levelPath)) ||
+                  PurchaseObservation.ChangedPrice(costBefore, Ui.NumberAt(costPath)) ||
+                  PurchaseObservation.Decreased(currencyBefore, currency()),
             result, name, 1.2f);
     }
 
+    internal static bool IsMaxed(string level)
+    {
+        var match = Regex.Match(level ?? "", @"(\d+)\s*/\s*(\d+)");
+        return (level ?? "").IndexOf("max", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               (match.Success && int.TryParse(match.Groups[1].Value, out var current) &&
+                int.TryParse(match.Groups[2].Value, out var maximum) && current >= maximum);
+    }
+
     public static IEnumerator Run(List<Transform> nodes, Layout l, Func<double> currency, string priority,
-        double keep = 0, int maxPerNode = 10, bool stopAtFirstAffordable = false)
+        double keep = 0, int maxPerNode = 10, string scope = "", Action retrySoon = null)
     {
         if (currency() - keep <= 0)
         {
@@ -120,50 +117,61 @@ internal static class NodeBuyer
         var skipped = 0;
         foreach (var node in nodes)
         {
-            if (CanSkip(node, currency() - keep))
+            if (CanSkip(node, currency() - keep, scope: scope))
             {
-                if (TryGetKnown(node, out var knownMaxed, out var knownCost, out var knownName) &&
+                if (TryGetKnown(node, out var knownMaxed, out var knownCost, out var knownName, scope) &&
                     !knownMaxed && knownCost > 0 && !string.IsNullOrEmpty(knownName))
                     info.Add((node, knownName, knownCost, true));
                 skipped++;
                 continue;
             }
 
+            if (TryGetKnown(node, out var cachedMaxed, out var cachedCost, out var cachedName, scope) &&
+                !cachedMaxed && cachedCost > 0 && !string.IsNullOrEmpty(cachedName))
+            {
+                info.Add((node, cachedName, cachedCost, true));
+                continue;
+            }
+
+            if (UpgradeNames.TryGet(node, scope, out var rememberedName))
+            {
+                info.Add((node, rememberedName, 0, true));
+                continue;
+            }
+
+            if (!Ui.Clickable(node)) continue;
+            if (Ui.Visible(l.Preview))
+            {
+                Logger.Warning("[Nodes] A previous preview is still open; lower tiers were left untouched.");
+                UpgradeNames.Flush();
+                yield break;
+            }
             yield return Ui.Click(node, 0.9f);
-            if (!Ui.Visible(l.Preview)) continue;
-            var name = Ui.Text(l.Preview + "/" + l.Name);
+            if (!Ui.Visible(l.Preview))
+            {
+                Logger.Warning("[Nodes] An unknown upgrade preview did not open; lower tiers were left untouched.");
+                UpgradeNames.Flush();
+                yield break;
+            }
+            var name = Ui.Text(l.Preview + "/" + l.Name).Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                Logger.Warning("[Nodes] An upgrade name was unreadable; lower tiers were left untouched.");
+                if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
+                UpgradeNames.Flush();
+                yield break;
+            }
             var level = Ui.Text(l.Preview + "/" + l.Level);
-            var m = Regex.Match(level ?? "", @"(\d+)\s*/\s*(\d+)");
-            var maxed = (level ?? "").IndexOf("max", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        (m.Success && int.Parse(m.Groups[1].Value) >= int.Parse(m.Groups[2].Value));
+            var maxed = IsMaxed(level);
             var buy = l.Preview + "/" + l.Buy;
             var cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
             var open = !maxed && Ui.Visible(buy) && cost > 0;
-            Remember(node, maxed, open ? cost : 0, name);
-            if (stopAtFirstAffordable && open && currency() - keep >= cost)
+            Remember(node, maxed, open ? cost : 0, name, scope);
+            if (!maxed && Ui.Visible(buy) && cost <= 0)
             {
-                Logger.Info($"[Nodes] First affordable: {name} ({cost}), have {currency()}.");
-                Forget(node);
-                for (var n = 0; n < maxPerNode; n++)
-                {
-                    cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
-                    if (cost <= 0 || currency() - keep < cost || !Ui.Clickable(buy))
-                    {
-                        Logger.Debug($"[Nodes] stop {name}: cost {cost}, have {currency()}, clickable {Ui.Clickable(buy)}");
-                        break;
-                    }
-
-                    var changed = false;
-                    yield return BuyOne(l, name, currency, keep, value => changed = value);
-                    if (Ui.MissingCurrency) break;
-                    if (!changed)
-                    {
-                        Logger.Warning($"[Nodes] Stopping after {name} made no verified progress.");
-                        break;
-                    }
-                }
-
+                Logger.Warning($"[Nodes] {name}: price unreadable; lower tiers were left untouched.");
                 if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
+                UpgradeNames.Flush();
                 yield break;
             }
 
@@ -171,23 +179,42 @@ internal static class NodeBuyer
             Logger.Debug($"[Nodes] {name} | {level} | cost {cost} | buy {(Ui.Visible(buy) ? (Ui.Clickable(buy) ? "on" : "off") : "hidden")}");
             yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
         }
+        UpgradeNames.Flush();
 
         var order = (priority ?? string.Empty).Split(',').Select(s => s.Trim().ToLowerInvariant())
             .Where(s => s.Length > 0).ToList();
 
         Logger.Info($"[Nodes] {info.Count(u => u.open)} of {info.Count} previewed upgradable " +
                     $"({skipped} skipped from earlier reads), currency {currency()}");
-        foreach (var up in info.Where(u => u.open).OrderBy(u => Rank(order, u.name)).ThenBy(u => u.cost).ToList())
+        foreach (var up in info.Where(u => u.open).OrderBy(u => PriorityTier.Rank(order, u.name)).ThenBy(u => u.cost).ToList())
         {
-            if (currency() - keep < up.cost)
+            if (!Ui.Clickable(up.node)) continue;
+            if (Ui.Visible(l.Preview))
             {
-                Logger.Info($"[Nodes] Stopping at {up.name}: cost {up.cost}, have {currency() - keep}. Lower tiers stay untouched.");
-                break;
+                Logger.Warning("[Nodes] A previous preview is still open; lower tiers were left untouched.");
+                yield break;
             }
 
             yield return Ui.Click(up.node, 0.9f);
             var buy = l.Preview + "/" + l.Buy;
-            for (var n = 0; n < maxPerNode; n++)
+            if (!Ui.Visible(l.Preview))
+            {
+                Logger.Warning($"[Nodes] {up.name}: preview did not open; lower tiers were left untouched.");
+                yield break;
+            }
+            var actualName = Ui.Text(l.Preview + "/" + l.Name);
+            if (!UpgradeNames.Matches(up.node, scope, up.name, actualName))
+            {
+                Forget(up.node, scope);
+                UpgradeNames.Flush();
+                Logger.Warning($"[Nodes] Expected {up.name}, found '{actualName}'; reordering before buying.");
+                if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
+                retrySoon?.Invoke();
+                yield break;
+            }
+
+            var purchases = 0;
+            for (; purchases < maxPerNode; purchases++)
             {
                 var cost = Ui.NumberAt(l.Preview + "/" + l.Cost);
                 if (cost <= 0 || currency() - keep < cost || !Ui.Clickable(buy))
@@ -206,14 +233,29 @@ internal static class NodeBuyer
                 }
             }
 
+            if (!Ui.Visible(l.Preview))
+            {
+                Logger.Warning($"[Nodes] {up.name}: preview closed unexpectedly; lower tiers were left untouched.");
+                yield break;
+            }
             var finalLevel = Ui.Text(l.Preview + "/" + l.Level);
-            var finalMatch = Regex.Match(finalLevel ?? "", @"(\d+)\s*/\s*(\d+)");
-            var finalMaxed = (finalLevel ?? "").IndexOf("max", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                             (finalMatch.Success && int.Parse(finalMatch.Groups[1].Value) >= int.Parse(finalMatch.Groups[2].Value));
+            var finalMaxed = IsMaxed(finalLevel);
             var finalCost = Ui.NumberAt(l.Preview + "/" + l.Cost);
-            Remember(up.node, finalMaxed || !Ui.Visible(buy), finalMaxed || !Ui.Visible(buy) ? 0 : finalCost, up.name);
+            var available = Ui.Visible(buy);
+            var missingCurrency = Ui.MissingCurrency;
+            var action = !finalMaxed && Ui.Find(buy) == null
+                ? PriorityTierAction.Wait
+                : PriorityTier.AfterPass(finalMaxed, available, purchases >= maxPerNode,
+                    Ui.Clickable(buy), finalCost, currency() - keep);
+            Remember(up.node, finalMaxed, finalMaxed || !available ? 0 : finalCost, up.name, scope);
             if (Ui.Visible(l.Preview)) yield return Ui.Click(l.Preview + "/" + l.Close, 0.5f);
-            if (Ui.MissingCurrency) yield break;
+            if (missingCurrency || action != PriorityTierAction.Advance)
+            {
+                if (action == PriorityTierAction.RetrySoon) retrySoon?.Invoke();
+                Logger.Info($"[Nodes] Holding at {up.name}; lower tiers stay untouched" +
+                            (action == PriorityTierAction.RetrySoon ? " until the next pass." : "."));
+                yield break;
+            }
         }
     }
 }
@@ -235,6 +277,7 @@ internal static class Cooldown
 public class MeteoriteResearchTask : BotTask
 {
     protected override string NotificationPath => P.Notifications + "/MeteoriteResearch";
+    protected override bool UseScheduledTime => true;
 
     private const string L = P.Menus + "/Library";
     private const string M = L + "/submenus/meteoriteResearch";
@@ -274,7 +317,12 @@ public class MeteoriteResearchTask : BotTask
             Preview = P.Popups + "/MeteoriteResearchPreview/bg",
             Name = "researchName", Level = "level", Buy = "unlocked/researchButton",
             Cost = "unlocked/researchButton/cost", Close = "closeButton"
-        }, () => Ui.NumberAt(Meteorites), _priority.Value, _keep.Value);
+        }, () => Ui.NumberAt(Meteorites), _priority.Value, _keep.Value, scope: "meteorite/" + tree.name,
+            retrySoon: () =>
+            {
+                NextRunTime = DateTime.Now.AddMinutes(2);
+                BubbleQuietUntil = NextRunTime;
+            });
 
         yield return Ui.Click(L + "/closeButton");
     }
@@ -283,6 +331,7 @@ public class MeteoriteResearchTask : BotTask
 public class ForbiddenKnowledgeTask : BotTask
 {
     protected override string NotificationPath => P.Notifications + "/ForbiddenKnowledge";
+    protected override bool UseScheduledTime => true;
 
     private const string F = P.Menus + "/ForbiddenKnowledge";
     private MelonPreferences_Entry<string> _priority;
@@ -330,7 +379,12 @@ public class ForbiddenKnowledgeTask : BotTask
                 Name = "innerBg/upgradeName", Level = "innerBg/upgradeLevelText",
                 Buy = "innerBg/normal/buyUpgradeButton", Cost = "innerBg/normal/buyUpgradeButton/layout/cost",
                 Close = "closeButton"
-            }, Tomes, _priority.Value);
+            }, Tomes, _priority.Value, scope: "forbidden/" + god,
+                retrySoon: () =>
+                {
+                    NextRunTime = DateTime.Now.AddMinutes(2);
+                    BubbleQuietUntil = NextRunTime;
+                });
         }
 
         yield return Ui.Click(F + "/closeButton");
@@ -399,226 +453,6 @@ public class ScarabGameTask : BotTask
         }
 
         if (Ui.Visible(S)) yield return Ui.Click(S + "/closeButton");
-    }
-}
-
-/// <summary>
-///     Prestige ("Empower now") once the run has stalled: no new highest stage for a few hours, and the temple offers at
-///     least a minimum gold boost. Never uses the paid 2x empower.
-/// </summary>
-public class TemplePrestigeTask : BotTask
-{
-    protected override string NotificationPath => P.Notifications + "/TemplePrestige";
-
-    private const string T = P.Menus + "/TempleOfEternals";
-    private const string Info = T + "/submenus/bgNew/prestigeSubmenu/adventureInfo";
-    private const string Stage = P.Battle + "/topSideUI/stageProgression/currentStage/stageNum";
-    private const string PrestigeComplete = P.Popups + "/TOEPrestigeComplete";
-    private MelonPreferences_Entry<int> _stallHours;
-    private MelonPreferences_Entry<int> _minGain;
-    private MelonPreferences_Entry<int> _minHours;
-    private MelonPreferences_Entry<int> _bestStage;
-    private MelonPreferences_Entry<string> _bestAt;
-    private MelonPreferences_Entry<int> _efficiency;
-    private MelonPreferences_Entry<double> _lastGain;
-    private MelonPreferences_Entry<string> _lastGainAt;
-    private MelonPreferences_Entry<double> _refRate;
-    private int _slowStreak;
-
-    protected override void OnConfigure(MelonPreferences_Category c)
-    {
-        _stallHours = c.CreateEntry("stall_hours", 3, "Hours Without Progress",
-            "Empower once no new highest stage has been reached for this many hours (the run has stalled).");
-        _minGain = c.CreateEntry("min_gain_percent", 100, "Minimum Gold Boost %",
-            "Never empower for less than this extra gold (the +% the temple shows).");
-        _minHours = c.CreateEntry("min_hours_played", 1, "Minimum Hours In Run", "Never empower a run younger than this.");
-        _efficiency =         c.CreateEntry("efficiency_percent", 75, "Empower When Gain Rate Below %",
-                    "Empower once the gold boost's current growth per hour stays below this % of this run's own average growth per hour (the point where waiting lowers your long-run average). Lower values wait longer to cover the time a new run needs to ramp up. 0 turns this rule off; the stall rule above still applies.");
-        _lastGain = c.CreateEntry("last_gain", -1.0, "Last Gold Boost Sample", "Kept by the bot.", is_hidden: true);
-        _lastGainAt = c.CreateEntry("last_gain_at", "", "Last Sample Time", "Kept by the bot.", is_hidden: true);
-        _refRate = c.CreateEntry("reference_rate", 0.0, "Previous Run Gain Rate", "Kept by the bot.", is_hidden: true);
-        _bestStage = c.CreateEntry("best_stage", 0, "Best Stage", "Highest stage seen this run (kept by the bot).", is_hidden: true);
-        _bestAt = c.CreateEntry("best_stage_at", "", "Best Stage Time", "When the highest stage was reached (kept by the bot).", is_hidden: true);
-    }
-
-    private static double GainPercent(string text)
-    {
-        var m = Regex.Match((text ?? "").Replace(",", ""), @"\+\s*([\d.]+)\s*([A-Za-z]*)\s*%");
-        if (!m.Success) return -1;
-        var v = double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
-        var suffix = m.Groups[2].Value.ToUpperInvariant();
-        return suffix switch { "" => v, "K" => v * 1e3, "M" => v * 1e6, "B" => v * 1e9, _ => double.MaxValue };
-    }
-
-    /// <summary>Tracks the highest stage and when it was reached. Returns hours since the last new best.</summary>
-    private double HoursSinceProgress()
-    {
-        var stage = (int)Ui.NumberAt(Stage);
-        if (stage <= 0) return 0;
-        var now = DateTime.Now;
-        DateTime.TryParse(_bestAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at);
-        // A much lower stage means a new run started (prestige done by hand or by the bot).
-        if (stage > _bestStage.Value || stage < _bestStage.Value / 2 || at == default)
-        {
-            _bestStage.Value = stage;
-            _bestAt.Value = now.ToString("o");
-            MelonPreferences.Save();
-            return 0;
-        }
-
-        return (now - at).TotalHours;
-    }
-
-    public override IEnumerator Execute()
-    {
-        // Its bubble stays lit the whole run, so check at most every 15 minutes.
-        BubbleQuietUntil = DateTime.Now.AddMinutes(15);
-        NextRunTime = DateTime.Now.AddMinutes(30);
-        var stalled = HoursSinceProgress();
-        var isStalled = stalled >= _stallHours.Value;
-        var sampleDue = _efficiency.Value > 0 &&
-                        (!DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
-                             DateTimeStyles.RoundtripKind, out var sampledAt) ||
-                         (DateTime.Now - sampledAt).TotalMinutes >= 60);
-        if (!isStalled && !sampleDue)
-        {
-            Logger.Debug($"Temple: best stage {_bestStage.Value}, {stalled:0.#}h without a new one (empowers after {_stallHours.Value}h).");
-            yield break;
-        }
-
-        yield return Ui.OpenTownBuilding("templeOfEternals");
-        yield return Ui.WaitFor(T);
-        if (!Ui.Visible(T)) yield break;
-
-        var gain = GainPercent(Ui.Text(Info + "/empowerInfo"));
-        var playedText = Ui.Text(Info + "/adventureTimePlayed") ?? "";
-        var played = TimeSpan.TryParse(playedText, out var ts) ? ts.TotalHours : 0;
-        var dayMatch = Regex.Match(playedText, @"(\d+)d");
-        if (dayMatch.Success) played = Math.Max(played, int.Parse(dayMatch.Groups[1].Value) * 24);
-        Logger.Info($"Temple: stage {_bestStage.Value}, {stalled:0.#}h without a new best, gold boost +{gain}%, run {played:0.#}h.");
-
-        if (!isStalled)
-        {
-            var reason = EvaluateRate(gain, played, out var inefficient);
-            if (!inefficient)
-            {
-                Logger.Info($"Temple: keeping the run ({reason}).");
-                yield return Ui.Click(T + "/closeButton");
-                yield break;
-            }
-
-            Logger.Info($"Temple: gain rate dropped ({reason}); empowering if the minimums are met.");
-        }
-
-        if (gain < _minGain.Value || played < _minHours.Value || !Ui.Clickable(Info + "/openEmpowerButton"))
-        {
-            yield return Ui.Click(T + "/closeButton");
-            yield break;
-        }
-
-        // "Empower now" opens the empower popup; press its normal empower button (never the paid 2x one).
-        var before = new HashSet<int>(Ui.VisibleChildren(P.Popups).Select(t => t.GetInstanceID()));
-        yield return Ui.Click(Info + "/openEmpowerButton", 2f, "Empower now");
-        var popup = Ui.VisibleChildren(P.Popups).FirstOrDefault(t => !before.Contains(t.GetInstanceID()));
-        if (popup == null)
-        {
-            Logger.Warning("Temple: the empower popup did not open; skipped.");
-            yield break;
-        }
-
-        var empower = popup.GetComponentsInChildren<UnityEngine.UI.Button>()
-            .FirstOrDefault(b => b.name == "empowerButton" && b.interactable && b.gameObject.activeInHierarchy);
-        if (empower == null)
-        {
-            Logger.Warning($"Temple: no empower button in {popup.name}; skipped.");
-            yield break;
-        }
-
-        before = new HashSet<int>(Ui.VisibleChildren(P.Popups).Select(t => t.GetInstanceID()));
-        var stageBefore = Ui.NumberAt(Stage);
-        yield return Ui.Click(empower.transform, 3f, "empower (prestige)");
-
-        // The game may ask to confirm; press only an obvious confirm button in a newly opened popup.
-        var prestigeConfirmed = false;
-        foreach (var confirmPopup in Ui.VisibleChildren(P.Popups).Where(t => !before.Contains(t.GetInstanceID())).ToList())
-        {
-            var yes = confirmPopup.GetComponentsInChildren<UnityEngine.UI.Button>()
-                .FirstOrDefault(b => b.interactable && b.gameObject.activeInHierarchy &&
-                                     Regex.IsMatch(b.name, "^(confirm|yes|ok|accept|empower)", RegexOptions.IgnoreCase) &&
-                                     !b.name.Contains("2x"));
-            if (yes == null) continue;
-            if (string.Equals(confirmPopup.name, "TOEPrestigeComplete", StringComparison.OrdinalIgnoreCase))
-                prestigeConfirmed = true;
-            yield return Ui.Click(yes.transform, 5f, "confirm empower");
-            break;
-        }
-
-        if (!prestigeConfirmed)
-        {
-            var completionAppeared = false;
-            yield return Ui.WaitUntil(() => Ui.Visible(PrestigeComplete),
-                value => completionAppeared = value, 5f);
-            if (completionAppeared)
-            {
-                prestigeConfirmed = true;
-                yield return Ui.Click(PrestigeComplete + "/bg/confirmButton", 2f, "start after temple prestige");
-            }
-        }
-
-        var stageResetObserved = false;
-        if (stageBefore > 0)
-            yield return Ui.WaitUntil(() =>
-            {
-                var stageAfter = Ui.NumberAt(Stage);
-                return stageAfter > 0 && stageAfter < stageBefore;
-            }, value => stageResetObserved = value, 5f);
-
-        if (!prestigeConfirmed && !stageResetObserved)
-        {
-            Logger.Warning("Temple: no prestige completion or stage reset was observed; keeping the stall tracker.");
-            yield break;
-        }
-
-        if (played > 0 && gain > 0 && gain < 1e300) _refRate.Value = gain / played;
-        _slowStreak = 0;
-        _lastGain.Value = -1;
-        _lastGainAt.Value = "";
-        _bestStage.Value = 0;
-        _bestAt.Value = "";
-        MelonPreferences.Save();
-    }
-
-    /// <summary>Compares the gold boost growth per hour since the last sample with the previous run's average.</summary>
-    private string EvaluateRate(double gain, double played, out bool inefficient)
-    {
-        inefficient = false;
-        if (gain <= 0 || gain >= 1e300) return "gold boost unreadable";
-
-        var now = DateTime.Now;
-        var previous = _lastGain.Value;
-        var hasSample = previous >= 0 &&
-                        DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
-                            DateTimeStyles.RoundtripKind, out var sampleAt);
-        DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out sampleAt);
-        var hours = (now - sampleAt).TotalHours;
-
-        if (hasSample && gain >= previous && hours >= 0.25)
-        {
-            var rate = (gain - previous) / hours;
-            var average = played > 0 ? gain / played : 0;
-            var limit = average * _efficiency.Value / 100.0;
-            _slowStreak = rate < limit ? _slowStreak + 1 : 0;
-            inefficient = _slowStreak >= 2;
-            _lastGain.Value = gain;
-            _lastGainAt.Value = now.ToString("o");
-            MelonPreferences.Save();
-            return $"+{gain - previous:0.##}% over {hours:0.#}h = {rate:0.##}%/h vs limit {limit:0.##}%/h";
-        }
-
-        _lastGain.Value = gain;
-        _lastGainAt.Value = now.ToString("o");
-        MelonPreferences.Save();
-        return "first sample for this run";
     }
 }
 
@@ -988,7 +822,8 @@ public class EventExchangeTask : BotTask
             var item = items.FirstOrDefault(it => Ui.Text(it.Find("itemName")).Trim().ToLowerInvariant() == want);
             if (item == null) continue;
             var buy = item.Find("purchaseButton");
-            for (var n = 0; n < 40; n++)
+            var itemPurchases = 0;
+            for (; itemPurchases < 40; itemPurchases++)
             {
                 var cost = Ui.NumberOf(buy?.Find("purchaseCost"));
                 var m = Regex.Match(Ui.Text(item.Find("remainingQuantity")) ?? "", @"(\d+)\s*/\s*(\d+)");
@@ -996,7 +831,7 @@ public class EventExchangeTask : BotTask
                 if (cost <= 0 || Have() - _keep.Value < cost || !Ui.Clickable(buy)) break;
                 var before = Have();
                 var confirmed = false;
-                yield return Ui.ClickUntil(buy, () => Have() < before,
+                yield return Ui.ClickUntil(buy, () => PurchaseObservation.Decreased(before, Have()),
                     value => confirmed = value, "event exchange: " + want, 1.2f, 3f);
                 if (!confirmed)
                 {
@@ -1014,9 +849,13 @@ public class EventExchangeTask : BotTask
             var remaining = Regex.Match(Ui.Text(item.Find("remainingQuantity")) ?? "", @"(\d+)\s*/\s*(\d+)");
             var itemMaxed = remaining.Success && int.Parse(remaining.Groups[1].Value) >= int.Parse(remaining.Groups[2].Value);
             var nextCost = Ui.NumberOf(buy?.Find("purchaseCost"));
-            if (!itemMaxed && nextCost > 0 && Have() - _keep.Value < nextCost)
+            var available = buy != null && buy.gameObject.activeInHierarchy;
+            var action = PriorityTier.AfterPass(itemMaxed, available, itemPurchases >= 40,
+                Ui.Clickable(buy), nextCost, Have() - _keep.Value);
+            if (action != PriorityTierAction.Advance)
             {
-                Logger.Info($"[EventExchange] Stopping at {want}: cost {nextCost}, have {Have() - _keep.Value}. Lower tiers stay untouched.");
+                if (action == PriorityTierAction.RetrySoon) NextRunTime = DateTime.Now.AddMinutes(2);
+                Logger.Info($"[EventExchange] Holding at {want}: cost {nextCost}, have {Have() - _keep.Value}. Lower tiers stay untouched.");
                 break;
             }
         }
@@ -1283,6 +1122,7 @@ public class TalentsTask : BotTask
 {
     protected override string NotificationPath => P.Notifications + "/TalentAvailable";
     protected override bool EnabledByDefault => true;
+    protected override bool UseScheduledTime => true;
 
     private const string C = P.Popups + "/Character/bg";
     private const string Tree = C + "/submenus/talents/bg/talentTreeScroll/Viewport/content/talentTree";
@@ -1296,7 +1136,7 @@ public class TalentsTask : BotTask
             "Priority", "Talent names to fill first, comma-separated. Others are filled after, in tree order.");
     }
 
-    // Talent points shown as "free/total". -1 when unreadable, so the task still tries.
+    // Talent points are shown as "free/total"; -1 means the count could not be read.
     private static double Free()
     {
         var t = Ui.Text(Points) ?? "";
@@ -1312,42 +1152,87 @@ public class TalentsTask : BotTask
         yield return Ui.Click(C + "/submenuButtons/talents", 1.5f);
 
         var spent = 0;
-        if (Ui.Visible(Tree) && Free() != 0)
+        var free = Free();
+        if (Ui.Visible(Tree) && free < 0)
+            Logger.Warning("[Talents] Available points are unreadable; points were left unspent.");
+        if (Ui.Visible(Tree) && free > 0)
         {
             var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
             var nodes = Ui.VisibleChildren(Tree).Where(t => t.name.StartsWith("talentInteraction") && Ui.Clickable(t)).ToList();
-            var discovered = new List<(Transform node, string name, bool available)>();
+            var discovered = new List<(Transform node, string name)>();
+            var discoveryFailed = false;
+            const string scope = "talents";
             foreach (var n in nodes)
             {
+                if (UpgradeNames.TryGet(n, scope, out var remembered))
+                {
+                    discovered.Add((n, remembered));
+                    continue;
+                }
+
+                if (Ui.Visible(Preview))
+                {
+                    Logger.Warning("[Talents] A previous preview is still open; points were left unspent.");
+                    discoveryFailed = true;
+                    break;
+                }
                 yield return Ui.Click(n, 0.6f);
-                if (!Ui.Visible(Preview)) continue;
+                if (!Ui.Visible(Preview))
+                {
+                    Logger.Warning("[Talents] An unknown talent preview did not open; points were left unspent.");
+                    discoveryFailed = true;
+                    break;
+                }
                 var name = (Ui.Text(Preview + "/talentName") ?? "").Trim();
-                var available = Ui.Clickable(Preview + "/talentUpgrades/upgradeTalentButton");
-                discovered.Add((n, name, available));
+                if (string.IsNullOrEmpty(name))
+                {
+                    Logger.Warning("[Talents] A talent name was unreadable; points were left unspent.");
+                    discoveryFailed = true;
+                    yield return Ui.Click(Preview + "/closeButton", 0.3f);
+                    break;
+                }
+                UpgradeNames.Remember(n, scope, name);
+                discovered.Add((n, name));
                 yield return Ui.Click(Preview + "/closeButton", 0.3f);
             }
+            UpgradeNames.Flush();
 
-            var selected = new HashSet<Transform>();
-            foreach (var wanted in order)
+            foreach (var match in discovered.OrderBy(x => PriorityTier.Rank(order, x.name)))
             {
-                if (Free() == 0) break;
-                var match = discovered.FirstOrDefault(x =>
-                    string.Equals(x.name, wanted, StringComparison.OrdinalIgnoreCase));
-                if (match.node == null || !match.available) continue;
-                selected.Add(match.node);
+                if (discoveryFailed || Free() <= 0) break;
+                if (Ui.Visible(Preview))
+                {
+                    Logger.Warning("[Talents] A previous preview is still open; lower tiers were left untouched.");
+                    break;
+                }
                 yield return Ui.Click(match.node, 0.6f);
-                if (!Ui.Visible(Preview)) continue;
-                yield return Upgrade(match.name, () => spent++);
-                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
-            }
+                if (!Ui.Visible(Preview))
+                {
+                    Logger.Warning($"[Talents] {match.name}: preview did not open; lower tiers were left untouched.");
+                    break;
+                }
+                var actualName = Ui.Text(Preview + "/talentName");
+                if (!UpgradeNames.Matches(match.node, scope, match.name, actualName))
+                {
+                    UpgradeNames.Flush();
+                    Logger.Warning($"[Talents] Expected {match.name}, found '{actualName}'; reordering before buying.");
+                    if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
+                    NextRunTime = DateTime.Now.AddMinutes(2);
+                    BubbleQuietUntil = NextRunTime;
+                    break;
+                }
 
-            foreach (var match in discovered.Where(x => !selected.Contains(x.node) && x.available))
-            {
-                if (Free() == 0) break;
-                yield return Ui.Click(match.node, 0.6f);
-                if (!Ui.Visible(Preview)) continue;
-                yield return Upgrade(match.name, () => spent++);
+                var action = PriorityTierAction.Advance;
+                yield return Upgrade(match.name, () => spent++, value => action = value);
                 if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
+                if (action == PriorityTierAction.Advance) continue;
+                if (action == PriorityTierAction.RetrySoon)
+                {
+                    NextRunTime = DateTime.Now.AddMinutes(2);
+                    BubbleQuietUntil = NextRunTime;
+                }
+                Logger.Info($"[Talents] Holding at {match.name}; lower tiers stay untouched.");
+                break;
             }
         }
 
@@ -1362,17 +1247,40 @@ public class TalentsTask : BotTask
         }
     }
 
-    private static IEnumerator Upgrade(string name, Action add)
+    private static IEnumerator Upgrade(string name, Action add, Action<PriorityTierAction> result)
     {
-        for (var i = 0; i < 60 && Free() != 0; i++)
+        for (var i = 0; i < 60 && Free() > 0; i++)
         {
             var up = Ui.Find(Preview + "/talentUpgrades/upgradeTalentButton");
-            if (!Ui.Clickable(up)) yield break;
             var before = Ui.Text(Preview + "/talentLevelText");
-            yield return Ui.Click(up, 0.4f, $"talent {name}");
-            if (Ui.MissingCurrency || Ui.Text(Preview + "/talentLevelText") == before) yield break;
+            if (string.IsNullOrWhiteSpace(before) || up == null)
+            {
+                Logger.Warning($"[Talents] {name}: level or upgrade control unreadable; no purchase attempted.");
+                result(PriorityTierAction.Wait);
+                yield break;
+            }
+            if (NodeBuyer.IsMaxed(before) || !Ui.Clickable(up))
+            {
+                result(PriorityTierAction.Advance);
+                yield break;
+            }
+            var changed = false;
+            yield return Ui.ClickUntil(up,
+                () => PurchaseObservation.LevelIncreased(before, Ui.Text(Preview + "/talentLevelText")),
+                value => changed = value, $"talent {name}", 0.4f, 2f);
+            if (Ui.MissingCurrency || !changed)
+            {
+                result(PriorityTierAction.Wait);
+                yield break;
+            }
             add();
         }
+
+        var free = Free();
+        if (free < 0) Logger.Warning("[Talents] Available points became unreadable; lower tiers were left untouched.");
+        result(free < 0 ? PriorityTierAction.Wait
+            : free > 0 && Ui.Clickable(Preview + "/talentUpgrades/upgradeTalentButton")
+                ? PriorityTierAction.RetrySoon : PriorityTierAction.Advance);
     }
 }
 

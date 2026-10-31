@@ -40,6 +40,7 @@ public class Main : MelonMod
     public override void OnApplicationQuit()
     {
         Planner.PlannerServer.Stop();
+        UpdateCheck.StopProbe();
         if (BotSettings.AutoUpdate) UpdateCheck.ScheduleOnExit();
     }
 
@@ -61,6 +62,7 @@ public class Main : MelonMod
 
     public override void OnUpdate()
     {
+        UpdateCheck.Tick();
         // Frozen once, before anything consumes it. A key press lasts the whole frame, so every GetKeyDown
         // below sees the same key: without this, recording F6 would also start AutoUpgrade and recording
         // F1 would also close the panel. It cannot be read later either — the panel consumes the capture,

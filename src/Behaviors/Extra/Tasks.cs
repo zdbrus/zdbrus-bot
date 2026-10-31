@@ -169,19 +169,26 @@ public class ExoticMerchantTask : BotTask
     private const string M = P.Menus + "/ExoticMerchant/submenus";
     private const string ExoticCoins = P.Menus + "/ExoticMerchant/counters/currencyInteraction (ExoticCoin)/quantity";
     private const string SellGrid = M + "/bg/sellItemsSubmenu/Scroll View/Viewport/Content/productGrid";
-    private const string UpgradeList = M + "/bg/upgradesSubmenu/upgradesScrollView/Viewport/Content/upgradesList";
+    private const string Upgrades = M + "/bg/upgradesSubmenu";
     private const string NextTree = M + "/bg/upgradesSubmenu/navigation/goForthTree";
     private const string GearGrid = M + "/bg/emblemMarketSubmenu/categories/gearCategory/scrollView/Viewport/Content/productGrid";
     private MelonPreferences_Entry<int> _sellMode;
     private MelonPreferences_Entry<bool> _buyUpgrades;
     private MelonPreferences_Entry<bool> _buyChests;
+    private MelonPreferences_Entry<string> _priority;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
         _sellMode = c.CreateEntry("sell_mode", 2, "Sell Items",
             "0 = sell nothing, 1 = scrolls only, 2 = everything except gold items, 3 = everything.");
         _buyUpgrades = c.CreateEntry("buy_upgrades", true, "Buy Exotic Upgrades",
-            "Spends exotic coins on every upgrade the game lets you afford.");
+            "Spends exotic coins in priority order, filling an available tier before the next.");
+        _priority = c.CreateEntry("priority",
+            "Prestigious,Firestone Finder,Raining gold,Heroes' damage,Team bonus,All main attributes,Firestone effect," +
+            "Damage specialization,Leadership,Guardian power,Energy Heroes,Mana Heroes,Rage Heroes," +
+            "Fist fight,Magic spells,Precision,Skip stage,Skip wave,Healer specialization," +
+            "Tank specialization,Attribute health,Attribute armor",
+            "Priority", "Exotic upgrades to fill in order. Level-locked upgrades are skipped until unlocked.");
         _buyChests = c.CreateEntry("buy_emblem_chests", true, "Buy Emblem Chests",
             "Spends emblems on gear chests, best chest first.");
     }
@@ -207,8 +214,8 @@ public class ExoticMerchantTask : BotTask
                     var coinsBefore = Ui.NumberAt(ExoticCoins);
                     var sold = false;
                     yield return Ui.ClickUntil(button,
-                        () => Ui.NumberOf(item.Find("itemBg/quantity")) < quantityBefore ||
-                              Ui.NumberAt(ExoticCoins) > coinsBefore,
+                        () => PurchaseObservation.Decreased(quantityBefore, Ui.NumberOf(item.Find("itemBg/quantity"))) ||
+                              PurchaseObservation.Increased(coinsBefore, Ui.NumberAt(ExoticCoins)),
                         value => sold = value, $"sell {name}", 0.6f);
                     if (!sold)
                     {
@@ -222,50 +229,9 @@ public class ExoticMerchantTask : BotTask
 
         if (_buyUpgrades.Value)
         {
-            if (Ui.NumberAt(ExoticCoins) <= 0)
-            {
-                Logger.Info("[Exotic Merchant] Skipping upgrade scans: no exotic coins available.");
-            }
-            else
-            {
-                yield return Ui.Click(M + "/submenuButtons/upgrades", 1.5f);
-                for (var tree = 0; tree < 8; tree++)
-                {
-                    foreach (var up in Ui.VisibleChildren(UpgradeList).ToList())
-                    {
-                        var button = up.Find("upgradeButton");
-                        while (clicks < 90 && Ui.Clickable(button))
-                        {
-                            var name = Ui.Text(up.Find("upgradeName"));
-                            var currencyBefore = Ui.NumberAt(ExoticCoins);
-                            var costBefore = Ui.NumberOf(button.Find("costText"));
-                            var confirmed = false;
-                            yield return Ui.ClickUntil(button,
-                                () => Ui.NumberAt(ExoticCoins) < currencyBefore ||
-                                      Ui.NumberOf(button.Find("costText")) != costBefore,
-                                value => confirmed = value, name, 0.8f);
-                            if (!confirmed)
-                            {
-                                Logger.Warning($"[Exotic Merchant] Stopping at {name}: no cost or currency change was confirmed.");
-                                if (Ui.Visible(P.Popups + "/GenericMessage/bg"))
-                                    yield return Ui.Click(P.Popups + "/GenericMessage/bg/closeButton");
-                                yield return Ui.Click(P.Menus + "/ExoticMerchant/closeButton");
-                                yield break;
-                            }
-                            clicks++;
-                        }
-                    }
-
-                    if (!Ui.Clickable(NextTree)) break;
-                    yield return Ui.Click(NextTree, 1.2f);
-                    // A locked tree answers with a message instead of opening.
-                    if (Ui.Visible(P.Popups + "/GenericMessage/bg"))
-                    {
-                        yield return Ui.Click(P.Popups + "/GenericMessage/bg/closeButton");
-                        break;
-                    }
-                }
-            }
+            var retry = false;
+            yield return BuyRankedUpgrades(() => retry = true);
+            if (retry) NextRunTime = DateTime.Now.AddMinutes(2);
         }
 
         if (_buyChests.Value)
@@ -298,6 +264,142 @@ public class ExoticMerchantTask : BotTask
 
         if (clicks >= 60) NextRunTime = DateTime.Now.AddMinutes(3);
         yield return Ui.Click(P.Menus + "/ExoticMerchant/closeButton");
+    }
+
+    private static List<ExoticUpgradesInteraction> VisibleUpgrades()
+    {
+        var result = new List<ExoticUpgradesInteraction>();
+        var panel = Ui.Find(Upgrades);
+        if (panel == null || !panel.gameObject.activeInHierarchy) return result;
+        foreach (var item in panel.GetComponentsInChildren<ExoticUpgradesInteraction>(true))
+            if (item != null && item.gameObject.activeInHierarchy) result.Add(item);
+        return result;
+    }
+
+    private static bool IsMaxed(ExoticUpgradesInteraction item)
+        => item != null && item.upgrade != null &&
+           ((ExoticUpgrade.levelCap > 0 && item.upgrade.level >= ExoticUpgrade.levelCap) ||
+            (item.maxLevelObj != null && item.maxLevelObj.activeInHierarchy));
+
+    private IEnumerator BuyRankedUpgrades(Action retrySoon)
+    {
+        var coins = Ui.NumberAt(ExoticCoins);
+        if (coins < 0)
+        {
+            Logger.Warning("[Exotic Merchant] Exotic coin count is unreadable; upgrades were left untouched.");
+            yield break;
+        }
+        if (coins == 0)
+        {
+            Logger.Info("[Exotic Merchant] Skipping upgrades: no exotic coins available.");
+            yield break;
+        }
+
+        yield return Ui.Click(M + "/submenuButtons/upgrades", 1.5f);
+        yield return Ui.WaitFor(Upgrades);
+        var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+        var purchases = 0;
+        for (var tree = 0; tree < 8; tree++)
+        {
+            var items = VisibleUpgrades();
+            if (items.Count == 0 || items.Any(item => item.upgrade == null))
+            {
+                Logger.Warning("[Exotic Merchant] Upgrade data is unavailable; lower tiers were left untouched.");
+                yield break;
+            }
+
+            var treeId = items[0].upgrade.exoticTree;
+            if (items.Any(item => item.upgrade.exoticTree != treeId))
+            {
+                Logger.Warning("[Exotic Merchant] Upgrade tree changed while reading it; no purchase attempted.");
+                yield break;
+            }
+
+            var ranked = new List<(ExoticUpgradesInteraction item, string name, int code)>();
+            foreach (var item in items)
+            {
+                var name = Ui.Text(item.nameText != null ? item.nameText.transform : null);
+                if (string.IsNullOrWhiteSpace(name)) name = item.upgrade.name;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    Logger.Warning("[Exotic Merchant] An upgrade name is unreadable; lower tiers were left untouched.");
+                    yield break;
+                }
+                ranked.Add((item, name, item.upgrade.upgradeCode));
+            }
+
+            foreach (var entry in ranked.OrderBy(item => ExoticUpgradePolicy.Rank(order, item.name)))
+            {
+                while (true)
+                {
+                    var item = entry.item;
+                    var upgrade = item.upgrade;
+                    if (upgrade == null || upgrade.exoticTree != treeId || upgrade.upgradeCode != entry.code)
+                    {
+                        Logger.Warning($"[Exotic Merchant] {entry.name}: the upgrade changed; lower tiers were left untouched.");
+                        retrySoon();
+                        yield break;
+                    }
+
+                    var maxed = IsMaxed(item);
+                    if (!maxed && (ExoticUpgrade.levelCap <= 0 || upgrade.level < 0))
+                    {
+                        Logger.Warning($"[Exotic Merchant] {entry.name}: upgrade level is invalid; lower tiers were left untouched.");
+                        yield break;
+                    }
+                    var locked = item.reachLevelTextObj != null && item.reachLevelTextObj.activeInHierarchy;
+                    var button = item.upgradeButton != null ? item.upgradeButton.transform : null;
+                    var hasButton = button != null && button.gameObject.activeInHierarchy;
+                    var cost = Ui.NumberOf(item.levelUpCostText != null ? item.levelUpCostText.transform : null);
+                    var balance = Ui.NumberAt(ExoticCoins);
+                    var action = ExoticUpgradePolicy.Decide(maxed, locked, hasButton, Ui.Clickable(button),
+                        purchases >= 90, cost, balance);
+                    if (action == ExoticUpgradeAction.Advance) break;
+                    if (action != ExoticUpgradeAction.Buy)
+                    {
+                        if (action == ExoticUpgradeAction.RetrySoon) retrySoon();
+                        Logger.Info($"[Exotic Merchant] Holding at {entry.name}: cost {cost}, coins {balance}; lower tiers stay untouched.");
+                        yield break;
+                    }
+
+                    var levelBefore = upgrade.level;
+                    var confirmed = false;
+                    yield return Ui.ClickUntil(button,
+                        () => (item.upgrade != null && item.upgrade.exoticTree == treeId &&
+                               item.upgrade.upgradeCode == entry.code && item.upgrade.level > levelBefore) ||
+                              PurchaseObservation.Decreased(balance, Ui.NumberAt(ExoticCoins)) ||
+                              PurchaseObservation.ChangedPrice(cost,
+                                  Ui.NumberOf(item.levelUpCostText != null ? item.levelUpCostText.transform : null)),
+                        value => confirmed = value, entry.name, 0.8f);
+                    if (!confirmed || Ui.MissingCurrency)
+                    {
+                        Logger.Warning($"[Exotic Merchant] Stopping at {entry.name}: purchase was not confirmed.");
+                        yield break;
+                    }
+                    purchases++;
+                }
+            }
+
+            if (items.Any(item => item.upgrade == null || item.upgrade.exoticTree != treeId || !IsMaxed(item)))
+                yield break;
+            if (!Ui.Clickable(NextTree)) yield break;
+
+            var advanced = false;
+            yield return Ui.ClickUntil(Ui.Find(NextTree),
+                () =>
+                {
+                    var next = VisibleUpgrades();
+                    return next.Count > 0 && next[0].upgrade != null && next[0].upgrade.exoticTree != treeId;
+                },
+                value => advanced = value, "next exotic tree", 1.2f);
+            if (!advanced)
+            {
+                if (Ui.Visible(P.Popups + "/GenericMessage/bg"))
+                    yield return Ui.Click(P.Popups + "/GenericMessage/bg/closeButton");
+                yield break;
+            }
+            if (tree == 7) retrySoon();
+        }
     }
 
     private bool ShouldSell(string name)
@@ -367,15 +469,15 @@ public class ChaosRiftTask : BotTask
     private const string Items = Shop + "/submenus/supplies/items";
     private const string Runes = Shop + "/counters/currencyInteraction (DarkRune)/quantity";
     private const string MQ = P.Menus + "/MagicQuarters";
-    private const string Holy = MQ + "/submenus/bg/chaosRiftSubmenu/holyDamageUpgrade/bg/upgradeButton";
-    private const string Orbs = MQ + "/counters/currencyInteraction (OrbOfLight)/quantity";
     private MelonPreferences_Entry<bool> _buyStones;
     private MelonPreferences_Entry<bool> _buyTomes;
     private MelonPreferences_Entry<bool> _holyUpgrades;
     private MelonPreferences_Entry<string> _holyGuardians;
+    private MelonPreferences_Entry<string> _holyPriorityMode;
     private int _hits;
 
     protected override string NotificationPath => P.Notifications + "/ChaosRift";
+    protected override bool UseScheduledTime => true;
     private static readonly string[] NotificationNames =
         { "ChaosRift", "ChaosRiftSupplies", "GuardianHolyUpgrade" };
 
@@ -394,7 +496,9 @@ public class ChaosRiftTask : BotTask
         _holyUpgrades = c.CreateEntry("holy_damage_upgrades", true, "Holy Damage Upgrades",
             "Spends orbs of light on the holy damage upgrade (resets monthly).");
         _holyGuardians = c.CreateEntry("holy_guardians", "Vermilion,Grace,Ankaa,Azhar", "Holy Upgrade Guardians",
-            "Which guardians get holy damage upgrades. Pick none to skip them all.");
+            "Guardians to upgrade, in priority order. Pick none to skip them all.");
+        _holyPriorityMode = c.CreateEntry("holy_priority_mode", "balanced", "Holy Upgrade Strategy",
+            "Balance checks every selected guardian in order. Focus first saves orbs for the first unlocked guardian.");
     }
 
     public override IEnumerator Execute()
@@ -441,8 +545,6 @@ public class ChaosRiftTask : BotTask
         yield return Ui.Click(R + "/closeButton");
     }
 
-    private const string LockedGuardian = P.Popups + "/LockedGuardian";
-
     private IEnumerator HolyUpgrades()
     {
         if (!Ui.Visible(MQ))
@@ -451,37 +553,15 @@ public class ChaosRiftTask : BotTask
             yield break;
         }
 
-        var wanted = (_holyGuardians.Value ?? string.Empty).Split(',')
-            .Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
-        var done = 0;
-        foreach (var g in Ui.VisibleChildren(MQ + "/guardianList").Where(Ui.Clickable).ToList())
+        if (!UncappedUpgradePolicy.TryParse(_holyPriorityMode.Value, out var mode))
         {
-            if (wanted.Count == 0) break;
-            yield return Ui.Click(g, 1.2f);
-            if (Ui.Visible(LockedGuardian))
-            {
-                yield return Ui.Click(LockedGuardian + "/bg/closeButton", 0.8f);
-                continue;
-            }
-            var name = Ui.Text(MQ + "/guardianPreview/info/guardianName");
-            if (!wanted.Any(w => w.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
-            yield return Ui.Click(MQ + "/submenus/submenuButtons/chaosRift", 1.2f);
-            for (var n = 0; n < 10; n++)
-            {
-                var cost = Ui.NumberAt(Holy + "/layout/costText");
-                var orbsBefore = Ui.NumberAt(Orbs);
-                if (cost <= 0 || orbsBefore < cost || !Ui.Clickable(Holy)) break;
-                var upgraded = false;
-                yield return Ui.ClickUntil(Ui.Find(Holy),
-                    () => Ui.NumberAt(Orbs) < orbsBefore ||
-                          Ui.NumberAt(Holy + "/layout/costText") != cost,
-                    value => upgraded = value, "holy damage upgrade", 1.2f, 2f);
-                if (!upgraded) break;
-                done++;
-            }
+            Logger.Warning("[Chaos Rift] Invalid holy upgrade strategy; no holy upgrades were attempted.");
+            yield return Ui.Click(MQ + "/closeButton", 1.5f);
+            yield break;
         }
 
-        Logger.Info($"[Chaos Rift] Holy upgrades confirmed: {done}; orbs of light now {Ui.NumberAt(Orbs):0}.");
+        yield return HolyUpgradeBuyer.Run(_holyGuardians.Value, mode,
+            () => NextRunTime = DateTime.Now.AddMinutes(2));
         yield return Ui.Click(MQ + "/closeButton", 1.5f);
     }
     private IEnumerator HitAll()
@@ -617,6 +697,7 @@ public class AwakenHeroesTask : BotTask
 public class WarMachineUpgradeTask : BotTask
 {
     protected override string NotificationPath => P.Notifications + "/Warmachines";
+    protected override bool UseScheduledTime => true;
 
     private const string W = P.Menus + "/WarMachines";
     private const string Grid = W + "/warMachinesScrollView/Viewport/grid";
@@ -628,6 +709,7 @@ public class WarMachineUpgradeTask : BotTask
     private MelonPreferences_Entry<string> _machine;
     private MelonPreferences_Entry<bool> _levels;
     private MelonPreferences_Entry<string> _blueprints;
+    private MelonPreferences_Entry<string> _blueprintPriority;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
@@ -652,6 +734,8 @@ public class WarMachineUpgradeTask : BotTask
             "Levels them up in the workshop with expedition tokens and components.");
         _blueprints = c.CreateEntry("blueprints", "damage", "Blueprints",
             "Blueprint upgrades: none, damage, health, armor, or all.");
+        _blueprintPriority = c.CreateEntry("blueprint_priority", "damage,health,armor", "Blueprint Priority",
+            "When Blueprints is set to all, fill the selected blueprint types in this order.");
     }
 
     /// <summary>The machines to work on, as the game's machine numbers, in the order chosen.</summary>
@@ -709,25 +793,31 @@ public class WarMachineUpgradeTask : BotTask
             var square = FindSquare(number);
             if (square == null)
             {
-                Logger.Debug($"[War Machine] Machine {number} is not in the garage list.");
-                continue;
+                Logger.Warning($"[War Machine] Machine {number} is not in the garage list; lower tiers were left untouched.");
+                NextRunTime = DateTime.Now.AddMinutes(2);
+                BubbleQuietUntil = NextRunTime;
+                break;
             }
-            yield return Ui.Click(square, 1f);
-            yield return UpgradeSelected();
-        }
-
-        // Machines outside the picked list that still show their own bell are what keeps the bubble lit.
-        var lit = Ui.VisibleChildren(Grid).Where(s => s.name.StartsWith("warMachineSquare"))
-            .Select(s => s.GetComponent<WarMachineInteractionSquare>()?.warMachine)
-            .Where(m => m != null && !targets.Contains((int)m.machineCode))
-            .Select(m => (int)m.machineCode).ToList();
-        foreach (var number in lit)
-        {
-            var square = FindSquare(number);
-            var bell = square?.Find("notificationCircle");
-            if (bell == null || !bell.gameObject.activeInHierarchy) continue;
-            yield return Ui.Click(square, 1f);
-            yield return UpgradeSelected();
+            var selected = false;
+            yield return Ui.ClickUntil(square,
+                () => square.Find("highlighted") != null &&
+                      square.Find("highlighted").gameObject.activeInHierarchy &&
+                      !string.IsNullOrWhiteSpace(Ui.Text(Name)),
+                value => selected = value, $"select machine {number}", 1f);
+            if (!selected)
+            {
+                Logger.Warning($"[War Machine] Selection of machine {number} was not confirmed; lower tiers were left untouched.");
+                NextRunTime = DateTime.Now.AddMinutes(2);
+                BubbleQuietUntil = NextRunTime;
+                break;
+            }
+            var action = PriorityTierAction.Advance;
+            yield return UpgradeSelected(value => action = value);
+            if (action == PriorityTierAction.Advance) continue;
+            NextRunTime = DateTime.Now.AddMinutes(action == PriorityTierAction.RetrySoon ? 2 : 60);
+            BubbleQuietUntil = NextRunTime;
+            Logger.Info($"[War Machine] Holding at machine {number}; lower tiers stay untouched.");
+            break;
         }
 
         if (_spent == 0)
@@ -752,76 +842,137 @@ public class WarMachineUpgradeTask : BotTask
         return null;
     }
 
-    private IEnumerator UpgradeSelected()
+    private IEnumerator UpgradeSelected(Action<PriorityTierAction> result)
     {
         var name = Ui.Text(Name);
-        if (_levels.Value && Ui.NumberAt(Tokens) > 0)
+        var levelOutcome = PriorityTierAction.Advance;
+        if (_levels.Value)
         {
             yield return Ui.Click(W + "/submenus/submenuButtons/workshop", 1.2f);
             var ups = 0;
-            for (var i = 0; i < 20; i++)
+            if (!Ui.Visible(Workshop))
             {
-                var tokens = Ui.NumberAt(W + "/counters/currencyInteraction (ExpeditionToken)/quantity");
-                var cost = Ui.NumberAt(Workshop + "/upgradeButton/costText");
-                var componentsOk = Enumerable.Range(0, 3).All(n =>
-                {
-                    var v = Ui.Text(Workshop + $"/wmComponentProgress ({n})/value");
-                    if (string.IsNullOrEmpty(v)) return true;
-                    var parts = v.Split('/');
-                    return parts.Length == 2 && Ui.Parse(parts[0]) >= Ui.Parse(parts[1]);
-                });
-                if (cost <= 0 || tokens < cost || !componentsOk || !Ui.Clickable(Workshop + "/upgradeButton")) break;
-                var levelBefore = Ui.Text(Level);
-                var tokensBefore = tokens;
-                var changed = false;
-                yield return Ui.ClickUntil(Ui.Find(Workshop + "/upgradeButton"),
-                    () => Ui.Text(Level) != levelBefore || Ui.NumberAt(Tokens) < tokensBefore,
-                    value => changed = value, $"{name} level upgrade", 1.5f);
-                if (!changed)
-                {
-                    Logger.Warning($"[War Machine] {name}: stopping level upgrades after no verified level or token change.");
-                    break;
-                }
-
-                ups++;
+                Logger.Warning($"[War Machine] {name}: workshop did not open.");
+                levelOutcome = PriorityTierAction.Wait;
             }
+            else
+                for (var i = 0; i < 20; i++)
+                {
+                    var button = Workshop + "/upgradeButton";
+                    if (!Ui.Visible(button)) break;
+                    var tokens = Ui.NumberAt(Tokens);
+                    var cost = Ui.NumberAt(button + "/costText");
+                    var componentsOk = Enumerable.Range(0, 3).All(n =>
+                    {
+                        var v = Ui.Text(Workshop + $"/wmComponentProgress ({n})/value");
+                        if (string.IsNullOrEmpty(v)) return true;
+                        var parts = v.Split('/');
+                        if (parts.Length != 2) return false;
+                        var have = Ui.Parse(parts[0]);
+                        var required = Ui.Parse(parts[1]);
+                        return have >= 0 && required >= 0 && have >= required;
+                    });
+                    if (cost <= 0 || tokens < 0 || tokens < cost || !componentsOk || !Ui.Clickable(button))
+                    {
+                        levelOutcome = PriorityTierAction.Wait;
+                        break;
+                    }
+                    var levelBefore = Ui.Text(Level);
+                    var tokensBefore = tokens;
+                    var changed = false;
+                    yield return Ui.ClickUntil(Ui.Find(button),
+                        () => PurchaseObservation.LevelIncreased(levelBefore, Ui.Text(Level)) ||
+                              PurchaseObservation.Decreased(tokensBefore, Ui.NumberAt(Tokens)),
+                        value => changed = value, $"{name} level upgrade", 1.5f);
+                    if (!changed)
+                    {
+                        Logger.Warning($"[War Machine] {name}: stopping level upgrades after no verified level or token change.");
+                        levelOutcome = PriorityTierAction.Wait;
+                        break;
+                    }
+
+                    ups++;
+                }
             _spent += ups;
             if (ups > 0) Logger.Info($"[War Machine] {name}: +{ups} level(s).");
+            if (ups == 20 && Ui.Visible(Workshop + "/upgradeButton"))
+            {
+                var cost = Ui.NumberAt(Workshop + "/upgradeButton/costText");
+                var tokens = Ui.NumberAt(Tokens);
+                levelOutcome = cost > 0 && tokens >= cost && Ui.Clickable(Workshop + "/upgradeButton")
+                    ? PriorityTierAction.RetrySoon : PriorityTierAction.Wait;
+            }
         }
 
-        var mode = (_blueprints.Value ?? "none").Trim().ToLowerInvariant();
-        if (mode == "none") yield break;
-        var blueprintCurrency = Ui.VisibleChildren(W + "/counters")
-            .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
-        if (blueprintCurrency == null || Ui.NumberOf(blueprintCurrency.Find("quantity")) <= 0) yield break;
+        if (!WarMachineBlueprintPolicy.TryGetSlots(_blueprints.Value, _blueprintPriority.Value, out var slots))
+        {
+            Logger.Warning($"[War Machine] {name}: blueprint selection or priority is invalid.");
+            result(WarMachineBlueprintPolicy.Combine(levelOutcome, PriorityTierAction.Wait));
+            yield break;
+        }
+        if (slots.Length == 0) { result(levelOutcome); yield break; }
 
         yield return Ui.Click(W + "/submenus/submenuButtons/blueprintUpgrades", 1.2f);
-        int[] slots = mode switch { "damage" => new[] { 0 }, "health" => new[] { 1 }, "armor" => new[] { 2 }, _ => new[] { 0, 1, 2 } };
+        if (!Ui.Visible(W + "/submenus/bg/blueprintUpgradesSubmenu"))
+        {
+            Logger.Warning($"[War Machine] {name}: blueprint upgrades did not open.");
+            result(WarMachineBlueprintPolicy.Combine(levelOutcome, PriorityTierAction.Wait));
+            yield break;
+        }
+        var blueprintCurrency = Ui.VisibleChildren(W + "/counters")
+            .FirstOrDefault(t => t.name.IndexOf("Blueprint", StringComparison.OrdinalIgnoreCase) >= 0);
+        if (blueprintCurrency == null || Ui.NumberOf(blueprintCurrency.Find("quantity")) < 0)
+        {
+            Logger.Warning($"[War Machine] {name}: blueprint count is unreadable.");
+            result(WarMachineBlueprintPolicy.Combine(levelOutcome, PriorityTierAction.Wait));
+            yield break;
+        }
+
+        var blueprintOutcome = PriorityTierAction.Advance;
         var bought = 0;
         foreach (var s in slots)
         {
             var button = Blueprints + $"/wmBlueprintUpgrade ({s})/upgradeButton";
-            for (var i = 0; i < 20; i++)
+            var level = Blueprints + $"/wmBlueprintUpgrade ({s})/level";
+            var purchases = 0;
+            for (; purchases < 20; purchases++)
             {
+                if (!Ui.Visible(button)) break;
                 var have = Ui.NumberOf(blueprintCurrency.Find("quantity"));
                 var cost = Ui.NumberAt(button + "/costText");
-                if (cost <= 0 || have < cost || !Ui.Clickable(button)) break;
+                if (cost <= 0 || have < 0 || have < cost || !Ui.Clickable(button))
+                {
+                    blueprintOutcome = PriorityTierAction.Wait;
+                    break;
+                }
                 var before = have;
+                var levelBefore = Ui.Text(level);
                 var changed = false;
                 yield return Ui.ClickUntil(Ui.Find(button),
-                    () => Ui.NumberOf(blueprintCurrency.Find("quantity")) < before,
+                    () => PurchaseObservation.Decreased(before, Ui.NumberOf(blueprintCurrency.Find("quantity"))) ||
+                          PurchaseObservation.LevelIncreased(levelBefore, Ui.Text(level)),
                     value => changed = value, $"{name} blueprint {s}", 1.2f);
                 if (!changed)
                 {
                     Logger.Warning($"[War Machine] {name}: stopping blueprint upgrades after no verified currency change.");
+                    blueprintOutcome = PriorityTierAction.Wait;
                     break;
                 }
 
                 bought++;
             }
+            if (purchases == 20 && Ui.Visible(button))
+            {
+                var have = Ui.NumberOf(blueprintCurrency.Find("quantity"));
+                var cost = Ui.NumberAt(button + "/costText");
+                blueprintOutcome = cost > 0 && have >= cost && Ui.Clickable(button)
+                    ? PriorityTierAction.RetrySoon : PriorityTierAction.Wait;
+            }
+            if (blueprintOutcome != PriorityTierAction.Advance) break;
         }
         _spent += bought;
         if (bought > 0) Logger.Info($"[War Machine] {name}: {bought} blueprint upgrade(s).");
+        result(WarMachineBlueprintPolicy.Combine(levelOutcome, blueprintOutcome));
     }
 }
 
@@ -1048,56 +1199,132 @@ public class ArenaTask : BotTask
 public class OracleBlessingsTask : BotTask
 {
     protected override string NotificationPath => P.Notifications + "/OracleBlessings";
+    protected override bool UseScheduledTime => true;
 
     private const string O = P.Menus + "/Oracle";
     private const string List = O + "/submenus/bg/blessingsSubmenu/blessings";
     private const string Preview = P.Popups + "/OracleBlessingPreview/bg";
     private const string Bless = Preview + "/darkBlueFrame/buttonRect/buyUpgradeButton";
+    private MelonPreferences_Entry<string> _priority;
 
     public override int MinimumLevel => LevelRequirements.Oracle;
 
-    // Blessings that were unaffordable are not reopened for a while; glyphs only arrive slowly.
-    private static readonly Dictionary<string, DateTime> Unaffordable = new();
-    private static int _knownCount;
-    private static readonly TimeSpan Recheck = TimeSpan.FromHours(6);
+    protected override void OnConfigure(MelonPreferences_Category c)
+    {
+        _priority = c.CreateEntry("priority",
+            "Fate,Prestigious,Raining gold,Damage Specialization,Guardian Power,Mana Heroes,Energy Heroes," +
+            "Rage Heroes,Melee Heroes,Ranged Heroes,Spellcaster Heroes,Tank Specialization,Healer Specialization",
+            "Priority", "Blessings to fill in order. Change the list to suit your party; unlisted blessings follow.");
+    }
 
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddHours(3);
-        var now = DateTime.Now;
-        if (_knownCount > 0 && Unaffordable.Count(kv => kv.Value > now) >= _knownCount)
-        {
-            Logger.Info($"[Oracle] All {_knownCount} blessings were unaffordable; skipping until the recheck.");
-            yield break;
-        }
         yield return Ui.OpenTownBuilding("oracle");
         yield return Ui.Click(O + "/submenuButtons/blessings", 1.5f);
         if (!Ui.Visible(List)) yield break;
 
         var tiles = Ui.VisibleChildren(List).Where(b => b.name.StartsWith("blessing")).ToList();
-        _knownCount = tiles.Count;
+        var known = new List<(Transform tile, string name)>();
+        const string scope = "oracle-blessings";
         foreach (var blessing in tiles)
         {
-            if (Unaffordable.TryGetValue(blessing.name, out var until) && until > DateTime.Now) continue;
-            Unaffordable.Remove(blessing.name);
-            yield return Ui.Click(blessing, 1.2f);
-            // The game only enables "Bless" when you have every glyph it asks for.
-            var name = Ui.Text(Preview + "/darkBlueFrame/upgradeName");
-            for (var n = 0; n < 10 && Ui.Clickable(Bless); n++)
+            if (UpgradeNames.TryGet(blessing, scope, out var remembered))
             {
-                var levelBefore = Ui.Text(Preview + "/darkBlueFrame/upgradeLevelText");
-                var changed = false;
-                yield return Ui.ClickUntil(Ui.Find(Bless),
-                    () => Ui.Text(Preview + "/darkBlueFrame/upgradeLevelText") != levelBefore,
-                    value => changed = value, $"Oracle blessing: {name}", 1.5f);
-                if (!changed)
+                known.Add((blessing, remembered));
+                continue;
+            }
+            if (!Ui.Clickable(blessing)) continue;
+            if (Ui.Visible(Preview))
+            {
+                Logger.Warning("[Oracle] A previous preview is still open; lower tiers were left untouched.");
+                UpgradeNames.Flush();
+                yield break;
+            }
+            yield return Ui.Click(blessing, 1.2f);
+            var name = Ui.Text(Preview + "/darkBlueFrame/upgradeName").Trim();
+            if (!Ui.Visible(Preview) || string.IsNullOrWhiteSpace(name))
+            {
+                Logger.Warning("[Oracle] A blessing preview or name was unreadable; lower tiers were left untouched.");
+                UpgradeNames.Flush();
+                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.8f);
+                yield return Ui.Click(O + "/closeButton");
+                yield break;
+            }
+            UpgradeNames.Remember(blessing, scope, name);
+            known.Add((blessing, name));
+            yield return Ui.Click(Preview + "/closeButton", 0.8f);
+        }
+        UpgradeNames.Flush();
+
+        var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+        foreach (var blessing in known.OrderBy(item => PriorityTier.Rank(order, item.name)))
+        {
+            if (!Ui.Clickable(blessing.tile)) continue;
+            if (Ui.Visible(Preview))
+            {
+                Logger.Warning("[Oracle] A previous preview is still open; lower tiers were left untouched.");
+                break;
+            }
+            yield return Ui.Click(blessing.tile, 1.2f);
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Warning($"[Oracle] {blessing.name}: preview did not open; lower tiers were left untouched.");
+                break;
+            }
+            var actualName = Ui.Text(Preview + "/darkBlueFrame/upgradeName");
+            if (!UpgradeNames.Matches(blessing.tile, scope, blessing.name, actualName))
+            {
+                UpgradeNames.Flush();
+                Logger.Warning($"[Oracle] Expected {blessing.name}, found '{actualName}'; reordering before buying.");
+                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.8f);
+                NextRunTime = DateTime.Now.AddMinutes(2);
+                BubbleQuietUntil = NextRunTime;
+                break;
+            }
+            var levelPath = Preview + "/darkBlueFrame/upgradeLevelText";
+            var count = 0;
+            var failed = false;
+            while (count < 10 && Ui.Clickable(Bless))
+            {
+                var levelBefore = Ui.Text(levelPath);
+                if (string.IsNullOrWhiteSpace(levelBefore))
                 {
-                    Logger.Warning($"[Oracle] Stopping {name}: blessing level did not change after purchase.");
+                    Logger.Warning($"[Oracle] {blessing.name}: level unreadable; no purchase attempted.");
+                    failed = true;
                     break;
                 }
+                var changed = false;
+                yield return Ui.ClickUntil(Ui.Find(Bless),
+                    () => PurchaseObservation.LevelIncreased(levelBefore, Ui.Text(levelPath)),
+                    value => changed = value, $"Oracle blessing: {blessing.name}", 1.5f);
+                if (!changed)
+                {
+                    Logger.Warning($"[Oracle] Stopping {blessing.name}: blessing level did not increase.");
+                    failed = true;
+                    break;
+                }
+                count++;
             }
-            if (!Ui.Clickable(Bless)) Unaffordable[blessing.name] = DateTime.Now + Recheck;
+
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Warning($"[Oracle] {blessing.name}: preview closed unexpectedly; lower tiers were left untouched.");
+                break;
+            }
+            var finalLevel = Ui.Text(levelPath);
+            var maxed = NodeBuyer.IsMaxed(finalLevel);
+            var available = Ui.Visible(Bless);
+            var missingControl = Ui.Find(Bless) == null;
+            var stillClickable = Ui.Clickable(Bless);
             yield return Ui.Click(Preview + "/closeButton", 0.8f);
+            if (failed || string.IsNullOrWhiteSpace(finalLevel) || (!maxed && (available || missingControl)))
+            {
+                NextRunTime = DateTime.Now.AddMinutes(count >= 10 && stillClickable ? 2 : 60);
+                BubbleQuietUntil = NextRunTime;
+                Logger.Info($"[Oracle] Holding at {blessing.name}; lower tiers stay untouched.");
+                break;
+            }
         }
 
         yield return Ui.Click(O + "/closeButton");
@@ -1137,55 +1364,106 @@ public class PersonalTreeTask : BotTask
             yield break;
         }
 
-        // Read every upgrade once: name, cost and whether it is maxed.
         var info = new System.Collections.Generic.List<(Transform node, string name, double cost, bool maxed)>();
         var skipped = 0;
+        const string scope = "personal-tree";
         foreach (var node in Ui.VisibleChildren(Nodes).Where(n => n.name.StartsWith("treeOfLifePersonalUpgrade")).ToList())
         {
             if (NodeBuyer.CanSkip(node, Ui.NumberAt(Tokens) - _keepTokens.Value,
-                    retryUnaffordableAfterCooldown: false))
+                    retryUnaffordableAfterCooldown: false, scope: scope))
             {
+                if (NodeBuyer.TryGetKnown(node, out var knownMaxed, out var knownCost, out var knownName, scope) &&
+                    !knownMaxed && knownCost > 0 && !string.IsNullOrEmpty(knownName))
+                    info.Add((node, knownName, knownCost, false));
                 skipped++;
                 continue;
             }
 
-            if (NodeBuyer.TryGetKnown(node, out var knownMaxed, out var knownCost, out var knownName) &&
-                !knownMaxed && knownCost > 0 && !string.IsNullOrEmpty(knownName))
+            if (NodeBuyer.TryGetKnown(node, out var cachedMaxed, out var cachedCost, out var cachedName, scope) &&
+                !cachedMaxed && cachedCost > 0 && !string.IsNullOrEmpty(cachedName))
             {
-                info.Add((node, knownName, knownCost, false));
+                info.Add((node, cachedName, cachedCost, false));
                 continue;
             }
 
+            if (UpgradeNames.TryGet(node, scope, out var rememberedName))
+            {
+                info.Add((node, rememberedName, 0, false));
+                continue;
+            }
+
+            if (!Ui.Clickable(node)) continue;
+            if (Ui.Visible(Preview))
+            {
+                Logger.Warning("[Personal Tree] A previous preview is still open; lower tiers were left untouched.");
+                UpgradeNames.Flush();
+                yield break;
+            }
             yield return Ui.Click(node, 1f);
-            var name = Ui.Text(Preview + "/upgradeName");
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Warning("[Personal Tree] An unknown upgrade preview did not open; lower tiers were left untouched.");
+                UpgradeNames.Flush();
+                if (Ui.Visible(T)) yield return Ui.Click(T + "/closeButton");
+                yield break;
+            }
+            var name = Ui.Text(Preview + "/upgradeName").Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                Logger.Warning("[Personal Tree] An upgrade name was unreadable; lower tiers were left untouched.");
+                yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                UpgradeNames.Flush();
+                yield return Ui.Click(T + "/closeButton");
+                yield break;
+            }
             var level = Ui.Text(Preview + "/upgradeLevelText");
-            var parts = level.Split('/');
-            var maxed = parts.Length == 2 && Ui.Parse(parts[0]) >= Ui.Parse(parts[1]);
+            var maxed = NodeBuyer.IsMaxed(level);
             var cost = Ui.NumberAt(Buy + "/cost");
             var done = maxed || !Ui.Visible(Buy);
-            NodeBuyer.Remember(node, maxed, done ? 0 : cost, name);
+            NodeBuyer.Remember(node, maxed, done ? 0 : cost, name, scope);
+            if (!done && cost <= 0)
+            {
+                Logger.Warning($"[Personal Tree] {name}: price unreadable; lower tiers were left untouched.");
+                yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                UpgradeNames.Flush();
+                yield return Ui.Click(T + "/closeButton");
+                yield break;
+            }
             info.Add((node, name, cost, done));
             yield return Ui.Click(Preview + "/closeButton", 0.6f);
         }
+        UpgradeNames.Flush();
 
         Logger.Info($"[Personal Tree] Previewed {info.Count} upgrade(s), skipped {skipped} already known as unaffordable, maxed or locked.");
 
         var order = (_priority.Value ?? string.Empty).Split(',').Select(s => s.Trim().ToLowerInvariant()).ToList();
-        int Rank(string n)
+        foreach (var up in info.Where(u => !u.maxed && u.cost >= 0)
+                     .OrderBy(u => PriorityTier.Rank(order, u.name)).ThenBy(u => u.cost).ToList())
         {
-            var i = order.IndexOf((n ?? string.Empty).ToLowerInvariant());
-            return i < 0 ? order.Count : i;
-        }
-
-        foreach (var up in info.Where(u => !u.maxed && u.cost > 0).OrderBy(u => Rank(u.name)).ThenBy(u => u.cost).ToList())
-        {
-            if (Ui.NumberAt(Tokens) - _keepTokens.Value < up.cost)
+            if (!Ui.Clickable(up.node)) continue;
+            if (Ui.Visible(Preview))
             {
-                Logger.Info($"[Personal Tree] Stopping at {up.name}: cost {up.cost}, have {Ui.NumberAt(Tokens) - _keepTokens.Value}. Lower tiers stay untouched.");
+                Logger.Warning("[Personal Tree] A previous preview is still open; lower tiers were left untouched.");
                 break;
             }
             yield return Ui.Click(up.node, 1f);
-            for (var n = 0; n < 5; n++)
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Warning($"[Personal Tree] {up.name}: preview did not open; lower tiers were left untouched.");
+                break;
+            }
+            var actualName = Ui.Text(Preview + "/upgradeName");
+            if (!UpgradeNames.Matches(up.node, scope, up.name, actualName))
+            {
+                NodeBuyer.Forget(up.node, scope);
+                UpgradeNames.Flush();
+                Logger.Warning($"[Personal Tree] Expected {up.name}, found '{actualName}'; reordering before buying.");
+                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                NextRunTime = DateTime.Now.AddMinutes(2);
+                break;
+            }
+            var purchases = 0;
+            for (; purchases < 5; purchases++)
             {
                 var cost = Ui.NumberAt(Buy + "/cost");
                 if (cost <= 0 || Ui.NumberAt(Tokens) - _keepTokens.Value < cost || !Ui.Clickable(Buy)) break;
@@ -1193,9 +1471,9 @@ public class PersonalTreeTask : BotTask
                 var tokensBefore = Ui.NumberAt(Tokens);
                 var changed = false;
                 yield return Ui.ClickUntil(Ui.Find(Buy),
-                    () => Ui.Text(Preview + "/upgradeLevelText") != levelBefore ||
-                          Ui.NumberAt(Buy + "/cost") != cost ||
-                          Ui.NumberAt(Tokens) < tokensBefore,
+                    () => PurchaseObservation.LevelIncreased(levelBefore, Ui.Text(Preview + "/upgradeLevelText")) ||
+                          PurchaseObservation.ChangedPrice(cost, Ui.NumberAt(Buy + "/cost")) ||
+                          PurchaseObservation.Decreased(tokensBefore, Ui.NumberAt(Tokens)),
                     value => changed = value, up.name, 1.5f);
                 if (!changed)
                 {
@@ -1206,13 +1484,28 @@ public class PersonalTreeTask : BotTask
                 }
             }
 
+            if (!Ui.Visible(Preview))
+            {
+                Logger.Warning($"[Personal Tree] {up.name}: preview closed unexpectedly; lower tiers were left untouched.");
+                break;
+            }
             var finalLevel = Ui.Text(Preview + "/upgradeLevelText");
-            var finalParts = finalLevel.Split('/');
-            var finalMaxed = finalParts.Length == 2 && Ui.Parse(finalParts[0]) >= Ui.Parse(finalParts[1]);
+            var finalMaxed = NodeBuyer.IsMaxed(finalLevel);
             var finalCost = Ui.NumberAt(Buy + "/cost");
-            NodeBuyer.Remember(up.node, finalMaxed || !Ui.Visible(Buy),
-                finalMaxed || !Ui.Visible(Buy) ? 0 : finalCost, up.name);
+            var available = Ui.Visible(Buy);
+            var missingCurrency = Ui.MissingCurrency;
+            var action = !finalMaxed && Ui.Find(Buy) == null
+                ? PriorityTierAction.Wait
+                : PriorityTier.AfterPass(finalMaxed, available, purchases >= 5,
+                    Ui.Clickable(Buy), finalCost, Ui.NumberAt(Tokens) - _keepTokens.Value);
+            NodeBuyer.Remember(up.node, finalMaxed, finalMaxed || !available ? 0 : finalCost, up.name, scope);
             yield return Ui.Click(Preview + "/closeButton", 0.6f);
+            if (missingCurrency || action != PriorityTierAction.Advance)
+            {
+                if (action == PriorityTierAction.RetrySoon) NextRunTime = DateTime.Now.AddMinutes(2);
+                Logger.Info($"[Personal Tree] Holding at {up.name}; lower tiers stay untouched.");
+                break;
+            }
         }
 
         yield return Ui.Click(T + "/closeButton");

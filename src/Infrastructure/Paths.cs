@@ -339,7 +339,7 @@ public static class Paths
 
                     public static class PreviewLoc
                     {
-                        private const string Root = PopupsLoc.Root + "/FirestoneResearchPreview";
+                        public const string Root = PopupsLoc.Root + "/FirestoneResearchPreview";
  
                         public const string UnlockedTxt = Root + "/bg/unlocked";
 

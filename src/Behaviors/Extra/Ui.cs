@@ -294,6 +294,30 @@ internal static class Ui
         yield return Click(P.TownBuilding + building, 1.5f);
     }
 
+    public static IEnumerator OpenTownSubmenu(string building, string submenu, string button)
+    {
+        if (Visible(submenu)) yield break;
+        yield return OpenTownBuilding(building);
+        if (Visible(submenu)) yield break;
+        yield return Click(button, 1.5f);
+        yield return WaitFor(submenu);
+    }
+
+    public static IEnumerator OpenMapSubmenu(string section)
+    {
+        var map = P.Menus + "/WorldMap";
+        var submenu = map + "/submenus/" + section + "Submenu";
+        if (!Visible(map))
+        {
+            yield return Click(P.MapButton, 1.5f);
+            yield return WaitFor(map);
+        }
+
+        if (!Visible(map) || Visible(submenu)) yield break;
+        yield return Click(map + "/submenuButtons/" + section + "Button", 1.5f);
+        yield return WaitFor(submenu);
+    }
+
     public static IEnumerator OpenGuildBuilding(string building)
     {
         if (!Visible(P.Guild))

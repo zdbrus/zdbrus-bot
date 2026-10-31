@@ -178,6 +178,13 @@ internal static class UiTheme
     public const float TabBarHeight = 46f;
     public const float TabGap = 6f;
     public const float TabFontSize = 19f;
+    public const float UpdateBarHeight = 48f;
+    public const float UpdateBarGap = 8f;
+    public const float UpdateFontSize = 19f;
+    public const float UpdateInset = 12f;
+    public const float UpdateDotSize = 12f;
+    public const float UpdateButtonWidth = 110f;
+    public const float UpdateButtonHeight = 34f;
     public const float GlowLine = 2f;
     public const float Bracket = 26f;
 

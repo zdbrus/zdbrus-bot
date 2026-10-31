@@ -22,7 +22,10 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 ---
 
-> **Already have the bot? v0.7.36 is the final manual update.** Close the game and replace `Mods\ZdbrusBot.dll` with the one from the [latest release](https://github.com/zdbrus/zdbrus-bot/releases/latest). After that the bot updates itself each time you close the game (F1 > General > Auto Update).
+> **Already have the bot?** Version 0.7.36 and later can update automatically when **F1 > General >
+> Auto Update** is on. Close the game, wait for the updater to finish, then reopen. If automatic updates
+> are off or fail, replace `Mods\ZdbrusBot.dll` with the one from the
+> [latest release](https://github.com/zdbrus/zdbrus-bot/releases/latest) while the game is closed.
 
 ## Install in 4 steps
 
@@ -34,7 +37,7 @@ Runs inside the game as a MelonLoader mod. No pixel clicking, so screen size and
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
 >
-> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update runs outside the game: when you close it, a hidden PowerShell helper downloads the newest release from GitHub and replaces `Mods\ZdbrusBot.dll` (the old one is kept as `.bak`; log in `UserData\ZdbrusBot_update.log`). It needs internet access and will not touch the three Il2CppInterop files. Turn it off in F1 > General > Auto Update.
+> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update uses separate PowerShell helpers to check GitHub while the game is open and install a newer DLL after it closes. F1 shows the check status and a Releases button. Wait for `UserData\ZdbrusBot_update.log` to report the result before reopening; if the game restarts too early, the update is skipped until the next close. The previous DLL is kept as `.bak`, and the three Il2CppInterop files are not changed. Turn Auto Update off in F1 > General.
 
 ## Keys
 
@@ -65,7 +68,33 @@ Every feature can be switched on or off in the F1 panel.
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
 | **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
-| **Prestige** | Temple prestige once your run stalls (no new highest stage for 3 hours, adjustable) or once the temple's gold boost grows slower than 75% of this run's own average rate for two checks in a row (adjustable, 0 = off); never the paid 2x |
+| **Prestige** | Free Temple prestige after a stalled run or two slow growth samples, subject to your minimum boost and run age; status and controls have their own F1 tab |
+
+### Prestige and upgrade priorities
+
+Open **F1 > Prestige** to enable the task and see its last decision, run reading, and check time. The
+default stall trigger is three hours without a new highest stage. The optional growth trigger compares
+two hourly samples with this run's average boost growth (75% by default; 0 disables this trigger).
+Both triggers respect your minimum gold boost and run age. The growth rule is an estimate, not a
+guaranteed optimum. If the run age, boost format, or verified free control cannot be read, the bot
+does not prestige; it never chooses the paid 2x option. The stall timer starts fresh when a run has
+not yet been tracked or its age changes unexpectedly. Similar-age account switches cannot always
+be identified, so turn prestige off when switching accounts until you have checked its settings.
+
+Priority chips show their order as numbers. Tap an item to remove it and tap it again to add it at the
+end. Firestone Research, Personal Tree, Meteorite Research, Forbidden Knowledge, Talents, Oracle
+Blessings, Exotic Merchant and selected War Machines use their priority order; Event Exchange buys
+only selected items. A higher available tier that cannot yet be afforded holds its currency instead
+of falling through to a lower tier. Level-locked Exotic upgrades are skipped until unlocked.
+The bot remembers discovered upgrade names between launches, not prices or completion state; some
+previously unknown preview-based upgrades must still be inspected once.
+
+Hero/guardian gold upgrades and guardian holy-damage upgrades can keep growing without a known
+cap. For each of those categories, choose **Balance** to try every selected target in order, or
+**Focus first** to spend only on the first available target and save for it when necessary. Balance
+is the default; focus can leave lower priorities waiting indefinitely.
+When War Machine **Blueprints** is set to **All**, its separate priority chips choose the order of
+damage, health, and armor blueprints.
 
 ### War Machine Planner (F4)
 
@@ -88,7 +117,10 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 
 ### Works from the game's own signals
 
-Tasks with a bubble or bell icon (Oracle, quests, mail and the rest) only run when that icon shows, so the bot does not open screens just to look. If a task's screen is already open, it carries on from there instead of walking back from town. Campaign, boss retries and chests run on their own timers.
+Most tasks with a bubble or bell run when the icon shows, with a delayed safety check if it does not.
+Tasks that need an exact timer, such as prestige, map missions and research, also run at their
+scheduled time. If a task's screen is already open, it carries on from there instead of walking back
+from town. F2 shows the next timer-driven check; a notification can make a task run sooner.
 
 For notification bubbles without a dedicated task, the bot looks for free claim/collect buttons on the screens the bubble activates. The log reports button clicks and follow-up button state changes separately; those are not proof that the game granted the reward. Upgrades, missions, rituals, training, vault and research actions also check for a visible change (currency, timer, button) after each click and stop instead of looping when none appears.
 

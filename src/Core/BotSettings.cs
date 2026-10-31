@@ -103,8 +103,8 @@ public static class BotSettings
             "Determines if the bot logic should be initialized and started automatically upon game launch.");
 
         _autoUpdate = _category.CreateEntry("auto_update", true, "Auto Update",
-            "When the game closes, downloads the newest Zdbrus Bot release from GitHub and replaces Mods\\ZdbrusBot.dll " +
-            "(old one kept as ZdbrusBot.dll.bak). The new version loads on the next launch. Log: UserData\\ZdbrusBot_update.log.");
+            "A separate helper checks GitHub for updates. After the game closes, it installs a newer release " +
+            "and keeps the old DLL as .bak. Wait for UserData\\ZdbrusBot_update.log before reopening.");
 
         _startBotDelay = _category.CreateEntry("start_bot_delay", 10.0f, "Start Bot Delay",
             "The initial cooldown (in seconds) before the bot begins execution." +

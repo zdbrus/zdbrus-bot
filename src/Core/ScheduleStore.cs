@@ -16,8 +16,9 @@ public static class ScheduleStore
         try
         {
             var lines = new List<string>();
+            var now = DateTime.Now;
             foreach (var t in tasks)
-                if (t.NextRunTime > DateTime.Now)
+                if (t.NextRunTime != DateTime.MinValue && t.DueTime > now)
                     lines.Add($"{t.GetType().Name}={t.NextRunTime.ToString("o", CultureInfo.InvariantCulture)}");
             File.WriteAllLines(FilePath, lines);
         }
@@ -42,7 +43,7 @@ public static class ScheduleStore
             }
 
             foreach (var t in tasks)
-                if (map.TryGetValue(t.GetType().Name, out var when) && when > DateTime.Now)
+                if (map.TryGetValue(t.GetType().Name, out var when) && t.DueAt(when) > DateTime.Now)
                     t.RestoreNextRun(when);
         }
         catch (Exception e)

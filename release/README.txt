@@ -1,4 +1,4 @@
-﻿ZDBRUS BOT 0.7.37 - auto-play mod for Firestone: Idle Clicker Online RPG
+﻿ZDBRUS BOT 0.7.38 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -20,7 +20,18 @@ Upgrade tasks skip preview scans when the relevant currency is at or below its r
 cost, currency or inventory changes after purchases, and stop when progress cannot be confirmed.
 Reward logs report observed state changes without claiming a reward was granted unless the game
 exposes a reliable receipt.
-Temple prestige triggers on a stalled run, or once the gold boost grows slower than 75% of this run's own average rate for two checks in a row (adjustable, 0 = off); it never uses the paid 2x.
+F1 > Prestige shows the last decision and controls. Free temple prestige uses your minimum boost and
+run age plus a stall trigger or two slow hourly growth samples (adjustable, 0 disables growth).
+The growth rule is an estimate; unreadable boost/run-age values stop the reset. The paid 2x is never used.
+The stall timer starts fresh for untracked runs. Similar-age account switches cannot always be detected;
+turn prestige off when switching accounts until you have checked its settings.
+Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
+Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
+Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,
+then remembered between launches. Prices and completion state are not persisted.
+For hero gold and guardian holy upgrades, Balance tries all selected targets in order; Focus first
+saves for the first available target and can leave lower priorities waiting indefinitely.
+When War Machine Blueprints is set to All, separate priority chips order damage, health and armor.
 The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
 The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
 
@@ -30,7 +41,10 @@ F1 settings   F2 status   F4 planner   F6 auto-upgrade   F7 bot on/off   F8 auto
 TROUBLESHOOTING
 If the game closes during startup, verify the three bundled Il2CppInterop files are present and use
 stable MelonLoader 0.7.3. Attach MelonLoader\Latest.log to a bug report if the bot fails.
-The automatic update check remains disabled because its background request was suspected of crashing the game.
+With F1 > General > Auto Update enabled, the F1 notice checks for newer releases. Close Firestone,
+wait for UserData\ZdbrusBot_update.log to report the result, then reopen. The separate updater skips
+installation if the game restarts too early. The old DLL is kept as a .bak. If Auto Update is off
+or the check fails, use the Releases button to download the update and install it while the game is closed.
 
 SAFETY
 The bot skips purchases unless the game shows an available button and enough of the exact currency.

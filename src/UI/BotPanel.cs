@@ -51,6 +51,7 @@ public static class BotPanel
         _rows = null;
         _detailTitle = null;
         _detailBody = null;
+        UpdateBanner.Reset();
         _isOpen = false;
         _builtForHeight = 0;
 
@@ -78,6 +79,7 @@ public static class BotPanel
 
         UiContentBuilder.Poll();
         UiBadges.Refresh();
+        UpdateBanner.Refresh();
     }
 
     private static void ApplyScale()
@@ -151,18 +153,20 @@ public static class BotPanel
 
         // The chrome (canvas, blocker, window and header) is the same as the status screen's — it
         // lives in UiWindow.
-        _window = UiWindow.Create(RootName, UpdateCheck.Newer == null ? Brand.Name : $"{Brand.Name}  (update {UpdateCheck.Newer} on GitHub)", UiTheme.WindowWidth, UiTheme.WindowHeight, SortingOrder,
+        _window = UiWindow.Create(RootName, Brand.Name, UiTheme.WindowWidth, UiTheme.WindowHeight, SortingOrder,
             Close, UiTheme.DetailHeight + UiTheme.DetailGap);
         _builtForHeight = Screen.height;
 
         UiBadges.Build(_window.Header);
         BuildDetailBox(_window.Window);
+        UpdateBanner.Build(_window.Window);
 
         var tabBar = UiFactory.CreateNode("tabs", _window.Window);
         tabBar.anchorMin = new Vector2(0f, 1f);
         tabBar.anchorMax = new Vector2(1f, 1f);
-        tabBar.offsetMin = new Vector2(UiTheme.Padding, -(UiTheme.HeaderHeight + UiTheme.ContentTopGap + UiTheme.TabBarHeight));
-        tabBar.offsetMax = new Vector2(-UiTheme.Padding, -(UiTheme.HeaderHeight + UiTheme.ContentTopGap));
+        var tabsTop = UiTheme.HeaderHeight + UiTheme.ContentTopGap + UiTheme.UpdateBarHeight + UiTheme.UpdateBarGap;
+        tabBar.offsetMin = new Vector2(UiTheme.Padding, -(tabsTop + UiTheme.TabBarHeight));
+        tabBar.offsetMax = new Vector2(-UiTheme.Padding, -tabsTop);
 
         var rows = BuildScrollView(_window.Window);
         BuildContent(rows, _window.Root.GetComponent<GraphicRaycaster>());
@@ -219,7 +223,8 @@ public static class BotPanel
         content.offsetMin = new Vector2(UiTheme.Padding,
             UiTheme.Padding + UiTheme.DetailHeight + UiTheme.DetailGap);
         content.offsetMax = new Vector2(-UiTheme.Padding,
-            -(UiTheme.HeaderHeight + UiTheme.ContentTopGap + UiTheme.TabBarHeight + UiTheme.TabGap * 2f));
+            -(UiTheme.HeaderHeight + UiTheme.ContentTopGap + UiTheme.UpdateBarHeight + UiTheme.UpdateBarGap +
+              UiTheme.TabBarHeight + UiTheme.TabGap * 2f));
 
         var scroll = content.gameObject.AddComponent<ScrollRect>();
         scroll.horizontal = false;

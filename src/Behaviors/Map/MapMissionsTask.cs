@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Firebot.Behaviors.Extra;
 using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Base;
@@ -18,6 +19,7 @@ public class MapMissionsTask : BotTask
     private MelonPreferences_Entry<string> _timeOrder;
 
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.MapMissionsBtn;
+    protected override bool UseScheduledTime => true;
 
     protected override void OnConfigure(MelonPreferences_Category category)
     {
@@ -31,14 +33,33 @@ public class MapMissionsTask : BotTask
         );
     }
 
-    private const string SquadsText = Firebot.Behaviors.Extra.P.Menus + "/WorldMap/counters/squads/quantity";
+    private const string Map = P.Menus + "/WorldMap";
+    private const string Missions = Map + "/submenus/mapMissionsSubmenu";
+    private const string SquadsText = Map + "/counters/squads/quantity";
 
     /// <summary>Free squads, read from the "free/total" counter at the top of the map. -1 when unreadable.</summary>
-    private static double FreeSquads => Firebot.Behaviors.Extra.Ui.NumberAt(SquadsText);
+    private static double FreeSquads => Ui.NumberAt(SquadsText);
 
     public override IEnumerator Execute()
     {
-        yield return Notifications.MapMissions;
+        if (!Ui.Visible(Missions))
+        {
+            if (Ui.Visible(NotificationPath))
+            {
+                yield return Notifications.MapMissions;
+                yield return Ui.WaitFor(Missions, 2f);
+            }
+
+            if (!Ui.Visible(Missions)) yield return Ui.OpenMapSubmenu("mapMissions");
+        }
+
+        if (!Ui.Visible(Missions))
+        {
+            Logger.Warning("[Map Missions] Could not open the map missions screen; retrying in 15 minutes.");
+            NextRunTime = DateTime.Now.AddMinutes(15);
+            if (Ui.Visible(Map)) yield return MapMission.Close;
+            yield break;
+        }
 
         // One pass over the running missions: claim the finished ones, finish the free ones, and note when
         // the next one ends. (This used to be two full passes that opened every running mission twice.)
@@ -71,14 +92,22 @@ public class MapMissionsTask : BotTask
 
         // Start new missions only while squads are free. With every squad busy there is nothing to start,
         // so the whole list is skipped instead of opening each mission to read "not enough squads".
-        // The counter fills in a moment after the map opens: with no running missions it was read too early.
-        yield return Firebot.Behaviors.Extra.Ui.WaitUntil(() => FreeSquads >= 0, _ => { }, 4f);
+        // The counter can appear after the map itself.
+        yield return Ui.WaitUntil(() => FreeSquads >= 0, _ => { }, 4f);
         var free = FreeSquads;
+        DateTime? retry = null;
         if (free > 0)
         {
             foreach (var mission in ScanMissions(m => !m.IsActive && !m.IsCompleted, true).ToList())
             {
-                if (FreeSquads <= 0) break;
+                var available = FreeSquads;
+                if (available < 0)
+                {
+                    Logger.Warning("[Map Missions] Lost the free-squad counter while starting missions.");
+                    retry = DateTime.Now.AddMinutes(15);
+                    break;
+                }
+                if (available == 0) break;
 
                 yield return mission.Select();
 
@@ -92,12 +121,16 @@ public class MapMissionsTask : BotTask
                 var squadsBefore = FreeSquads;
                 yield return MissionPreview.StartMission;
                 var started = false;
-                yield return Firebot.Behaviors.Extra.Ui.WaitUntil(
-                    () => mission.IsActive || (squadsBefore >= 0 && FreeSquads < squadsBefore),
-                    value => started = value, 5f);
+                yield return Ui.WaitUntil(() =>
+                {
+                    var remainingSquads = FreeSquads;
+                    return mission.IsActive ||
+                           (squadsBefore >= 0 && remainingSquads >= 0 && remainingSquads < squadsBefore);
+                }, value => started = value, 5f);
                 if (!started)
                 {
                     Logger.Warning("[Map Missions] Start control produced no active-mission or free-squad change; stopping new starts.");
+                    retry = DateTime.Now.AddMinutes(15);
                     yield return MissionPreview.Close;
                     break;
                 }
@@ -108,15 +141,24 @@ public class MapMissionsTask : BotTask
             }
         }
         else if (free < 0)
+        {
             Logger.Warning("[Map Missions] Could not read the free-squad counter; skipping mission starts. " +
-                           $"Map open: {Firebot.Behaviors.Extra.Ui.Visible(Firebot.Behaviors.Extra.P.Menus + "/WorldMap")}, " +
-                           $"counter text: '{Firebot.Behaviors.Extra.Ui.Text(SquadsText)}'.");
+                           $"Map open: {Ui.Visible(Map)}, counter text: '{Ui.Text(SquadsText)}'.");
+            retry = DateTime.Now.AddMinutes(15);
+        }
         else
             Debug("All squads are busy; skipping new missions.");
 
         // The earliest end among running and just-started missions decides the next run. With nothing
         // running, fall back to the map's own refresh time.
         NextRunTime = earliest ?? MapMission.NextRunTime;
+        if (NextRunTime == DateTime.MinValue)
+        {
+            Logger.Warning("[Map Missions] No mission or map timer was readable; retrying in 15 minutes.");
+            NextRunTime = DateTime.Now.AddMinutes(15);
+        }
+        if (retry.HasValue && (NextRunTime == DateTime.MinValue || retry.Value < NextRunTime))
+            NextRunTime = retry.Value;
         if (NextRunTime < DateTime.Now.AddSeconds(20)) NextRunTime = DateTime.Now.AddSeconds(20);
 
         yield return MapMission.Close;

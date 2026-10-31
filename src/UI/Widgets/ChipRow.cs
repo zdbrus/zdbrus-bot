@@ -21,6 +21,7 @@ internal abstract class ChipRow : UiRow
     private sealed class Chip
     {
         public string Id;
+        public string Name;
         public Image Background;
         public TMP_Text Label;
     }
@@ -48,6 +49,10 @@ internal abstract class ChipRow : UiRow
 
     protected abstract bool IsOn(string id);
 
+    protected virtual string DisplayName(string id, string name) => name;
+
+    protected virtual string MeasuredName(string id, string name) => name;
+
     /// <summary>Applies the chip choice. Writing to the .cfg is the subclass's responsibility.</summary>
     protected abstract void ApplySelection(string id);
 
@@ -66,7 +71,7 @@ internal abstract class ChipRow : UiRow
 
         foreach (var choice in Config.Choices)
         {
-            var chip = new Chip { Id = choice.Id };
+            var chip = new Chip { Id = choice.Id, Name = choice.Label };
 
             // No label in CreateButton: the text has to exist as an object in order to be measured,
             // and the width of the chip depends on that measurement.
@@ -85,9 +90,11 @@ internal abstract class ChipRow : UiRow
 
             // Width estimated first and corrected after: TMP only measures once the mesh is built,
             // and to build the mesh the rect already needs a size.
-            rect.sizeDelta = new Vector2(ChipWidth(choice.Label), UiTheme.ChipHeight);
+            var measuredName = MeasuredName(choice.Id, choice.Label);
+            label.text = measuredName;
+            rect.sizeDelta = new Vector2(ChipWidth(measuredName), UiTheme.ChipHeight);
 
-            var width = UiTheme.ChipPaddingX * 2f + TextWidth(label, choice.Label);
+            var width = UiTheme.ChipPaddingX * 2f + TextWidth(label, measuredName);
             rect.sizeDelta = new Vector2(width, UiTheme.ChipHeight);
             if (x > 0f && x + width > available)
             {
@@ -145,6 +152,8 @@ internal abstract class ChipRow : UiRow
         foreach (var chip in _chips)
         {
             var on = IsOn(chip.Id);
+            var name = DisplayName(chip.Id, chip.Name);
+            if (chip.Label.text != name) chip.Label.text = name;
 
             // Two channels instead of one: the fill changes luminance (grey → accent) and the text
             // follows (muted → full). State by hue alone would be unreadable for anyone who cannot

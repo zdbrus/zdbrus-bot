@@ -60,6 +60,6 @@ Those three Interop DLLs are intentionally bundled: the current game can close d
 
 - Keep to stable MelonLoader 0.7.3. Nightly builds have crashed the current game.
 - Keep the three bundled Il2CppInterop files in the download. Their absence has caused the game to close immediately after loading.
-- The automatic update check is disabled; its background web request was suspected of crashing the game. Do not re-enable it without isolating and testing the cause.
+- Auto Update checks release availability in a separate helper, then uses another helper to install after the game exits; it does not perform network work from the game process. Keep that isolation and the update log intact.
 - Do not move Unity or Il2Cpp work onto a background thread. The planner server and roster reads are deliberately serviced from the game's main-thread `Tick`; a background web thread previously crashed the game.
 - A closed-menu screen-map path is not by itself a failure; log it once instead of repeatedly filling the log. See the 0.7.7 changelog entry.
