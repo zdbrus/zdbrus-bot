@@ -1,5 +1,9 @@
 ﻿# Changelog
 
+## 0.7.41 (2026-10-30)
+- Added opt-in local Arena matchup recording for confirmed bot-started wins and losses. It saves preview formations, available game-reported stats, displayed powers and outcomes as append-only JSON lines without player names, account IDs or changes to fight decisions. Missing values remain null.
+- Recording is off by default, including with Enable All On Launch. Write failures are logged. The per-machine preview stats have not been validated against combat and are not a win predictor. No live Arena fights were performed for this release.
+
 ## 0.7.40 (2026-10-30)
 - Arena rejects missing, malformed, nonpositive or unsupported power readings instead of treating them as easy opponents or disabling the power limit. It selects the lowest readable opponent within the configured percentage; displayed power is not a win prediction.
 - Before starting a fight, Arena rechecks the selected opponent's name, rank and power, the preview squad power, the configured squad and the fight control. Existing or mismatched previews, changed values and unconfirmed starts or results stop the batch. Arena reads the actual win/loss indicator instead of guessing from the result popup's generic name.

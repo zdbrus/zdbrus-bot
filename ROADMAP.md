@@ -11,7 +11,7 @@ Ideas for the next updates. Nothing here is promised; it is the list we work fro
 
 ## Next up
 - **Upgrade advisor (read-only rankings implemented).** The planner ranks the next machine level and blueprint upgrades separately by their required resources; the existing Ethereal shard advisor ranks jewel upgrades separately. No level or blueprint spending is automated. In-game cost samples: machine levels 1, 13 and 15; blueprint levels 0, 4 and 20. Unsampled prices are marked as estimates; validate additional cost changes before connecting any ranking to automation.
-- **Arena smart picks.** Read each opponent's squad from the battle preview and only fight the ones the math says you beat. The power-based selection and preview checks in 0.7.40 are safeguards, not this squad-based predictor.
+- **Arena smart picks.** Read each opponent's squad from the battle preview and only fight the ones the math says you beat. The power-based selection and preview checks in 0.7.40 are safeguards, not this squad-based predictor. The opt-in local recorder in 0.7.41 collects bot-fight previews and confirmed outcomes without player names or account IDs; its game-reported stats and any future prediction still need validation.
 
 ## Hero optimizer (new)
 - "What's my next big war machine boost from heroes?" For each hero on a crew: what the next jewel upgrade, enchant or rarity step adds to squad power, and what it costs.

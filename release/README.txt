@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.40 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.41 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -44,6 +44,13 @@ readable and refresh is unavailable; an unconfirmed attempt still counts for tha
 The configured Arena squad must be verified. The bot allows time to restore the previous squad and logs
 a failure, but stopping the bot, changing accounts or closing the game mid-task can interrupt restoration.
 Check the active squad afterward. If the runtime is too short to switch, raise F1 > General > Max Task Runtime.
+
+MATCHUP RECORDING
+F1 > Battle > Arena > Record Arena Matchups is off by default, even with Enable All On Launch.
+When enabled, confirmed bot-started wins and losses are appended locally to
+UserData\ZdbrusBotArenaMatchups.jsonl without player names or account IDs. Manual fights and
+unconfirmed results are not recorded. Missing values remain null; preview stats are not yet a
+validated win prediction. Recording does not change fights. The file grows until you delete it.
 
 KEYS
 F1 settings   F2 status   F4 planner   F6 auto-upgrade   F7 bot on/off   F8 auto-skill   F9 screen map

@@ -35,5 +35,6 @@
     <Compile Include="..\..\src\Behaviors\Extra\HolyUpgradeBuyer.cs" Link="HolyUpgradeBuyer.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\TemplePrestigeTask.cs" Link="TemplePrestigeTask.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\ArenaTask.cs" Link="ArenaTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\ArenaMatchupRecorder.cs" Link="ArenaMatchupRecorder.cs" />
   </ItemGroup>
 </Project>

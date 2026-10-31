@@ -35,9 +35,11 @@ public class ArenaTask : BotTask
     private const double FightSetupAllowance = 15;
     private readonly Func<DateTime> _now;
     private readonly Func<double> _seconds;
+    private readonly Action<ArenaMatchupRecord> _recordMatchup;
     private MelonPreferences_Category _settings;
     private MelonPreferences_Entry<int> _margin;
     private MelonPreferences_Entry<bool> _dailyFight;
+    private MelonPreferences_Entry<bool> _recordMatchups;
     private MelonPreferences_Entry<string> _lastForced;
     private MelonPreferences_Entry<int> _arenaSquad;
     private double _deadline;
@@ -45,10 +47,11 @@ public class ArenaTask : BotTask
 
     public ArenaTask() : this(() => DateTime.Now, MonotonicSeconds) { }
 
-    internal ArenaTask(Func<DateTime> now, Func<double> seconds)
+    internal ArenaTask(Func<DateTime> now, Func<double> seconds, Action<ArenaMatchupRecord> recordMatchup = null)
     {
         _now = now ?? throw new ArgumentNullException(nameof(now));
         _seconds = seconds ?? throw new ArgumentNullException(nameof(seconds));
+        _recordMatchup = recordMatchup ?? ArenaMatchupRecorder.Enqueue;
     }
 
     private static double MonotonicSeconds() => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -70,6 +73,10 @@ public class ArenaTask : BotTask
         _margin = c.CreateEntry("max_opponent_power_percent", 100, "Max Opponent Power %",
             "Normally fights opponents up to this % of your arena power (100 = equal or weaker).\n" +
             "The daily exception can exceed it. Power does not guarantee a win.");
+        _recordMatchups = c.CreateEntry("record_matchups", false, "Record Arena Matchups",
+            "Off by default. Records bot-started Arena outcomes locally; no player names.\n" +
+            "Saved in UserData\\ZdbrusBotArenaMatchups.jsonl.\n" +
+            "Does not predict winners or change fights.");
     }
 
     public override IEnumerator Execute()
@@ -307,8 +314,44 @@ public class ArenaTask : BotTask
         }
 
         var clicked = false;
-        yield return Ui.ClickIf(PreviewFight, () => CanStartFight(target, forced, expectedSquad, reserve),
-            value => clicked = value, 2f, "arena fight");
+        ArenaMatchupRecord matchup = null;
+        yield return Ui.ClickIf(PreviewFight, () =>
+        {
+            try
+            {
+                if (_recordMatchups.Value && PreviewMatches(target, out var observedPower, out var observedOpponent))
+                {
+                    matchup = ArenaMatchupRecorder.Capture(Preview, _now().ToUniversalTime(), observedPower,
+                        observedOpponent, _margin.Value, false);
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Warning($"[Arena] Could not capture the matchup: {e.Message}");
+            }
+            if (!CanStartFight(target, forced, expectedSquad, reserve, out var myPower, out var theirPower,
+                    out var usedDailyException))
+                return false;
+            if (matchup != null)
+            {
+                try
+                {
+                    if (matchup.PlayerPower != myPower || matchup.OpponentPower != theirPower ||
+                        matchup.PowerLimitPercent != _margin.Value)
+                    {
+                        Logger.Warning("[Arena] Matchup values changed before the fight; no record will be saved.");
+                        matchup = null;
+                    }
+                    else matchup.DailyException = usedDailyException;
+                }
+                catch (Exception e)
+                {
+                    Logger.Warning($"[Arena] Could not verify the matchup record: {e.Message}");
+                    matchup = null;
+                }
+            }
+            return true;
+        }, value => clicked = value, 2f, "arena fight");
         if (!clicked)
         {
             Retry("The Arena fight click was not confirmed; the preview or squad may have changed.");
@@ -346,6 +389,22 @@ public class ArenaTask : BotTask
         }
 
         var won = Ui.Visible(Result + "/bg/won");
+        if (matchup != null)
+        {
+            try
+            {
+                if (_recordMatchups.Value)
+                {
+                    matchup.FinishedAtUtc = _now().ToUniversalTime();
+                    matchup.Result = won ? "win" : "loss";
+                    _recordMatchup(matchup);
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Warning($"[Arena] Could not queue the matchup record: {e.Message}");
+            }
+        }
         var closed = false;
         yield return Ui.ClickUntil(Ui.Find(Result + "/bg/closeButton"), () => !Ui.Visible(Result),
             value => closed = value, "arena result", 1f, 4f);
@@ -360,15 +419,19 @@ public class ArenaTask : BotTask
         NextRunTime = _now().AddMinutes(1);
     }
 
-    private bool CanStartFight(Opponent target, bool forced, int expectedSquad, double reserve)
+    private bool CanStartFight(Opponent target, bool forced, int expectedSquad, double reserve,
+        out double myPower, out double theirPower, out bool usedDailyException)
     {
+        myPower = 0;
+        theirPower = 0;
+        usedDailyException = false;
         if (!HasTime(reserve, 10))
         {
             Logger.Warning("[Arena] Not enough task runtime remains to start a fight and restore the squad.");
             return false;
         }
         if (Ui.Visible(Result) || _margin.Value <= 0 ||
-            !PreviewMatches(target, out var myPower, out var theirPower) ||
+            !PreviewMatches(target, out myPower, out theirPower) ||
             (expectedSquad != 0 && Planner.SquadApplier.ActiveSlot() != expectedSquad))
             return false;
         if (ArenaPowerPolicy.WithinLimit(myPower, theirPower, _margin.Value)) return true;
@@ -383,6 +446,7 @@ public class ArenaTask : BotTask
             Logger.Warning($"[Arena] Could not save the daily fight attempt: {e.Message}");
             return false;
         }
+        usedDailyException = true;
         return true;
     }
 

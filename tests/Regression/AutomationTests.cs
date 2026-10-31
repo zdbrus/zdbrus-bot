@@ -70,6 +70,10 @@ internal static class AutomationTests
               !Entry<bool>("launch", "optional_spending").Value &&
               Entry<string>("launch", "priority").Value == "health,damage",
             "Launch override missed a task or changed its spending preferences.");
+        var arena = new Firebot.Behaviors.Extra.ArenaTask();
+        arena.InitializeConfig("test.cfg");
+        Check(arena.IsEnabled && !Entry<bool>("arena", "record_matchups").Value,
+            "Enable All On Launch turned on optional matchup recording.");
         task.Disable();
         task.InitializeConfig("test.cfg");
         Check(!task.IsEnabled, "Launch settings were reapplied within the current process.");

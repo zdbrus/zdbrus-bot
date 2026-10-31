@@ -42,6 +42,9 @@ internal static class Program
             Test("arena refreshes only after the list changes", ArenaTests.Refresh);
             Test("arena stops on unconfirmed starts and results", ArenaTests.UnconfirmedBattle);
             Test("arena verifies and restores the configured squad within the task budget", ArenaTests.SquadRestoration);
+            Test("arena matchup recording captures verified bot fights only", ArenaTests.MatchupRecording);
+            Test("arena recording failures do not change fight decisions", ArenaTests.MatchupRecordingFailures);
+            Test("arena matchup files append anonymous JSON records", ArenaTests.MatchupStorage);
             Test("priority tiers hold or retry before advancing", PriorityDecisions);
             Test("uncapped spending modes preserve the player's choice", UncappedUpgradeModes);
             Test("war-machine blueprint priorities preserve order and currency decisions", WarMachineBlueprints);

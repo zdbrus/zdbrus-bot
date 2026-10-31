@@ -1,4 +1,5 @@
 using System.Reflection;
+using Firebot.Behaviors.Extra;
 using Firebot.BotActions;
 using Firebot.Core;
 using Firebot.UI;
@@ -43,6 +44,7 @@ public class Main : MelonMod
     public override void OnApplicationQuit()
     {
         SuspendAutomation();
+        ArenaMatchupRecorder.Flush();
         Planner.PlannerServer.Stop();
         UpdateCheck.StopProbe();
         if (BotSettings.AutoUpdate) UpdateCheck.ScheduleOnExit();
@@ -83,6 +85,7 @@ public class Main : MelonMod
 
     public override void OnUpdate()
     {
+        ArenaMatchupRecorder.ReportErrors();
         UpdateCheck.Tick();
         // Frozen once, before anything consumes it. A key press lasts the whole frame, so every GetKeyDown
         // below sees the same key: without this, recording F6 would also start AutoUpgrade and recording

@@ -94,6 +94,15 @@ the bot allows time to switch back and logs if restoration fails. Stopping the b
 closing the game mid-task can interrupt the switch back, so check the active squad afterward. If the
 log says there is not enough time to switch, raise **F1 > General > Max Task Runtime**.
 
+**Matchup recording:** Turn on **F1 > Battle > Arena > Record Arena Matchups**
+(off by default) to append confirmed bot-started wins and losses to
+`UserData\ZdbrusBotArenaMatchups.jsonl`. It records the preview's squad data and result without
+player names or account IDs; manual fights and unconfirmed results are not recorded. Missing values
+are marked as such, and game-reported stats are not yet validated as a win predictor. The file stays
+on your PC and keeps growing until you delete it. Recording does not change Arena fight decisions,
+and Enable All On Launch does not enable it. See [ADVANCED.md](ADVANCED.md#arena-matchup-recording)
+for the file format.
+
 ### Prestige and upgrade priorities
 
 Open **F1 > Prestige** to enable the task and see its last decision, run reading, and check time. The

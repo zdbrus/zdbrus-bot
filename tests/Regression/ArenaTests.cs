@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Text.Json;
 using Firebot.Behaviors.Extra;
 using Firebot.Core;
 using Firebot.Planner;
@@ -434,6 +435,259 @@ internal static class ArenaTests
             "Another fight was started when only the restore allowance remained.");
     }
 
+    public static void MatchupRecording()
+    {
+        var f = Setup();
+        Check(!f.BoolSetting("record_matchups").Value, "Matchup recording did not default to off.");
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Selected == "Opponent 1" && f.Matchups.Count == 0,
+            "Disabled recording changed the fight or saved a record.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.SetOpponent(1, "Private opponent", 101, "800");
+        f.PopulateFormations();
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Selected == "Private opponent" && f.Matchups.Count == 1,
+            "A confirmed bot fight was not recorded exactly once.");
+        var record = f.Matchups[0];
+        Check(record.SchemaVersion == 1 && record.BotVersion == Brand.Version &&
+              record.Result == "win" && record.PlayerPower == 1000 && record.OpponentPower == 800 &&
+              record.PowerLimitPercent == 100 && !record.DailyException &&
+              record.StartedAtUtc.Kind == DateTimeKind.Utc && record.FinishedAtUtc.Kind == DateTimeKind.Utc,
+            "The verified matchup or its decision settings were recorded incorrectly.");
+        Check(record.Player.Status == "observed" && record.Opponent.Status == "observed" &&
+              record.Player.Slots.Count == 5 && record.Opponent.Slots.Count == 5,
+            "The two preview formations were not captured.");
+        var slot = record.Opponent.Slots[2];
+        Check(slot.ScreenSlot == 2 && slot.ReportedSlot == 2 && slot.MachineCode == "Hunter" &&
+              slot.Specialization == "Healer" && slot.Level == 12 && slot.Rarity == 2 &&
+              slot.DisplayedLevel == 12 && slot.DisplayedStars == 3 &&
+              slot.ArenaDamage == 102 && slot.ArenaHealth == 1002 &&
+              slot.ArenaArmor == 202 && slot.ArenaPower == 302,
+            "The machine's observed position, level, stars, or reported Arena stats were lost.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.Won = false;
+        f.AddMachine("player", 0);
+        var incomplete = f.Machine("player", 0);
+        incomplete.damageTotalArena = double.NaN;
+        incomplete.healthTotalArena = 0;
+        incomplete.arenaPower = double.PositiveInfinity;
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Matchups.Count == 1 && f.Matchups[0].Result == "loss" &&
+              f.Matchups[0].Player.Status == "partial" && f.Matchups[0].Opponent.Status == "unavailable" &&
+              f.Matchups[0].Player.Slots[0].ArenaDamage == null &&
+              f.Matchups[0].Player.Slots[0].ArenaHealth == null &&
+              f.Matchups[0].Player.Slots[0].ArenaPower == null &&
+              Logger.Messages.Any(s => s.Contains("missing values are recorded as null")),
+            "Unreadable preview data was treated as complete or blocked a fight.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.PopulateFormations();
+        f.SetText(Fixture.PreviewPath + "/bg/mask/warMachines/player/spot (0)/warMachineInfo/lvlText", "99");
+        Run(f.Task.Execute());
+        Check(f.Matchups.Single().Player.Status == "partial" &&
+              f.Matchups.Single().Player.UnreadableSlots == 0,
+            "An inconsistent displayed level was treated as fully observed.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.PopulateFormations();
+        GameObject.CreatePath(Fixture.PreviewPath + "/bg/mask/warMachines/player/spot (unknown)");
+        Run(f.Task.Execute());
+        Check(f.Matchups.Single().Player.Status == "partial" &&
+              f.Matchups.Single().Player.UnreadableSlots == 1,
+            "A malformed slot was not counted as unreadable.");
+
+        f = Setup(new DateTime(2026, 10, 30, 20, 15, 0));
+        f.BoolSetting("record_matchups").Value = true;
+        SetAboveLimit(f);
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Matchups.Count == 1 && f.Matchups[0].DailyException &&
+              f.Matchups[0].OpponentPower == 1100, "The daily exception was not identified in the record.");
+
+        f = Setup(new DateTime(2026, 10, 30, 20, 15, 0));
+        f.BoolSetting("record_matchups").Value = true;
+        SetAboveLimit(f);
+        f.OnPreview = () => f.SetText(Fixture.AttackerPower, "1,200");
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Matchups.Count == 1 && !f.Matchups[0].DailyException &&
+              f.StringSetting("last_forced_fight").Value == "",
+            "An in-limit preview was incorrectly recorded as using the daily exception.");
+    }
+
+    public static void MatchupRecordingFailures()
+    {
+        var f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.IntSetting("arena_squad").Value = 2;
+        f.SetTokens(1);
+        f.OnRecord = _ => throw new IOException("recording failed");
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && !f.Result.activeSelf && SquadApplier.Active == 1 &&
+              Logger.Messages.Any(s => s.Contains("Could not queue the matchup record")),
+            "A recorder failure changed the fight or squad restoration.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        Ui.BeforeGuardedClick = path =>
+        {
+            if (path != Fixture.PreviewFight) return;
+            Ui.BeforeText = textPath =>
+            {
+                if (textPath != Fixture.DefenderName) return;
+                Ui.BeforeText = null;
+                throw new InvalidOperationException("preview read failed");
+            };
+        };
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Matchups.Count == 0 &&
+              Logger.Messages.Any(s => s.Contains("Could not capture the matchup")),
+            "An optional preview read failure changed the fight decision.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.IntSetting("arena_squad").Value = 2;
+        f.PopulateFormations();
+        Ui.BeforeFind = path =>
+        {
+            if (path == Fixture.PreviewPath + "/bg/mask/warMachines/player") f.Elapsed = 75;
+        };
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 0 && f.Matchups.Count == 0 && SquadApplier.Active == 1,
+            "Recording delayed the fight past the safety deadline without rechecking it.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.PopulateFormations();
+        Ui.BeforeFind = path =>
+        {
+            if (path == Fixture.PreviewPath + "/bg/mask/warMachines/player")
+                f.SetText(Fixture.AttackerPower, "900");
+        };
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && f.Matchups.Count == 0 &&
+              Logger.Messages.Any(s => s.Contains("Matchup values changed before the fight")),
+            "A changed preview was recorded as the original matchup or changed the fight decision.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.OpenPreview = false;
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 0 && f.FightClicks == 0, "A missing preview produced a record.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.OnPreview = () => f.SetText(Fixture.DefenderName, "Different opponent");
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 0 && f.FightClicks == 0, "A mismatched preview produced a record.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.ThrowOnFight = true;
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 0, "An unconfirmed fight click produced a record.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.ShowResult = false;
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 0, "A fight without a verified result produced a record.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.OnFight = () => f.SetText(Fixture.ResultName, "Different opponent");
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 0, "A result for another opponent produced a record.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.OnFight = () => f.BoolSetting("record_matchups").Value = false;
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 0 && f.FightClicks == 1,
+            "Turning recording off during a fight still saved data or changed the fight.");
+
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.CloseResult = false;
+        Run(f.Task.Execute());
+        Run(f.Task.Execute());
+        Check(f.Matchups.Count == 1 && f.FightClicks == 1 && f.Result.activeSelf,
+            "A confirmed result that stayed open was lost or recorded twice.");
+    }
+
+    public static void MatchupStorage()
+    {
+        var f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.SetOpponent(1, "Private opponent", 101, "800");
+        f.PopulateFormations();
+        f.Machine("opponent", 0).damageTotalArena = double.NaN;
+        Run(f.Task.Execute());
+        var first = f.Matchups.Single();
+        var second = new ArenaMatchupRecord
+        {
+            StartedAtUtc = first.StartedAtUtc,
+            FinishedAtUtc = first.FinishedAtUtc,
+            Result = "loss",
+            PlayerPower = first.PlayerPower,
+            OpponentPower = first.OpponentPower,
+            PowerLimitPercent = first.PowerLimitPercent,
+            Player = first.Player,
+            Opponent = first.Opponent
+        };
+        var directory = Path.Combine("UserData", "ArenaMatchupTest-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "matchups.jsonl");
+        ArenaMatchupRecorder.Enqueue(first, path);
+        ArenaMatchupRecorder.Enqueue(second, path);
+        ArenaMatchupRecorder.Flush();
+
+        var lines = File.ReadAllLines(path);
+        Check(lines.Length == 2 && !lines[0].Contains("Private opponent", StringComparison.Ordinal),
+            "Records were not appended or included an opponent name.");
+        using var firstJson = JsonDocument.Parse(lines[0]);
+        using var secondJson = JsonDocument.Parse(lines[1]);
+        var root = firstJson.RootElement;
+        Check(root.GetProperty("schemaVersion").GetInt32() == 1 &&
+              root.GetProperty("result").GetString() == "win" &&
+              root.GetProperty("playerPower").GetDouble() == 1000 &&
+              root.GetProperty("opponentPower").GetDouble() == 800 &&
+              root.GetProperty("startedAtUtc").GetString().EndsWith("Z", StringComparison.Ordinal) &&
+              root.GetProperty("opponent").GetProperty("status").GetString() == "partial" &&
+              root.GetProperty("opponent").GetProperty("slots")[0].GetProperty("arenaDamage").ValueKind ==
+              JsonValueKind.Null && secondJson.RootElement.GetProperty("result").GetString() == "loss",
+            "The JSONL shape, unknown values, or append order was incorrect.");
+        Check(!root.TryGetProperty("playerName", out _) && !root.TryGetProperty("opponentName", out _) &&
+              !root.TryGetProperty("userId", out _), "The record exposed account identifiers.");
+
+        var interrupted = Path.Combine(directory, "interrupted.jsonl");
+        File.WriteAllText(interrupted, "{\"unfinished\":");
+        ArenaMatchupRecorder.Enqueue(first, interrupted);
+        ArenaMatchupRecorder.Flush();
+        var recovered = File.ReadAllLines(interrupted);
+        Check(recovered.Length == 2 && recovered[0] == "{\"unfinished\":",
+            "A new record was joined to an interrupted final line.");
+        using var recoveredJson = JsonDocument.Parse(recovered[1]);
+        Check(recoveredJson.RootElement.GetProperty("result").GetString() == "win",
+            "A record after an interrupted final line was unreadable.");
+
+        var blocked = Path.Combine(directory, "blocked");
+        Directory.CreateDirectory(blocked);
+        Logger.Messages.Clear();
+        f = Setup();
+        f.BoolSetting("record_matchups").Value = true;
+        f.OnRecord = record => ArenaMatchupRecorder.Enqueue(record, blocked);
+        Run(f.Task.Execute());
+        ArenaMatchupRecorder.Flush();
+        Check(f.FightClicks == 1 && !f.Result.activeSelf &&
+              Logger.Messages.Any(s => s.Contains("Could not save a matchup record")),
+            "A file-write failure was hidden or changed the fight.");
+    }
+
     private static void SetAboveLimit(Fixture f)
     {
         f.SetOpponent(0, "Higher", 100, "1,300");
@@ -447,6 +701,8 @@ internal static class ArenaTests
         Ui.Texts.Clear();
         Ui.Numbers.Clear();
         Ui.BeforeGuardedClick = null;
+        Ui.BeforeFind = null;
+        Ui.BeforeText = null;
         Logger.Messages.Clear();
         SquadApplier.Reset();
         return new Fixture(now ?? new DateTime(2026, 10, 30, 12, 0, 0));
@@ -479,11 +735,13 @@ internal static class ArenaTests
         public readonly Button RefreshButton;
         public readonly GameObject WonObject;
         public readonly GameObject LostObject;
+        public readonly List<ArenaMatchupRecord> Matchups = new();
         public DateTime Now;
         public double Elapsed;
         public Action OnPreview;
         public Action OnFight;
         public Action OnRefresh;
+        public Action<ArenaMatchupRecord> OnRecord;
         public bool OpenPreview = true;
         public bool Transition = true;
         public bool ShowResult = true;
@@ -499,7 +757,11 @@ internal static class ArenaTests
         public Fixture(DateTime now)
         {
             Now = now;
-            Task = new ArenaTask(() => Now, () => Elapsed);
+            Task = new ArenaTask(() => Now, () => Elapsed, record =>
+            {
+                if (OnRecord != null) OnRecord(record);
+                else Matchups.Add(record);
+            });
             Task.InitializeConfig("test");
             Category = MelonPreferences.Categories["arena"];
             IntSetting("arena_squad").Value = 0;
@@ -572,6 +834,38 @@ internal static class ArenaTests
             SetText(Card(index) + "/rankingBg/rankingValue", rank.ToString());
             SetText(Card(index) + "/powerBg/powerValue", power);
         }
+
+        public void PopulateFormations()
+        {
+            foreach (var side in new[] { "player", "opponent" })
+                for (var index = 0; index < 5; index++)
+                    AddMachine(side, index);
+        }
+
+        public void AddMachine(string side, int index)
+        {
+            var path = PreviewPath + "/bg/mask/warMachines/" + side + "/spot (" + index + ")";
+            var spot = GameObject.CreatePath(path).AddComponent<Il2Cpp.WarMachineFormationSpotFake>();
+            spot.spotIndex = index;
+            spot.warMachine = new Il2Cpp.WarMachine
+            {
+                machineCode = index == 2 ? Il2Cpp.WarMachineCode.Hunter : Il2Cpp.WarMachineCode.Fortress,
+                specialization = index == 2 ? Il2Cpp.WarMachineSpecialization.Healer : Il2Cpp.WarMachineSpecialization.Tank,
+                level = 10 + index,
+                rarity = 2,
+                damageTotalArena = 100 + index,
+                healthTotalArena = 1000 + index,
+                armorTotalArena = 200 + index,
+                arenaPower = 300 + index
+            };
+            SetText(path + "/warMachineInfo/lvlText", (10 + index).ToString());
+            for (var i = 0; i < 5; i++)
+                GameObject.CreatePath(path + "/warMachineInfo/starsParent/star" + i).activeSelf = i < 3;
+        }
+
+        public Il2Cpp.WarMachine Machine(string side, int index) =>
+            GameObject.Resolve(PreviewPath + "/bg/mask/warMachines/" + side + "/spot (" + index + ")")
+                .GetComponent<Il2Cpp.WarMachineFormationSpotFake>().warMachine;
 
         private void Open(int index)
         {

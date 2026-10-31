@@ -201,6 +201,27 @@ namespace UnityEngine.EventSystems
 
 namespace Il2Cpp
 {
+    public enum WarMachineCode { Fortress, Cloudfist, Hunter }
+    public enum WarMachineSpecialization { Tank, Damage, Healer }
+
+    public sealed class WarMachine
+    {
+        public WarMachineCode machineCode;
+        public WarMachineSpecialization specialization;
+        public int level;
+        public int rarity;
+        public double damageTotalArena;
+        public double healthTotalArena;
+        public double armorTotalArena;
+        public double arenaPower;
+    }
+
+    public sealed class WarMachineFormationSpotFake : UnityEngine.Component
+    {
+        public int spotIndex;
+        public WarMachine warMachine;
+    }
+
     public sealed class ObscuredBool
     {
         public bool Value;
@@ -595,16 +616,26 @@ namespace Firebot.Behaviors.Extra
         public static bool OpenTownWorks = true;
         public static int OpenMapCalls;
         public static Action<string> BeforeGuardedClick;
+        public static Action<string> BeforeFind;
+        public static Action<string> BeforeText;
         public static readonly Dictionary<string, string> Texts = new();
         public static readonly Dictionary<string, double> Numbers = new();
         public static bool Visible(string path) => GameObject.Resolve(path)?.activeInHierarchy ?? false;
-        public static string Text(string path) => path.EndsWith("/squads/quantity") ? MapFixture.Free.ToString()
-            : Texts.TryGetValue(path, out var value) ? value : "";
+        public static string Text(string path)
+        {
+            BeforeText?.Invoke(path);
+            return path.EndsWith("/squads/quantity") ? MapFixture.Free.ToString()
+                : Texts.TryGetValue(path, out var value) ? value : "";
+        }
         public static string Text(Transform target) =>
             target != null && target.gameObject.activeInHierarchy ? Text(target.FullPath) : "";
         public static double NumberAt(string path) => path.EndsWith("/squads/quantity") ? MapFixture.Free
             : Numbers.TryGetValue(path, out var value) ? value : -1;
-        public static Transform Find(string path) => GameObject.Resolve(path)?.transform;
+        public static Transform Find(string path)
+        {
+            BeforeFind?.Invoke(path);
+            return GameObject.Resolve(path)?.transform;
+        }
         public static IEnumerable<Transform> VisibleChildren(string path)
         {
             var root = Find(path);

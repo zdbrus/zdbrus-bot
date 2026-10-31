@@ -41,6 +41,36 @@ resource_type = "0,1"   # comma-separated ids; empty = the task's default
 
 ---
 
+## Arena matchup recording
+
+**F1 > Battle > Arena > Record Arena Matchups** is off by default, including when Enable All On Launch
+is on. When enabled at the preview and at the result, it records confirmed wins and losses from
+bot-started Arena fights only. Manual fights, unconfirmed results, and mismatched previews are omitted.
+Recording never selects an opponent or starts a fight.
+
+Records are appended locally to `UserData\ZdbrusBotArenaMatchups.jsonl`, one JSON object per line.
+The file is not uploaded and contains no player names, account IDs, or rank. It grows until you delete
+it; close the game first. Write failures are reported in the MelonLoader log. A sudden process exit
+can lose a record still waiting to be written or leave an incomplete line. Later records start on
+new lines; skip any invalid line when analyzing the file.
+
+Schema version 1 includes UTC start and result times, bot version, `result` (`win` or `loss`), the
+displayed `playerPower` and `opponentPower` parsed from the preview, the selected power limit, and
+whether the daily exception was actually used. Displayed powers may already be rounded by the game.
+The `player` and `opponent` formations contain:
+
+- `status`: `observed` when the visible slots were readable, `partial` when some values were missing
+  or inconsistent, or `unavailable` when no slots could be read. `unreadableSlots` counts rejected
+  visible slot paths. An `observed` status does not establish that the game supplied every slot.
+- `slots`: screen and game-reported slot positions, machine type and specialization, game-reported
+  level and rarity, displayed level and star count, and reported Arena damage, health, armor and power.
+  A `null` value means the value was unavailable or invalid; it is not an estimate.
+
+The per-machine Arena values are reported by preview objects and have not yet been validated against
+actual combat. They are data for future research, not a prediction or guarantee of a win.
+
+---
+
 ## Recovery Methods
 
 Use these **only** if the game changes version and Zdbrus Bot stops working. If Zdbrus Bot is working normally, do not run any recovery method.
