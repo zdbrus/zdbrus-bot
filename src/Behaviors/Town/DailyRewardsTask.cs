@@ -23,6 +23,7 @@ public class DailyRewardsTask : BotTask
         P.Menus + "/Store/bg/submenus/extremeValueBundles/bundles/mysteryBox/Graphics/purchaseButton";
     private const string MysteryBoxClaimed =
         P.Menus + "/Store/bg/submenus/extremeValueBundles/bundles/mysteryBox/Graphics/claimedBG";
+    private const string ValueBundleTab = P.Menus + "/Store/submenuButtons/grid/valueBundleButton";
     private const string ScarabTokenButton =
         P.Popups + "/ScarabGameShop/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
     private const string ScarabTokenClaimed =
@@ -58,8 +59,19 @@ public class DailyRewardsTask : BotTask
         {
             yield return Notifications.MysteryBox;
             yield return new WaitForSeconds(MenuOpenDelay);
+            if (!Ui.Visible(MysteryBoxButton) && !Ui.Visible(MysteryBoxClaimed) && Ui.Clickable(ValueBundleTab))
+            {
+                // The store can open on Daily Rewards; the Mystery Box lives on the value-bundle tab.
+                yield return Ui.Click(ValueBundleTab, MenuOpenDelay);
+                yield return Ui.WaitFor(MysteryBoxButton, 3f);
+            }
             var confirmed = false;
-            yield return ClaimWithVisibleState(MysteryBoxButton, MysteryBoxClaimed, "Mystery Box", value => confirmed = value);
+            if (Ui.Clickable(MysteryBoxButton))
+                yield return ClaimWithVisibleState(MysteryBoxButton, MysteryBoxClaimed, "Mystery Box", value => confirmed = value);
+            else
+                Logger.Info(Ui.Visible(MysteryBoxClaimed)
+                    ? "[Daily Rewards] Mystery Box already claimed; waiting for the next one."
+                    : "[Daily Rewards] No free Mystery Box is offered in the store right now.");
             yield return Ui.CloseRewards();
             if (confirmed) verifiedStateChanges++;
             else unconfirmedClaims++;

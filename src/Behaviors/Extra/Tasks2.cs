@@ -937,6 +937,9 @@ public class OpenChestsTask : BotTask
     private const string Preview = P.Popups + "/ChestOpenPreview/bg";
     private const string Opening = P.Menus + "/ChestOpening";
     private const string NewItems = P.Popups + "/NewItem";
+    private const string MysteryPreview = P.Popups + "/MysteryBoxOpenPreview/bg";
+    private const string MysteryBoxId = "mysteryBox";
+    private MelonPreferences_Entry<bool> _openMysteryBoxes;
     private static readonly HashSet<string> SupportedChests = new(StringComparer.OrdinalIgnoreCase)
         { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" };
     private readonly Dictionary<string, MelonPreferences_Entry<bool>> _open = new(StringComparer.OrdinalIgnoreCase);
@@ -948,6 +951,8 @@ public class OpenChestsTask : BotTask
         foreach (var id in new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" })
             _open[id] = c.CreateEntry("open_" + id.ToLowerInvariant(), true, "Open " + id + " Chests",
                 "Tick to let the bot open this chest type (game id: " + id + "). Untick to keep them.");
+        _openMysteryBoxes = c.CreateEntry("open_mysterybox", true, "Open Mystery Boxes",
+            "Tick to let the bot open the free Mystery Boxes in your Bag. Untick to keep them.");
     }
 
     public override IEnumerator Execute()
@@ -1107,13 +1112,91 @@ public class OpenChestsTask : BotTask
             .Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}").ToList();
         if (configuredSkips.Count > 0)
             Logger.Info($"[Chests] Left unopened by configured keep list: {string.Join(", ", configuredSkips)}.");
-        var unsupported = owned.Where(t => !SupportedChests.Contains(t.name))
+        var unsupported = owned.Where(t => !SupportedChests.Contains(t.name) &&
+                                           !(_openMysteryBoxes?.Value == true && t.name == MysteryBoxId))
             .Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}").ToList();
         if (unsupported.Count > 0)
             Logger.Info($"[Chests] Left unopened because the chest type is unsupported: {string.Join(", ", unsupported)}.");
 
+        if (_openMysteryBoxes?.Value == true && Ui.Visible(Content)) yield return OpenMysteryBoxes();
+
         if (Ui.Visible(Inv)) yield return Ui.Click(Inv + "/closeButton");
         Logger.Info($"[Chests] Confirmed {opened} chest opening(s).");
+    }
+
+    /// <summary>Opens Mystery Boxes from the Bag. They have their own preview popup and pay out on the Rewards popup.</summary>
+    private static IEnumerator OpenMysteryBoxes()
+    {
+        var box = Ui.Find(Content + "/" + MysteryBoxId);
+        var before = box != null && box.gameObject.activeInHierarchy ? Ui.NumberOf(box.Find("quantity")) : 0;
+        if (before <= 0 || !Ui.Clickable(box)) yield break;
+
+        yield return Ui.Click(box, 1.2f);
+        yield return Ui.WaitFor(MysteryPreview, 2f);
+        if (!Ui.Visible(MysteryPreview))
+        {
+            Ui.PointerClick(box);
+            yield return Ui.WaitFor(MysteryPreview, 4f);
+        }
+        if (!Ui.Visible(MysteryPreview))
+        {
+            Logger.Warning("[Chests] The Mystery Box preview did not open; keeping them for now.");
+            yield break;
+        }
+
+        Transform open = null;
+        for (var attempt = 0; attempt < 20 && open == null; attempt++)
+        {
+            foreach (var option in new[] { "openxMax", "openx10", "openx1" })
+            {
+                var b = Ui.Find(MysteryPreview + "/openingOptions/" + option);
+                if (Ui.Clickable(b) && b.Find("chestIcon") != null && b.Find("chestIcon").gameObject.activeInHierarchy)
+                {
+                    open = b;
+                    break;
+                }
+            }
+            if (open == null) yield return new WaitForSeconds(0.25f);
+        }
+
+        if (open == null)
+        {
+            Logger.Info("[Chests] Mystery Boxes have no free opening option right now; keeping them.");
+            yield return Ui.Click(MysteryPreview + "/closeButton", 0.6f);
+            yield break;
+        }
+
+        var quantity = Ui.Text(open.Find("quantity"));
+        yield return Ui.Click(open, 2f, $"open Mystery Boxes {quantity}");
+        if (Ui.MissingCurrency) yield break;
+
+        // Rewards normally come on the Rewards popup; tap through an opening animation if one plays instead.
+        var until = Time.unscaledTime + 10f;
+        while (Time.unscaledTime < until && !Ui.Visible(P.RewardsClose))
+        {
+            if (Ui.Clickable(Opening + "/closeButton")) { yield return Ui.Click(Opening + "/closeButton", 1f); break; }
+            if (Ui.Clickable(Opening + "/background")) yield return Ui.Click(Opening + "/background", 0.5f);
+            else yield return new WaitForSeconds(0.5f);
+        }
+        yield return Ui.CloseRewards();
+        if (Ui.Visible(MysteryPreview)) yield return Ui.Click(MysteryPreview + "/closeButton", 0.6f);
+        for (var n = 0; n < 5 && Ui.Visible(NewItems); n++)
+            yield return Ui.Click(NewItems + "/bg/closeButton", 1f);
+
+        var after = before;
+        var deadline = Time.unscaledTime + 5f;
+        while (Time.unscaledTime < deadline)
+        {
+            var current = Ui.Find(Content + "/" + MysteryBoxId);
+            after = current != null && current.gameObject.activeInHierarchy ? Ui.NumberOf(current.Find("quantity")) : 0;
+            if (after < before) break;
+            yield return new WaitForSeconds(0.25f);
+        }
+
+        if (after < before)
+            Logger.Info($"[Chests] Opened {before - after} Mystery Box(es); {after} left.");
+        else
+            Logger.Warning("[Chests] Mystery Box count did not go down after opening; will check again later.");
     }
 }
 

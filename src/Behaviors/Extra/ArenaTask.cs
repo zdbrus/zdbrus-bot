@@ -44,6 +44,7 @@ public class ArenaTask : BotTask
     private MelonPreferences_Entry<int> _arenaSquad;
     private double _deadline;
     private bool _fought;
+    private bool _warnedEmptySquad;
 
     public ArenaTask() : this(() => DateTime.Now, MonotonicSeconds) { }
 
@@ -97,15 +98,21 @@ public class ArenaTask : BotTask
             yield break;
         }
 
+        if (want != 0 && before != want && !Planner.SquadApplier.HasMachines(want))
+        {
+            // The game will not activate an empty squad, so fight with the current one instead of never fighting.
+            if (!_warnedEmptySquad)
+            {
+                Logger.Warning($"[Arena] Arena squad {want} has no war machines in it, so the bot is fighting " +
+                               $"with your current squad ({before}) instead. Fill squad {want} or set Arena Squad to 0.");
+                _warnedEmptySquad = true;
+            }
+            want = before;
+        }
+
         var swap = want != 0 && before != want;
         if (swap)
         {
-            if (!Planner.SquadApplier.HasMachines(want))
-            {
-                Retry($"Arena squad {want} is empty or unavailable; no fight was attempted.");
-                yield break;
-            }
-
             yield return OpenArena();
             if (!Ui.Visible(Arena) || !ArenaPowerPolicy.TryParseTokens(Ui.Text(Tokens), out var tokens))
             {

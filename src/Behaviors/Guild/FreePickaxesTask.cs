@@ -46,12 +46,14 @@ public class FreePickaxesTask : BotTask
             var confirmed = false;
             const string claimButton =
                 P.Menus + "/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/purchaseButton";
-            yield return Ui.ClickUntil(Ui.Find(claimButton), () => FreePickaxes.Quantity > before,
+            // Quantity is the unclaimed amount on the shop card, so a successful claim makes it drop.
+            yield return Ui.ClickUntil(Ui.Find(claimButton),
+                () => FreePickaxes.Quantity < before || !Ui.Clickable(claimButton),
                 value => confirmed = value, "Free pickaxes claim", 1.5f);
             if (confirmed)
-                Logger.Info($"[Free Pickaxes] Quantity increased from {before} to {FreePickaxes.Quantity}.");
+                Logger.Info($"[Free Pickaxes] Claimed {before} pickaxes.");
             else
-                Logger.Warning("[Free Pickaxes] Claim did not increase the pickaxe quantity; stopping.");
+                Logger.Warning("[Free Pickaxes] The claim button did not respond; will try again later.");
         }
         else
         {

@@ -312,6 +312,11 @@ public class TemplePrestigeTask : BotTask
         Logger.Info($"Temple: proceeding on {trigger} trigger.");
         if (gain < _minGain.Value || played < _minHours.Value)
         {
+            // Re-checking every minute just reopens the preview; the boost grows slowly, so pause a few minutes.
+            var wait = gain < _minGain.Value
+                ? TimeSpan.FromMinutes(5)
+                : TimeSpan.FromHours(Math.Min(Math.Max(_minHours.Value - played, 1 / 60d), 0.5));
+            NextRunTime = DateTime.Now + wait;
             Report(gain < _minGain.Value ? "Waiting for the minimum gold boost." : "Waiting for the minimum run age.", reading);
             yield return CloseTemple(closeScreen);
             yield break;

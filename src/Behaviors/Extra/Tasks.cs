@@ -511,7 +511,20 @@ public class ChaosRiftTask : BotTask
             yield return Ui.OpenGuildBuilding("chaosRift");
         if (!Ui.Visible(R))
         {
-            Logger.Warning("[Chaos Rift] The Chaos Rift screen did not open; trying the holy upgrade bubble instead.");
+            const string message = P.Popups + "/GenericMessage/bg";
+            if (Ui.Visible(message))
+            {
+                // The game refused to open the Rift (closed between seasons, locked, etc.) and said why.
+                var text = Ui.Text(message + "/messageText");
+                Logger.Info("[Chaos Rift] The game would not open the Chaos Rift" +
+                            (string.IsNullOrWhiteSpace(text) ? "." : $": \"{text.Trim()}\"") +
+                            " Checking again in 6 hours.");
+                yield return Ui.Click(message + "/closeButton", 1f);
+                NextRunTime = DateTime.Now.AddHours(6);
+                BubbleQuietUntil = NextRunTime;
+            }
+            else
+                Logger.Warning("[Chaos Rift] The Chaos Rift screen did not open; trying the holy upgrade bubble instead.");
             if (_holyUpgrades.Value && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade"))
             {
                 yield return Ui.Click(P.Notifications + "/GuardianHolyUpgrade", 2f);

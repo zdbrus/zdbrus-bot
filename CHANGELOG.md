@@ -1,7 +1,13 @@
 ﻿# Changelog
 
-## Unreleased
+## 0.7.47 (2026-11-02)
 - Balanced AutoUpgrade uses idle gaps even when a scheduled task is less than 30 seconds away. Frequent Temple and boss checks no longer keep it paused between tasks; ready and running tasks still take priority, and Focus keeps its early pause.
+- Free Pickaxes no longer reports a successful claim as failed. The game counts down unclaimed pickaxes after a claim, and the bot now checks for that.
+- Arena: if the chosen Arena squad has no war machines, the bot warns once and fights with your current squad, instead of skipping Arena forever.
+- Chaos Rift: when the game shows a message instead of opening the Rift, the bot logs the message text, closes it, and waits 6 hours before trying again.
+- Open Chests also opens Mystery Boxes from the Bag (F1 setting **Open Mystery Boxes**, on by default).
+- The free Mystery Box claim switches to the store's value-bundle tab when the store opens on another tab. An already-claimed box is logged as information, not as a warning.
+- Temple: when a trigger fires but the minimum boost or run age is not reached yet, the bot waits a few minutes before the next check instead of reopening the preview every minute. All reset safeguards are unchanged.
 
 ## 0.7.46 (2026-10-31)
 - Temple Prestige now recognizes a displayed `+0%` as a real zero boost instead of an unreadable value, while still refusing to empower until the preview shows a positive boost.

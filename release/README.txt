@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.46 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.47 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -62,7 +62,8 @@ name, rank and power plus your squad power in the preview. Power is not a win pr
 changed values and unconfirmed fights stop the attempt. If One Fight Per Day is enabled, after 20:00
 local time it may attempt the weakest opponent once above the limit when all three opponents are
 readable and refresh is unavailable; an unconfirmed attempt still counts for that day.
-The configured Arena squad must be verified. The bot allows time to restore the previous squad and logs
+The configured Arena squad must be verified. If that squad is empty, the bot warns once and fights with
+your current squad instead. The bot allows time to restore the previous squad and logs
 a failure, but stopping the bot, changing accounts or closing the game mid-task can interrupt restoration.
 Check the active squad afterward. If the runtime is too short to switch, raise F1 > General > Max Task Runtime.
 
