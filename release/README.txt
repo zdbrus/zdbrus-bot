@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.48 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.49 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -23,7 +23,8 @@ exposes a reliable receipt. Liberation Missions can run Easy (1 star), Normal (2
 Battle Pass skips scrolling when its rewards marker is present but hidden.
 Mystery Box claims are retried when the offer or claim cannot be confirmed. Boxes are opened only
 when their amount is readable and the opening control shows no price; otherwise they are kept.
-Free Pickaxes claims are retried when the game does not show a readable confirmation.
+Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
+while the game stays open, even if its notification remains lit.
 F1 > Prestige shows the last decision and controls. Growth efficiency is the primary free-prestige
 trigger: two hourly samples below the configured share of average growth can trigger without waiting
 for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
@@ -36,7 +37,8 @@ hiding the battle HUD does not cancel a valid reset. The paid 2x is never used. 
 fresh for untracked runs. Similar-age account switches cannot always be detected; turn prestige off when
 switching accounts until you have checked its settings.
 Only the free-empower confirmation opened by the bot is confirmed; existing or unrecognized prompts
-are left untouched.
+are left untouched. After a confirmed reset, the bot waits briefly for the completion screen and
+presses Start now when available.
 Scarab uses Noble's tokens by default. Turn on "Use Pharaoh's Tokens" to allow those tokens too.
 It uses Auto at x1, guards each spin's token permission and cost, and never buys tokens or spends gems.
 F1 > Guild > Awaken Heroes > Awaken Amount offers x1, x2, x5, x10 and x20 (default x1).

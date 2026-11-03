@@ -1,5 +1,9 @@
 ﻿# Changelog
 
+## 0.7.49 (2026-11-02)
+- Free Pickaxes now waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim while the game stays open, even if its notification remains lit.
+- After a confirmed prestige, the bot waits briefly for the completion screen and its Start now button instead of missing a screen that appears after the stage resets.
+
 ## 0.7.48 (2026-11-02)
 - Arena falls back to the current squad only when the chosen squad is confirmed empty. Unreadable squad data stops the fight instead of being mistaken for an empty squad.
 - Free Pickaxes confirms claims only from a readable quantity decrease or a newly visible claimed marker; uncertain claims are retried.

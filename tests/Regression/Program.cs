@@ -37,6 +37,7 @@ internal static class Program
             Test("live stage reads fail closed without reusing old data", LiveStageReading);
             Test("prestige task uses the free control and verifies completion", PrestigeTaskFreeControl);
             Test("prestige confirms a live stage reset with the battle HUD hidden", PrestigeHiddenStageReset);
+            Test("prestige handles a delayed completion screen", PrestigeDelayedCompletion);
             Test("prestige rejects missing or changed live stage data", PrestigeLiveStageSafety);
             Test("prestige confirms only its own verified free prompt", PrestigeConfirmationSafety);
             Test("prestige does not mistake an unconfirmed prompt for a reset", PrestigeConfirmationOutcome);
@@ -282,7 +283,9 @@ internal static class Program
         public Il2Cpp.MainBattle Battle;
         public GameObject Popup;
         public GameObject Confirmation;
+        public GameObject Complete;
         public Button FreeButton;
+        public Button StartButton;
         public int FreeClicks;
         public int PaidClicks;
         public int ConfirmClicks;
@@ -293,6 +296,7 @@ internal static class Program
         public bool ConfirmationNoProgress;
         public Action OnOpen;
         public Action OnConfirmation;
+        public Action OnReset;
     }
 
     private static PrestigeFixture SetupPrestige(bool stalled = true)
@@ -301,6 +305,7 @@ internal static class Program
         Ui.Texts.Clear();
         Ui.Numbers.Clear();
         Ui.BeforeGuardedClick = null;
+        Ui.BeforeVisible = null;
         Ui.OpenTownWorks = true;
         BossAttemptTracker.Reset();
         Il2Cpp.GameInitialize.Loaded = true;
@@ -340,10 +345,10 @@ internal static class Program
         };
         GameObject.CreatePath(PrestigeFixture.PopupPath + "/bg/closeButton").AddComponent<Button>().onClick.Action =
             () => fixture.Popup.activeSelf = false;
-        var complete = GameObject.CreatePath("popups/TOEPrestigeComplete");
+        var complete = fixture.Complete = GameObject.CreatePath("popups/TOEPrestigeComplete");
         complete.activeSelf = false;
-        GameObject.CreatePath("popups/TOEPrestigeComplete/bg/confirmButton").AddComponent<Button>().onClick.Action =
-            () => { fixture.ConfirmClicks++; complete.activeSelf = false; };
+        fixture.StartButton = GameObject.CreatePath("popups/TOEPrestigeComplete/bg/confirmButton").AddComponent<Button>();
+        fixture.StartButton.onClick.Action = () => { fixture.ConfirmClicks++; complete.activeSelf = false; };
         fixture.Confirmation = GameObject.CreatePath(PrestigeFixture.ConfirmationPath);
         fixture.Confirmation.activeSelf = false;
         Ui.Texts[PrestigeFixture.ConfirmationText] = "Are you sure that you want to empower the temple?";
@@ -354,6 +359,7 @@ internal static class Program
             fixture.Popup.activeSelf = false;
             fixture.Confirmation.activeSelf = false;
             complete.activeSelf = fixture.ShowCompletionPopup;
+            fixture.OnReset?.Invoke();
         }
         GameObject.CreatePath(PrestigeFixture.ConfirmationButton).AddComponent<Button>().onClick.Action = () =>
         {
@@ -398,6 +404,53 @@ internal static class Program
             "The free stage reset needed a visible HUD or clicked an unrelated control.");
         Check(TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
             "The live stage reset was not confirmed.");
+    }
+
+    private static void PrestigeDelayedCompletion()
+    {
+        var fixture = SetupPrestige();
+        fixture.ShowCompletionPopup = false;
+        fixture.StartButton.interactable = false;
+        var showAt = 0f;
+        var shown = false;
+        fixture.OnReset = () => showAt = Time.unscaledTime + 2f;
+        Ui.BeforeVisible = path =>
+        {
+            if (!shown && path == "popups/TOEPrestigeComplete" && showAt > 0 && Time.unscaledTime >= showAt)
+            {
+                shown = true;
+                fixture.Complete.activeSelf = true;
+            }
+            if (shown && Time.unscaledTime >= showAt + 0.6f)
+                fixture.StartButton.interactable = true;
+        };
+        try { Run(fixture.Task.Execute()); }
+        finally { Ui.BeforeVisible = null; }
+        Check(shown && fixture.FreeClicks == 1 && fixture.PaidClicks == 0 &&
+              fixture.ConfirmClicks == 1 && !fixture.Complete.activeSelf,
+            "A completion screen that appeared after the stage reset was left open.");
+
+        fixture = SetupPrestige();
+        fixture.StartButton.interactable = false;
+        Run(fixture.Task.Execute());
+        Check(fixture.Complete.activeSelf && fixture.ConfirmClicks == 0 &&
+              TemplePrestigeTask.LastDecision.Contains("start screen needs attention"),
+            "An unavailable start button was clicked or reported as confirmed.");
+
+        fixture = SetupPrestige();
+        fixture.StartButton.interactable = false;
+        var closeAt = 0f;
+        fixture.OnReset = () => closeAt = Time.unscaledTime + 2f;
+        Ui.BeforeVisible = path =>
+        {
+            if (path == "popups/TOEPrestigeComplete" && closeAt > 0 && Time.unscaledTime >= closeAt)
+                fixture.Complete.activeSelf = false;
+        };
+        try { Run(fixture.Task.Execute()); }
+        finally { Ui.BeforeVisible = null; }
+        Check(!fixture.Complete.activeSelf && fixture.ConfirmClicks == 0 &&
+              TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
+            "A completion screen that closed itself was reported as needing attention.");
     }
 
     private static void PrestigeConfirmationSafety()

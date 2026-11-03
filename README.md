@@ -82,7 +82,8 @@ Every feature can be switched on or off in the F1 panel.
 
 Mystery Box claims are retried if the offer or claim cannot be confirmed. Opening boxes requires a
 readable amount and a free opening control with no visible price marker; otherwise the boxes are kept.
-Free Pickaxes claims are also retried when the game does not show a readable confirmation.
+Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
+while the game stays open, even if its notification remains lit.
 
 ### Arena safety
 
@@ -125,7 +126,8 @@ battle HUD does not cancel a valid reset. The fallback timer starts fresh when a
 tracked or its age changes unexpectedly. Similar-age account switches cannot always be identified, so turn prestige
 off when switching accounts until you have checked its settings.
 The bot confirms only the free-empower prompt it just opened; an existing or unrecognized confirmation
-is left untouched.
+is left untouched. After a confirmed reset, it waits briefly for the completion screen and presses
+**Start now** when available.
 
 Scarab uses Noble's tokens by default. Enable **Use Pharaoh's Tokens** in its task settings to allow
 those tokens too. It uses the game's **Auto** mode at x1, checks each native spin against those

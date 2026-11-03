@@ -388,14 +388,24 @@ public class TemplePrestigeTask : BotTask
             yield break;
         }
 
+        // The stage can reset before the completion screen finishes opening.
+        if (!Ui.Visible(PrestigeComplete))
+            yield return Ui.WaitUntil(() => Ui.Visible(PrestigeComplete), _ => { }, 8f);
+
         var startConfirmed = true;
         if (Ui.Visible(PrestigeComplete))
         {
-            startConfirmed = false;
-            yield return Ui.ClickUntil(Ui.Find(PrestigeComplete + "/bg/confirmButton"),
-                () => !Ui.Visible(PrestigeComplete), value => startConfirmed = value,
-                "start after temple prestige", 1f, 5f);
-            if (!startConfirmed) Logger.Warning("Temple: prestige completed, but the new-run start was not confirmed.");
+            yield return Ui.WaitUntil(
+                () => !Ui.Visible(PrestigeComplete) || Ui.Clickable(PrestigeComplete + "/bg/confirmButton"),
+                _ => { }, 5f);
+            if (Ui.Visible(PrestigeComplete))
+            {
+                startConfirmed = false;
+                yield return Ui.ClickUntil(Ui.Find(PrestigeComplete + "/bg/confirmButton"),
+                    () => !Ui.Visible(PrestigeComplete), value => startConfirmed = value,
+                    "start after temple prestige", 1f, 5f);
+                if (!startConfirmed) Logger.Warning("Temple: prestige completed, but the new-run start was not confirmed.");
+            }
         }
 
         ResetSamples();

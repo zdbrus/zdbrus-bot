@@ -36,6 +36,13 @@ public class FreePickaxesTask : BotTask
         );
     }
 
+    private void RetryInTenMinutes()
+    {
+        var retryAt = DateTime.Now.AddMinutes(10);
+        NextRunTime = retryAt;
+        if (BubbleQuietUntil < retryAt) BubbleQuietUntil = retryAt;
+    }
+
     public override IEnumerator Execute()
     {
         yield return Notifications.FreePickaxes;
@@ -43,7 +50,7 @@ public class FreePickaxesTask : BotTask
         if (!FreePickaxes.TryGetQuantity(out var before))
         {
             Logger.Warning("[Free Pickaxes] The available quantity could not be read; trying again later.");
-            NextRunTime = DateTime.Now.AddMinutes(10);
+            RetryInTenMinutes();
             yield return GuildShop.Close;
             yield break;
         }
@@ -65,7 +72,7 @@ public class FreePickaxesTask : BotTask
             else
             {
                 Logger.Warning("[Free Pickaxes] The claim could not be confirmed; trying again later.");
-                NextRunTime = DateTime.Now.AddMinutes(10);
+                RetryInTenMinutes();
                 yield return GuildShop.Close;
                 yield break;
             }

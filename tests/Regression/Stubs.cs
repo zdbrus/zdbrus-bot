@@ -644,11 +644,16 @@ namespace Firebot.Behaviors.Extra
         public static int OpenMapCalls;
         public static Action<string> BeforeGuardedClick;
         public static Action<string> BeforeFind;
+        public static Action<string> BeforeVisible;
         public static Action<string> BeforeText;
         public static Action<Transform> OnPointerClick;
         public static readonly Dictionary<string, string> Texts = new();
         public static readonly Dictionary<string, double> Numbers = new();
-        public static bool Visible(string path) => GameObject.Resolve(path)?.activeInHierarchy ?? false;
+        public static bool Visible(string path)
+        {
+            BeforeVisible?.Invoke(path);
+            return GameObject.Resolve(path)?.activeInHierarchy ?? false;
+        }
         public static string Text(string path)
         {
             BeforeText?.Invoke(path);
@@ -713,8 +718,9 @@ namespace Firebot.Behaviors.Extra
         public static IEnumerator WaitFor(string path, float timeout = 5f) { yield break; }
         public static IEnumerator WaitUntil(Func<bool> condition, Action<bool> completed, float timeout = 2f)
         {
+            var end = Time.unscaledTime + timeout;
+            while (!condition() && Time.unscaledTime < end) yield return new WaitForSeconds(0.2f);
             completed(condition());
-            yield break;
         }
         public static IEnumerator OpenMapSubmenu(string name)
         {

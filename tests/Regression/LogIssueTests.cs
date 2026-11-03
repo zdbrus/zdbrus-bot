@@ -43,8 +43,10 @@ internal static class LogIssueTests
         Logger.Messages.Clear();
         var task = new FreePickaxesTask();
         task.InitializeConfig("test");
+        task.SetEnabledFromStatus(true);
         ((MelonPreferences_Entry<int>)MelonPreferences.Categories["free_pickaxes"]
             .Entries["pickaxe_claim_threshold"]).Value = 30;
+        GameObject.CreatePath("notifications/FreePickaxes");
         var claim = GameObject.CreatePath(PickaxeClaim).AddComponent<Button>();
         var marker = GameObject.CreatePath(PickaxeMarker);
         marker.activeSelf = false;
@@ -83,12 +85,18 @@ internal static class LogIssueTests
             GameText.Texts[PickaxeQuantity] = "";
             f.Claim.interactable = false;
         };
+        Check(f.Task.IsNotificationVisible(), "The pickaxe notification fixture is not visible.");
         var started = DateTime.Now;
         Run(f.Task.Execute());
         Check(!Logger.Messages.Any(s => s.Contains("claim was confirmed")) &&
               Logger.Messages.Any(s => s.Contains("could not be confirmed")) &&
-              f.Task.NextRunTime >= started.AddMinutes(9.9),
-            "An unreadable count or disappearing button falsely confirmed a claim.");
+              f.Task.NextRunTime >= started.AddMinutes(9.9) &&
+              f.Task.BubbleQuietUntil >= f.Task.NextRunTime &&
+              !f.Task.IsNotificationVisible() && !f.Task.IsReady(),
+            "An unconfirmed pickaxe claim was reported as successful or retriggered before its retry.");
+        f.Task.RestoreNextRun(DateTime.Now.AddSeconds(-1));
+        Check(f.Task.IsReady() && !f.Task.IsNotificationVisible(),
+            "The scheduled pickaxe retry was blocked by the quiet notification.");
 
         f = PickaxeFixture("x30");
         f.Claim.onClick.Action = () => GameText.Texts[PickaxeQuantity] = "x-1";
@@ -103,8 +111,10 @@ internal static class LogIssueTests
         started = DateTime.Now;
         Run(f.Task.Execute());
         Check(clicks == 0 && Logger.Messages.Any(s => s.Contains("quantity could not be read")) &&
-              f.Task.NextRunTime >= started.AddMinutes(9.9),
-            "An unreadable starting quantity was treated as zero or clicked.");
+              f.Task.NextRunTime >= started.AddMinutes(9.9) &&
+              f.Task.BubbleQuietUntil >= f.Task.NextRunTime &&
+              !f.Task.IsNotificationVisible() && !f.Task.IsReady(),
+            "An unreadable starting quantity was clicked or retriggered before its retry.");
 
         f = PickaxeFixture("x1.5");
         clicks = 0;
