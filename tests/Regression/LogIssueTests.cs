@@ -94,6 +94,18 @@ internal static class LogIssueTests
               f.Task.BubbleQuietUntil >= f.Task.NextRunTime &&
               !f.Task.IsNotificationVisible() && !f.Task.IsReady(),
             "An unconfirmed pickaxe claim was reported as successful or retriggered before its retry.");
+        ScheduleStore.Save(new[] { f.Task });
+        var restartedPickaxes = new FreePickaxesTask();
+        restartedPickaxes.InitializeConfig("test");
+        restartedPickaxes.SetEnabledFromStatus(true);
+        ScheduleStore.Restore(new[] { restartedPickaxes });
+        Check(restartedPickaxes.NextRunTime == f.Task.NextRunTime &&
+              restartedPickaxes.BubbleQuietUntil >= f.Task.NextRunTime &&
+              !restartedPickaxes.IsNotificationVisible() && !restartedPickaxes.IsReady(),
+            "Restarting allowed a pickaxe notification to bypass its retry delay.");
+        restartedPickaxes.RestoreNextRun(DateTime.Now.AddSeconds(-1));
+        Check(restartedPickaxes.IsReady() && !restartedPickaxes.IsNotificationVisible(),
+            "A restored notification cooldown blocked the scheduled retry.");
         f.Task.RestoreNextRun(DateTime.Now.AddSeconds(-1));
         Check(f.Task.IsReady() && !f.Task.IsNotificationVisible(),
             "The scheduled pickaxe retry was blocked by the quiet notification.");
@@ -138,7 +150,7 @@ internal static class LogIssueTests
         Ui.Numbers.Clear();
         Ui.BeforeGuardedClick = null;
         Logger.Messages.Clear();
-        var now = new DateTime(2026, 11, 2, 20, 0, 0);
+        var now = DateTime.Now;
         var task = new ChaosRiftTask(() => now);
         task.InitializeConfig("test");
         task.SetEnabledFromStatus(true);
@@ -161,6 +173,15 @@ internal static class LogIssueTests
               Logger.Messages.Any(s => s.Contains("The rift is closed.")),
             "The closed-rift message was not logged, closed, and deferred for six hours.");
         Check(!task.IsNotificationVisible(), "A blocked Rift notification bypassed its cooldown.");
+        ScheduleStore.Save(new[] { task });
+        task = new ChaosRiftTask(() => now);
+        task.InitializeConfig("test");
+        task.SetEnabledFromStatus(true);
+        settings = MelonPreferences.Categories["chaos_rift"].Entries;
+        ((MelonPreferences_Entry<string>)settings["holy_guardians"]).Value = "";
+        ScheduleStore.Restore(new[] { task });
+        Check(task.NextRunTime == now.AddHours(6) && !task.IsNotificationVisible(),
+            "Restarting allowed a Rift notification to bypass its cooldown.");
 
         var guardian = GameObject.CreatePath("notifications/GuardianHolyUpgrade");
         guardian.activeSelf = false;
@@ -239,13 +260,20 @@ internal static class LogIssueTests
         Check(switches == 1 && claims == 1 && !f.Store.activeSelf &&
               f.Task.NextRunTime > DateTime.Now.AddHours(23) && !f.Task.IsNotificationVisible(),
             "The Mystery Box tab was not switched, claimed, and temporarily quieted.");
+        ScheduleStore.Save(new[] { f.Task });
+        var restartedRewards = new DailyRewardsTask();
+        restartedRewards.InitializeConfig("test");
+        restartedRewards.SetEnabledFromStatus(true);
+        ScheduleStore.Restore(new[] { restartedRewards });
+        Check(!restartedRewards.IsNotificationVisible(),
+            "Restarting allowed a claimed Mystery Box notification to bypass its quiet period.");
 
         var checkInBubble = GameObject.CreatePath("notifications/CheckIn");
         var checkInClicks = 0;
         GameObject.CreatePath(checkIn).AddComponent<Button>().onClick.Action = () => checkInClicks++;
         Notifications.OnCheckIn = () => f.Store.activeSelf = true;
-        Check(f.Task.IsNotificationVisible(), "Mystery Box backoff muted a separate check-in notification.");
-        Run(f.Task.Execute());
+        Check(restartedRewards.IsNotificationVisible(), "Mystery Box backoff muted a separate check-in notification.");
+        Run(restartedRewards.Execute());
         Check(switches == 1 && claims == 1 && checkInClicks == 1,
             "A check-in notification retried the Mystery Box during its backoff.");
         checkInBubble.activeSelf = false;
@@ -329,16 +357,40 @@ internal static class LogIssueTests
         Check(tabClicks == 1 && f.Task.NextRunTime == retryAt,
             "A later daily reward overwrote the scheduled Mystery Box retry.");
 
+        ScheduleStore.Save(new[] { f.Task });
+        restartedRewards = new DailyRewardsTask(() => now);
+        restartedRewards.InitializeConfig("test");
+        restartedRewards.SetEnabledFromStatus(true);
+        ScheduleStore.Restore(new[] { restartedRewards });
         GameObject.CreatePath("notifications/CheckIn");
         now = now.AddMinutes(30);
-        Run(f.Task.Execute());
-        Check(tabClicks == 1 && f.Task.NextRunTime == retryAt,
+        Run(restartedRewards.Execute());
+        Check(tabClicks == 1 && restartedRewards.NextRunTime == retryAt,
             "An unrelated notification postponed the pending Mystery Box retry.");
 
         now = retryAt;
-        Run(f.Task.Execute());
-        Check(tabClicks == 2 && f.Task.NextRunTime == now.AddHours(1),
+        Run(restartedRewards.Execute());
+        Check(tabClicks == 2 && restartedRewards.NextRunTime == now.AddHours(1),
             "A due Mystery Box retry was skipped while another reward notification was visible.");
+
+        now = DateTime.Now.AddHours(-2);
+        f = Setup(() => now);
+        GameObject.Resolve("notifications/MysteryBox").activeSelf = false;
+        GameObject.CreatePath(checkIn).AddComponent<Button>();
+        Notifications.OnCheckIn = () => f.Store.activeSelf = true;
+        tabClicks = 0;
+        f.Tab.onClick.Action = () => tabClicks++;
+        Run(f.Task.Execute());
+        ScheduleStore.Save(new[] { f.Task });
+        restartedRewards = new DailyRewardsTask(() => now);
+        restartedRewards.InitializeConfig("test");
+        restartedRewards.SetEnabledFromStatus(true);
+        ScheduleStore.Restore(new[] { restartedRewards });
+        now = DateTime.Now;
+        GameObject.CreatePath("notifications/CheckIn");
+        Run(restartedRewards.Execute());
+        Check(tabClicks == 2,
+            "An expired pending Mystery Box retry was forgotten after a restart.");
         Notifications.OnMysteryBox = null;
         Notifications.OnCheckIn = null;
     }

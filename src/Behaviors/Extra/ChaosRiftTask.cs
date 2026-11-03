@@ -41,6 +41,19 @@ public class ChaosRiftTask : BotTask
         { "ChaosRift", "ChaosRiftSupplies", "GuardianHolyUpgrade" };
 
     internal override IEnumerable<string> HandledNotificationNames => NotificationNames;
+    internal override IEnumerable<KeyValuePair<string, DateTime>> RetryDeadlines
+    {
+        get
+        {
+            if (_riftRetryAfter > _now())
+                yield return new KeyValuePair<string, DateTime>("RiftRetryAfter", _riftRetryAfter);
+        }
+    }
+
+    internal override void RestoreRetryDeadline(string name, DateTime when)
+    {
+        if (name == "RiftRetryAfter") _riftRetryAfter = when;
+    }
 
     protected override bool IsNotificationVisibleCore()
     {

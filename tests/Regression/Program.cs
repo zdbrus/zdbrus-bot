@@ -1193,9 +1193,11 @@ if ($Mode -eq 'blocked') {
         var bubble = new BubbleTask();
         bubble.InitializeConfig("test");
         bubble.RestoreNextRun(past);
+        bubble.BubbleQuietUntil = DateTime.Now.AddMinutes(10);
         var precise = new PreciseTask();
         precise.InitializeConfig("test");
         precise.RestoreNextRun(DateTime.Now.AddMinutes(20));
+        precise.BubbleQuietUntil = DateTime.Now.AddMinutes(-1);
         Check(bubble.DueTime == past.AddHours(6), "Bubble fallback time was wrong.");
         Check(!bubble.IsReady(false), "Bubble became ready before its true due time.");
         Check(precise.DueTime == precise.NextRunTime, "Precise task received fallback delay.");
@@ -1205,8 +1207,21 @@ if ($Mode -eq 'blocked') {
         var restoredPrecise = new PreciseTask();
         ScheduleStore.Restore(new BotTask[] { restoredBubble, restoredPrecise });
         Check(restoredBubble.NextRunTime == past, "Future bubble fallback was not restored.");
+        Check(restoredBubble.BubbleQuietUntil == bubble.BubbleQuietUntil,
+            "A future notification cooldown was not restored.");
         Check(restoredPrecise.NextRunTime == precise.NextRunTime, "Precise due time was not restored.");
+        Check(restoredPrecise.BubbleQuietUntil == DateTime.MinValue,
+            "An expired notification cooldown was restored.");
+        File.WriteAllLines(Path.Combine("UserData", "ZdbrusBotSchedule.txt"),
+            new[] { $"BubbleTask={past:o}", $"PreciseTask={precise.NextRunTime:o}" });
+        var legacyBubble = new BubbleTask();
+        var legacyPrecise = new PreciseTask();
+        ScheduleStore.Restore(new BotTask[] { legacyBubble, legacyPrecise });
+        Check(legacyBubble.NextRunTime == past && legacyPrecise.NextRunTime == precise.NextRunTime &&
+              legacyBubble.BubbleQuietUntil == DateTime.MinValue,
+            "Schedules written by an older version were not restored.");
         bubble.RestoreNextRun(DateTime.Now.AddHours(-7));
+        bubble.BubbleQuietUntil = DateTime.MinValue;
         precise.RestoreNextRun(DateTime.Now.AddMinutes(-1));
         ScheduleStore.Save(new BotTask[] { bubble, precise });
         Check(File.ReadAllLines(Path.Combine("UserData", "ZdbrusBotSchedule.txt")).Length == 0, "Expired schedule was persisted.");

@@ -46,6 +46,23 @@ public class DailyRewardsTask : BotTask
     }
 
     internal override IEnumerable<string> HandledNotificationNames => NotificationNames;
+    internal override IEnumerable<KeyValuePair<string, DateTime>> RetryDeadlines
+    {
+        get
+        {
+            // An overdue unconfirmed claim remains pending until it is revisited.
+            if (_mysteryNeedsRetry || _mysteryRetryAfter > _now())
+                yield return new KeyValuePair<string, DateTime>(
+                    _mysteryNeedsRetry ? "MysteryRetry" : "MysteryQuiet", _mysteryRetryAfter);
+        }
+    }
+
+    internal override void RestoreRetryDeadline(string name, DateTime when)
+    {
+        if (name != "MysteryRetry" && name != "MysteryQuiet") return;
+        _mysteryRetryAfter = when;
+        _mysteryNeedsRetry = name == "MysteryRetry";
+    }
 
     protected override bool IsNotificationVisibleCore()
         => IsEnabled && _now() >= BubbleQuietUntil &&

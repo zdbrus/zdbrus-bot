@@ -83,7 +83,9 @@ Every feature can be switched on or off in the F1 panel.
 Mystery Box claims are retried if the offer or claim cannot be confirmed. Opening boxes requires a
 readable amount and a free opening control with no visible price marker; otherwise the boxes are kept.
 Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
-while the game stays open, even if its notification remains lit.
+even if its notification remains lit or the game restarts. Notification cooldowns and separate
+Chaos Rift and Mystery Box retries also continue after a restart. Like other task schedules, these
+waits are shared across accounts on the same installation, so switching accounts can carry one over.
 
 ### Arena safety
 

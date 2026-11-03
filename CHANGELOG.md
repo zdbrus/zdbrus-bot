@@ -1,5 +1,9 @@
 ﻿# Changelog
 
+## 0.7.50 (2026-11-02)
+- Notification quiet periods and the separate Chaos Rift and Mystery Box retries now survive game restarts. Scheduled task checks are not blocked by a quiet notification.
+- Saved task schedules and retry delays are shared across accounts on the same installation, so switching accounts can carry over a wait.
+
 ## 0.7.49 (2026-11-02)
 - Free Pickaxes now waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim while the game stays open, even if its notification remains lit.
 - After a confirmed prestige, the bot waits briefly for the completion screen and its Start now button instead of missing a screen that appears after the stage resets.

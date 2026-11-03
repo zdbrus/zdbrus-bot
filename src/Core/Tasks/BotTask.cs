@@ -38,6 +38,11 @@ public abstract class BotTask
     /// <summary>Puts back a due time saved before the game was closed.</summary>
     public void RestoreNextRun(DateTime when) => NextRunTime = when;
 
+    internal virtual IEnumerable<KeyValuePair<string, DateTime>> RetryDeadlines
+        => Array.Empty<KeyValuePair<string, DateTime>>();
+
+    internal virtual void RestoreRetryDeadline(string name, DateTime when) { }
+
     protected virtual string NotificationPath => null;
 
     /// <summary>True when a task must revisit its screen at its calculated timer, even without a bubble.</summary>

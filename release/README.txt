@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.49 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.50 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -24,7 +24,9 @@ Battle Pass skips scrolling when its rewards marker is present but hidden.
 Mystery Box claims are retried when the offer or claim cannot be confirmed. Boxes are opened only
 when their amount is readable and the opening control shows no price; otherwise they are kept.
 Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
-while the game stays open, even if its notification remains lit.
+even if its notification remains lit or the game restarts. Notification cooldowns and separate
+Chaos Rift and Mystery Box retries also continue after a restart. Like other task schedules, these
+waits are shared across accounts on the same installation, so switching accounts can carry one over.
 F1 > Prestige shows the last decision and controls. Growth efficiency is the primary free-prestige
 trigger: two hourly samples below the configured share of average growth can trigger without waiting
 for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
