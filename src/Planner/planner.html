@@ -224,8 +224,58 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--brass);color:var(--brass-ink);font:700 13px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;border-radius:var(--r);opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
 .toast.on{opacity:1}
 
+/* hover tips: plain-language help on the same plate as the HUD, numbers in the data face */
+.tip{position:fixed;left:0;top:0;z-index:40;width:max-content;max-width:min(340px,calc(100vw - 16px));padding:11px 13px 12px;background:var(--plate-2);
+  border:1px solid var(--seam-hi);border-radius:var(--r);box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
+  color:var(--ink);font:13px/1.45 var(--f-body);opacity:0;transform:translateY(4px);transition:opacity .14s ease-out,transform .18s cubic-bezier(.2,.8,.2,1)}
+.tip[data-side="below"]{transform:translateY(-4px)}
+.tip.on{opacity:1;transform:none}
+.tip::after{content:"";position:absolute;left:var(--ax,50%);width:10px;height:10px;background:var(--plate-2);border:1px solid var(--seam-hi);transform:translateX(-50%) rotate(45deg)}
+.tip[data-side="above"]::after{bottom:-6px;border-top:0;border-left:0}
+.tip[data-side="below"]::after{top:-6px;border-bottom:0;border-right:0}
+.tip h4{margin:0 0 5px;font:700 12px/1.25 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--brass-hi)}
+.tip p{margin:0;white-space:pre-line}
+.tip dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin:9px 0 0;font:12px/1.3 var(--f-num)}
+.tip dt{color:var(--ink-dim)}
+.tip dd{margin:0;font-weight:600}
+.tip dd.ok{color:var(--ok)} .tip dd.short{color:var(--bad)}
+.tip .how{margin-top:10px;padding-top:8px;border-top:1px dashed var(--seam-hi)}
+.tip .how b{display:block;margin-bottom:4px;font:600 10.5px/1.2 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
+.tip ul{margin:0;padding-left:16px}
+.tip li{margin:2px 0}
+.tip li::marker{color:var(--cyan)}
+.tip .foot{margin-top:9px;font-size:12px;color:var(--ink-dim)}
+.tipbtn{position:relative;flex:none;display:inline-grid;place-items:center;width:18px;height:18px;padding:0;border-radius:50%;border:1px solid var(--seam-hi);
+  background:var(--plate-2);color:var(--ink-dim);font:700 11px/1 var(--f-display);letter-spacing:0;text-transform:none;cursor:help;transition:border-color .15s,color .15s}
+.tipbtn::before{content:"";position:absolute;inset:-4px}
+.tipbtn:hover,.tipbtn[aria-expanded="true"]{border-color:var(--cyan);color:var(--cyan)}
+.lh{display:inline-flex;align-items:center;gap:8px}
+.has-tip{text-decoration:underline dotted color-mix(in srgb,var(--ink-dim) 75%,transparent);text-decoration-thickness:1px;text-underline-offset:3px}
+[data-tip-id]:not(button):not(input):not(select):not(label){cursor:help}
+
+/* upgrade advisor */
+.picks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--seam);border:1px solid var(--seam);border-radius:var(--r);overflow:hidden}
+.pick{display:grid;gap:5px;align-content:start;background:var(--plate-2);padding:12px 14px;min-width:0}
+.pick strong{font:700 16px/1.2 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.pick strong b{color:var(--brass-hi);font-weight:700}
+.pick.bp strong b{color:var(--cyan)}
+.pick .sub{font-family:var(--f-num);font-size:12px}
+.pick .sub .short{color:var(--bad)} .pick .sub .ok{color:var(--ok)}
+.adv-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin:18px 0 6px}
+.adv-h h3{margin:0;font:700 13px/1.2 var(--f-display);letter-spacing:.1em;text-transform:uppercase}
+.adv-h .note{margin:0}
+table.ledger.adv{min-width:700px}
+.ledger.adv td small{display:block;margin:2px 0 0;white-space:nowrap}
+.ledger.adv th.l,.ledger.adv td.l{text-align:left}
+.ledger td small{margin-left:6px;font:500 11px/1 var(--f-num);color:var(--ink-faint)}
+.ledger td small.ok{color:var(--ok)} .ledger td small.short{color:var(--bad)}
+.ledger td.short{color:var(--bad)}
+.more-btn{margin-top:8px;background:none;border:1px dashed var(--seam-hi);border-radius:var(--r);padding:7px 12px;color:var(--ink-dim);font:600 11px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.more-btn:hover{border-color:var(--brass);color:var(--ink)}
+
 @media (max-width:1180px){.bays{grid-template-columns:repeat(3,minmax(0,1fr))}.deck{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){.bays{grid-template-columns:repeat(2,minmax(0,1fr))}.strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.strip>div:first-child{grid-column:1/-1}}
+@media (max-width:760px){.picks{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:460px){.bays{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:minmax(0,1fr)}.jw{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 64px;}.jw .jt{grid-column:1/-1}.jw .eff{grid-column:1/-1;text-align:left}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -247,17 +297,17 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="9" fill="none" stroke="var(--brass)" stroke-width="2.5" stroke-dasharray="4 2.6"/><circle cx="13" cy="13" r="3.5" fill="var(--brass)"/></svg>
       <h1>Zdbrus <b>Garage</b></h1>
     </div>
-    <span class="chip" id="source"><span class="dot"></span>Sample roster · not linked to game</span>
+    <span class="chip" id="source" data-tip-id="source" tabindex="0"><span class="dot"></span>Sample roster · not linked to game</span>
     <div class="seg" role="group" aria-label="Score for">
-      <button id="m-campaign" aria-pressed="true">Campaign</button>
-      <button id="m-arena" aria-pressed="false">Arena</button>
+      <button id="m-campaign" aria-pressed="true" data-tip-id="mode-campaign">Campaign</button>
+      <button id="m-arena" aria-pressed="false" data-tip-id="mode-arena">Arena</button>
     </div>
-    <button class="btn" id="use-game" hidden title="Load the squad picked in the Squad box from your game">Use in-game squad</button>
-    <label class="field" id="slot-wrap" hidden title="Which of your 3 squads to write this plan to. Each mode remembers its own squad, so campaign and arena never overwrite each other."><span class="label">Squad</span><select id="slot" aria-label="Squad to apply to"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
-    <button class="btn primary" id="apply" hidden>Apply to game</button>
-    <button class="btn" id="reset-edits" hidden>Undo my edits</button>
-    <button class="btn primary" id="auto">Auto-build squad</button>
-    <label class="field auto-config" id="auto-schedule-wrap" hidden title="Rebuild and apply this mode's squad on a schedule while this planner page and the game are open.">
+    <button class="btn" id="use-game" hidden data-tip-id="use-game">Use in-game squad</button>
+    <label class="field" id="slot-wrap" hidden data-tip-id="slot"><span class="label">Squad</span><select id="slot" aria-label="Squad to apply to"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
+    <button class="btn primary" id="apply" hidden data-tip-id="apply">Apply to game</button>
+    <button class="btn" id="reset-edits" hidden data-tip-id="reset-edits">Undo my edits</button>
+    <button class="btn primary" id="auto" data-tip-id="auto">Auto-build squad</button>
+    <label class="field auto-config" id="auto-schedule-wrap" hidden data-tip-id="auto-schedule">
       <input id="auto-schedule" type="checkbox" aria-label="Enable scheduled auto-apply">
       <span class="label">Auto-apply</span>
       <select id="auto-hours" aria-label="Auto-apply interval">
@@ -272,7 +322,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
 
 <main class="wrap">
   <section class="deckhud" aria-label="Squad summary">
-    <div class="hud biggauge" id="gauge-box">
+    <div class="hud biggauge" id="gauge-box" data-tip-id="gauge" tabindex="0">
       <svg class="ring o" id="gauge" viewBox="0 0 100 100" aria-hidden="true"></svg>
       <div class="center">
         <span class="label" id="pow-label">Squad battle power</span>
@@ -281,26 +331,26 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       </div>
     </div>
     <div class="hud curve">
-      <div class="inline" style="justify-content:space-between"><span class="label">Campaign power curve</span><span class="sub num" id="req"></span></div>
+      <div class="inline" style="justify-content:space-between"><span class="label lh">Campaign power curve <button class="tipbtn" type="button" data-tip-id="curve" aria-label="How to read the power curve">?</button></span><span class="sub num" id="req"></span></div>
       <svg id="curve" viewBox="0 0 640 170" preserveAspectRatio="none" aria-label="Power needed per mission"></svg>
     </div>
     <div class="side">
       <div class="hud" style="border-radius:var(--r);padding:12px 14px;display:grid;gap:6px">
-        <span class="label">Campaign target</span>
+        <span class="label lh">Campaign target <button class="tipbtn" type="button" data-tip-id="target" aria-label="About the campaign target">?</button></span>
         <div class="inline">
-          <label class="field"><select id="diff"></select></label>
-          <label class="field"><span class="label">#</span><input id="mission" type="number" min="1" max="90"></label>
+          <label class="field"><select id="diff" aria-label="Difficulty"></select></label>
+          <label class="field"><span class="label">#</span><input id="mission" type="number" min="1" max="90" aria-label="Mission number"></label>
         </div>
         <div class="verdict" id="verdict"></div>
         <span class="sub" id="best"></span>
       </div>
       <div class="hud" style="border-radius:var(--r);padding:12px 14px;display:grid;gap:6px">
-        <span class="label">Engineer</span>
+        <span class="label lh">Engineer <button class="tipbtn" type="button" data-tip-id="engineer" aria-label="About the Engineer">?</button></span>
         <div class="inline">
-          <label class="field"><span class="label">Lv</span><input id="eng" type="number" min="1" max="999"></label>
-          <span class="sub" id="crewcap"></span>
+          <label class="field"><span class="label">Lv</span><input id="eng" type="number" min="1" max="999" aria-label="Engineer level"></label>
+          <span class="sub has-tip" id="crewcap" data-tip-id="crewcap"></span>
         </div>
-        <span class="sub" id="raritysum"></span>
+        <span class="sub has-tip" id="raritysum" data-tip-id="rarity-sum" tabindex="0"></span>
       </div>
     </div>
   </section>
@@ -311,7 +361,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
   <section class="deck">
     <div class="panel">
       <div class="panel-h">
-        <h2>Crew bench</h2>
+        <h2 class="lh">Crew bench <button class="tipbtn" type="button" data-tip-id="bench" aria-label="About the crew bench">?</button></h2>
         <input class="search" id="q" placeholder="Find hero" aria-label="Find hero">
       </div>
       <div class="panel-b">
@@ -320,7 +370,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
       </div>
     </div>
     <div class="panel">
-      <div class="panel-h"><h2 id="led-title">Machine math</h2></div>
+      <div class="panel-h"><h2 class="lh"><span id="led-title">Machine math</span> <button class="tipbtn" type="button" data-tip-id="math" aria-label="About machine math">?</button></h2></div>
       <div class="panel-b">
         <div class="edit-grid" id="wm-edit"></div>
         <div class="ledger-wrap"><table class="ledger" id="ledger"></table></div>
@@ -330,18 +380,24 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
   </section>
 
   <section class="panel shards" aria-label="War machine upgrade advisor">
-    <div class="panel-h"><h2>War Machine Upgrade Advisor</h2><span class="note" id="upgrade-sub"></span></div>
+    <div class="panel-h"><h2 class="lh">War Machine Upgrade Advisor <button class="tipbtn" type="button" data-tip-id="advisor" aria-label="How to use the upgrade advisor">?</button></h2><span class="note" id="upgrade-sub"></span></div>
     <div class="panel-b">
-      <div class="ledger-wrap"><table class="ledger" id="upgrades"></table></div>
-      <p class="note">Ranks the next machine level and blueprint upgrades separately for each resource, using your selected campaign or arena power. Every resource shown for a machine level upgrade is required. Observed in-game: level upgrades cost 500 expedition tokens, 20 screws, 12 cogs and 1 metal at machine levels 1, 13 and 15; blueprint costs sampled at levels 0, 4 and 20 match 100 + 5 per current blueprint level. Unsampled levels are marked ~ and estimated from those observations. This advisor is read-only. Jewel upgrades are ranked separately below by ethereal shards.</p>
+      <div class="picks" id="adv-picks"></div>
+      <div class="adv-h"><h3>Level up in the workshop</h3><span class="note">1 upgrade = 500 expedition tokens + 20 screws + 12 cogs + 1 metal, and gives 100 XP</span></div>
+      <div class="ledger-wrap"><table class="ledger adv" id="upgrades"></table></div>
+      <button class="more-btn" id="lvl-more" type="button" hidden></button>
+      <div class="adv-h"><h3>Blueprints</h3><span class="note">Each level adds 5% to one stat · costs 100 + 5 × its current level</span></div>
+      <div class="ledger-wrap"><table class="ledger adv" id="bp-upgrades"></table></div>
+      <button class="more-btn" id="bp-more" type="button" hidden></button>
+      <p class="note">Sorted best value first, for the mode picked at the top (Campaign or Arena), with each machine's current crew. Levels and blueprints use different resources, so they're ranked separately. Screws, cogs and metal belong to each machine, so the level table shows whether that machine has enough. ~ means the machine's XP isn't known and the planner assumes it's at the start of its level. Hover any number for details and where to get more. This advisor only reads; to let the bot spend, use Battle → War Machines in the bot menu.</p>
     </div>
   </section>
 
   <section class="panel shards" aria-label="Ethereal shard advisor">
-    <div class="panel-h"><h2>Ethereal shard advisor</h2><span class="note" id="shard-sub"></span>
+    <div class="panel-h"><h2 class="lh">Ethereal shard advisor <button class="tipbtn" type="button" data-tip-id="shards" aria-label="About the shard advisor">?</button></h2><span class="note" id="shard-sub"></span>
       <span class="spend" id="spend-wrap" hidden>
-        <label class="field" title="The most ethereal shards the bot may spend"><span class="label">Budget</span><input id="budget" type="number" min="0" step="60" value="1000" aria-label="Shard budget"></label>
-        <button class="btn primary" id="spend">Spend for me</button>
+        <label class="field" data-tip-id="budget"><span class="label">Budget</span><input id="budget" type="number" min="0" step="60" value="1000" aria-label="Shard budget"></label>
+        <button class="btn primary" id="spend" data-tip-id="spend">Spend for me</button>
       </span></div>
     <div class="panel-b">
       <div id="spend-status"></div>
@@ -366,6 +422,7 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
   <div class="dlg-f"><button class="btn" id="dlg-close">Done</button></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
 
 <script>
 // Zdbrus War Machine Planner: math engine
@@ -374,12 +431,6 @@ dialog::backdrop{background:rgba(5,7,10,.7)}
 
 const SPEC = { DAMAGE: 'damage', TANK: 'tank', HEALER: 'healer' };
 const ATTRS = ['damage', 'health', 'armor'];
-const MACHINE_LEVEL_RESOURCES = [
-  { resource: 'Expedition tokens', cost: 500 },
-  { resource: 'Screws', cost: 20 },
-  { resource: 'Cogs', cost: 12 },
-  { resource: 'Metal', cost: 1 },
-];
 const blueprintUpgradeCost = (level) => 100 + 5 * Math.max(0, level || 0);
 
 // Base attributes: wiki War Machines page
@@ -689,6 +740,32 @@ const SPEC_NAME = { damage: 'Damage', tank: 'Tank', healer: 'Healer' };
 // war machine rarity index: 0 Common .. 8 Celestial
 const RARITY = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Titan', 'Angel', 'Celestial'];
 
+// ---------- war machine level plan ----------
+// Every workshop upgrade costs the same at any level and adds 100 XP; level L needs 100 + 10(L−1) XP to reach L+1.
+const PER_UPGRADE = { tokens: 500, screws: 20, cogs: 12, metal: 1, xp: 100 };
+const PARTS = [['screws', 'Screws'], ['cogs', 'Cogs'], ['metal', 'Metal']];
+const fin = (x) => typeof x === 'number' && isFinite(x);
+const n0 = (x) => Math.round(x).toLocaleString();
+const xpToNext = (L) => 100 + 10 * (Math.max(1, L) - 1);
+const xpBefore = (L) => { const n = Math.max(1, L) - 1; return 100 * n + 5 * n * (n - 1); };
+function levelPlan(wm) {
+  const level = Math.max(1, Number(wm.level) || 1), need = xpToNext(level);
+  // XP only describes the level the game reported; a level edited in the planner starts from 0.
+  const fromGame = wm.gameLevel === level;
+  let progress = null;
+  if (fromGame && fin(wm.xpVisual) && Math.round(wm.xpForNext) === need && wm.xpVisual >= 0 && wm.xpVisual < need) progress = wm.xpVisual;
+  else if (fromGame && fin(wm.xp)) {
+    // Cumulative XP first; fall back to XP within the level.
+    const p = wm.xp - xpBefore(level);
+    if (p >= 0 && p < need) progress = p; else if (wm.xp >= 0 && wm.xp < need) progress = wm.xp;
+  }
+  const known = progress != null, done = known ? progress : 0;
+  const steps = Math.max(1, Math.ceil((need - done) / PER_UPGRADE.xp));
+  return { level, need, progress: done, known, steps, tokens: steps * PER_UPGRADE.tokens,
+    cost: { screws: steps * PER_UPGRADE.screws, cogs: steps * PER_UPGRADE.cogs, metal: steps * PER_UPGRADE.metal },
+    have: wm.parts && typeof wm.parts === 'object' ? wm.parts : null };
+}
+
 // ---------- sample roster (EXAMPLE DATA, not the user's account) ----------
 function sample() {
   const heroes = [
@@ -707,11 +784,17 @@ function sample() {
     engineerLevel: 64, mode: 'campaign', difficulty: 'hard', mission: 54,
     artifacts: [{ attr: 'damage', rarity: 3 }, { attr: 'health', rarity: 1 }, { attr: 'armor', rarity: 2 }],
     inscriptionBonus: { damage: 0, health: 0, armor: 0 },
-    machines: Object.keys(E.WAR_MACHINES).map((id, i) => ({
-      id, owned: i !== 3 && i !== 9 && i !== 12,
-      level: 140 + ((i * 37) % 120), rarity: 2 + (i % 3), cardStars: 3 + (i % 5),
-      blueprints: { damage: 60 + (i * 7) % 40, health: 50 + (i * 11) % 40, armor: 45 + (i * 5) % 40 },
-    })),
+    currencies: { expeditionTokens: 12000, blueprints: 2400, etherealShards: 3500 },
+    machines: Object.keys(E.WAR_MACHINES).map((id, i) => {
+      const level = 140 + ((i * 37) % 120), xpVisual = (i * 530) % xpToNext(level);
+      return {
+        id, owned: i !== 3 && i !== 9 && i !== 12,
+        level, rarity: 2 + (i % 3), cardStars: 3 + (i % 5),
+        blueprints: { damage: 60 + (i * 7) % 40, health: 50 + (i * 11) % 40, armor: 45 + (i * 5) % 40 },
+        gameLevel: level, xp: xpBefore(level) + xpVisual, xpVisual, xpForNext: xpToNext(level),
+        parts: { screws: 120 + (i * 97) % 500, cogs: 60 + (i * 61) % 300, metal: 4 + (i * 7) % 30 },
+      };
+    }),
     heroes: heroes.map(([id, name, spec], i) => {
       const jewels = {};
       for (const t of types) { if (r(10) < 2) continue; const rar = 3 + r(4); jewels[t] = { rarity: rar, level: r(E.JEWEL_MAX_LEVEL[rar] + 1) }; }
@@ -752,7 +835,8 @@ function applyGame(g) {
     const t = machines.find(x => x.id === WM_ID(m.code)); if (!t) continue;
     Object.assign(t, { owned: true, level: m.level, rarity: m.rarity, cardStars: m.sacredCards, inscriptions: m.lostInscriptions,
       blueprints: { damage: m.blueprints.damage || 0, health: m.blueprints.health || 0, armor: m.blueprints.armor || 0 },
-      game: m.game, gameCrew: m.crew || [] });
+      game: m.game, gameCrew: m.crew || [], gameLevel: m.level, xp: m.xp, xpVisual: m.xpVisual, xpForNext: m.xpForNext,
+      parts: m.components || null, favourite: m.favourite });
   }
   const heroes = g.heroes.filter(h => h.owned).map(h => {
     const jewels = {};
@@ -761,7 +845,7 @@ function applyGame(g) {
     return { id: h.id, name: h.code, spec: SPEC_OF[h.spec] || 'damage', jewels: o ? structuredClone(o.jewels) : jewels, gameJewels: jewels, game: h.game, edited: !!o };
   });
   S = { ...S, engineerLevel: g.engineerLevel, crewSlots: g.crewSlots, artifacts: [], inscriptionBonus: { damage: 0, health: 0, armor: 0 },
-    machines, heroes, mode, difficulty: diff, mission };
+    currencies: g.currencies || null, machines, heroes, mode, difficulty: diff, mission };
   // The game's pre-crew numbers are the base; remember what our formula says for the unedited machine so edits scale it.
   const acct0 = account();
   for (const t of machines.filter(m => m.owned && m.game)) {
@@ -988,6 +1072,274 @@ function assign(heroId, wmId) {
 
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1600); }
 
+// ---------- hover tips ----------
+const WHERE = {
+  tokens: ['Guild expeditions (bot: Guild → Expeditions)', 'Guild Shop bundles'],
+  chests: ['Jewel chests from campaign missions', 'Guild Shop, paid with expedition tokens', 'Exotic Merchant → Emblem Market, paid with emblems of valor'],
+  blueprints: ['Campaign missions', 'Warfront loot every 6 hours (bot: Map → Warfront loot)', 'Daily Liberation missions (bot: Map → Liberation missions)', 'Guild Shop'],
+  shards: ['Duplicate jewels turn into ethereal shards', 'More jewel chests means more duplicates (campaign, Guild Shop, Emblem Market)'],
+};
+const PARTS_FOOT = 'Chests split parts about evenly across your machines, and a newly unlocked machine gets most of them until it catches up. With 6 or more machines you can favourite up to 5 in the Engineer so they get parts more often.';
+const ATTR_NAME = { damage: 'Damage', health: 'Health', armor: 'Armor' };
+const mName = (wm) => E.WAR_MACHINES[wm.id].name;
+const plural = (n, w) => `${n0(n)} ${w}${Math.round(n) === 1 ? '' : 's'}`;
+const slug = (s) => s.toLowerCase().replace(/[^a-z]+/g, '-');
+const haveOf = (k) => { const c = S.currencies; return c && fin(c[k]) ? c[k] : null; };
+const partHave = (p, k) => p.have && fin(p.have[k]) ? p.have[k] : null;
+function needFacts(need, have) {
+  if (have == null) return [['Needed', n0(need)], ['You have', 'not reported']];
+  return [['Needed', n0(need)], ['You have', n0(have)], have >= need ? ['Left over', n0(have - need), 'ok'] : ['Short', n0(need - have), 'short']];
+}
+// How many workshop upgrades this machine's own parts cover, and which part runs out first.
+function upgradesOnHand(p) {
+  if (!p.have) return null;
+  let n = Infinity, by = '';
+  for (const [k, label] of PARTS) { const c = Math.floor((partHave(p, k) || 0) / PER_UPGRADE[k]); if (c < n) { n = c; by = label.toLowerCase(); } }
+  return { n, by };
+}
+const partsReady = (p) => !!p.have && PARTS.every(([k]) => (partHave(p, k) || 0) >= p.cost[k]);
+const shortList = (p) => PARTS.filter(([k]) => (partHave(p, k) || 0) < p.cost[k]).map(([k, label]) => `${n0(p.cost[k] - (partHave(p, k) || 0))} ${label.toLowerCase()}`).join(', ');
+
+function levelTip(wm) {
+  const p = levelPlan(wm), name = mName(wm), edited = wm.gameLevel != null && wm.gameLevel !== p.level;
+  const lines = [`Each workshop upgrade adds 100 XP. Level ${p.level} needs ${n0(p.need)} XP to reach ${p.level + 1}` +
+    (p.known ? `. ${name} already has ${n0(p.progress)}, so it takes ${plural(p.steps, 'upgrade')}.` : `, so it takes ${plural(p.steps, 'upgrade')} from the start of the level.`)];
+  if (!p.known) lines.push(edited ? 'You changed the level on this page, so XP starts at 0.' : 'The game didn\'t report this machine\'s XP, so this assumes the start of the level (~).');
+  const oh = upgradesOnHand(p);
+  if (oh) lines.push(oh.n >= p.steps ? `${name} has the parts for ${plural(oh.n, 'upgrade')}, enough for this level.` : `${name}'s parts cover ${plural(oh.n, 'upgrade')}. ${cap1(oh.by)} run out first.`);
+  const tk = haveOf('expeditionTokens');
+  const fact = (label, need, have) => [label, n0(need) + (have == null ? '' : have >= need ? ' ✓' : ` (have ${n0(have)})`), have == null ? '' : have >= need ? 'ok' : 'short'];
+  return { title: `${name} · level ${p.level} → ${p.level + 1}`, body: lines.join('\n'),
+    facts: [['XP', (p.known ? n0(p.progress) : '?') + ' / ' + n0(p.need)], ['Upgrades', (p.known ? '' : '~') + p.steps],
+      fact('Tokens', p.tokens, tk), ...PARTS.map(([k, label]) => fact(label, p.cost[k], partHave(p, k)))],
+    foot: 'The XP needed grows by 10 every level. One upgrade always costs 500 tokens, 20 screws, 12 cogs and 1 metal.' };
+}
+function partTip(wm, k) {
+  const p = levelPlan(wm), name = mName(wm), label = PARTS.find(x => x[0] === k)[1];
+  return { title: `${label} · ${name}`,
+    body: `${name} needs ${n0(p.cost[k])} ${label.toLowerCase()} for level ${p.level + 1}: ${PER_UPGRADE[k]} per upgrade × ${plural(p.steps, 'upgrade')}.\n${label} belong to ${name} only. They can't be moved to another machine.`,
+    facts: needFacts(p.cost[k], partHave(p, k)), howTitle: `Where ${label.toLowerCase()} come from`, how: WHERE.chests,
+    foot: PARTS_FOOT + (wm.favourite ? ` ${name} is a favourite, so it already gets parts more often.` : '') };
+}
+function tokenTip(wm) {
+  const p = levelPlan(wm);
+  return { title: 'Expedition tokens', body: `${mName(wm)} needs ${n0(p.tokens)} for level ${p.level + 1}: 500 per upgrade × ${plural(p.steps, 'upgrade')}. Tokens are shared by all your machines.`,
+    facts: needFacts(p.tokens, haveOf('expeditionTokens')), howTitle: 'Where tokens come from', how: WHERE.tokens, foot: 'The personal tree and Chaos Rift spend tokens too.' };
+}
+function bpTip(wm, attr) {
+  const name = mName(wm), lv = wm.blueprints?.[attr] || 0, level = Math.max(1, Number(wm.level) || 1);
+  const capNow = E.blueprintCap(level), nextCapAt = 5 * (Math.floor(level / 5) + 1), cost = blueprintUpgradeCost(lv), atCap = lv >= capNow;
+  return { title: `${name} · ${attr} blueprint`,
+    body: `Each blueprint level adds 5% to ${name}'s ${attr}, stacking. The next one costs 100 + 5 × ${lv} = ${n0(cost)} blueprints.\n` +
+      (atCap ? `It's at the cap of ${capNow}. Level ${name} to ${nextCapAt} to raise the cap to ${capNow + 5}.` : `The cap is ${capNow} for now, and goes up by 5 when ${name} reaches level ${nextCapAt}.`),
+    facts: atCap ? [['Level', `${lv} (at cap)`]] : [['Level', `${lv} → ${lv + 1}`], ...needFacts(cost, haveOf('blueprints'))],
+    howTitle: 'Where blueprints come from', how: WHERE.blueprints, foot: 'Blueprints are shared by all your machines.' };
+}
+function shardTip(r) {
+  return { title: `${r.hero} · ${r.jewel} jewel`,
+    body: `Enchanting this jewel from level ${r.lv} to ${r.lv + 1} costs ${n0(r.cost)} ethereal shards${r.lv ? '' : ' (first enchant, estimated)'}. The cost doubles every level: 60, 120, 240, 480…`,
+    facts: needFacts(r.cost, haveOf('etherealShards')), howTitle: 'Where shards come from', how: WHERE.shards };
+}
+function rarityTip(wm) {
+  const sum = sumRarity(), name = mName(wm), own = wm.rarity || 0;
+  return { title: `${name} · ${RARITY[own] || 'Common'}`,
+    body: `Rarity counts twice. ${name} gets +5% per step of its own rarity, plus +5% per step of all your machines' rarity added together, stacking. Raising any machine's rarity makes the whole garage stronger.`,
+    facts: [['Own rarity', `${own} of 8`], ['All machines', String(sum)], ['Rarity bonus', '×' + fmt(1 + E.rarityBonus(own, sum))],
+      ['Arena fury', '+' + pct(E.mechanicalFury(sum))], ['Overdrive', Math.round(E.overdrive(own) * 100) + '%']] };
+}
+
+const TIPS = {
+  source: () => ({ title: 'Where these numbers come from', body: ({
+    live: 'Live from your game. While the bot runs, this page re-reads your machines, heroes, jewels, parts and currencies every few seconds.',
+    connecting: 'Looking for Zdbrus Bot on this computer…',
+    waiting: 'The bot is running, but the game hasn\'t finished loading your roster yet. Give it a moment.',
+    offline: 'The bot stopped answering. Start the game with Zdbrus Bot and this page reconnects by itself.',
+    sample: 'A made-up example roster, not your account. Press F4 in the game to open the planner with your own machines.' })[liveState] }),
+  'mode-campaign': { title: 'Campaign mode', body: 'Scores everything by battle power, the number campaign missions are checked against. Use it when pushing missions.' },
+  'mode-arena': { title: 'Arena mode', body: 'Scores everything by arena power. The arena shrinks very big stats (log scale), then multiplies them by Mechanical Fury, which grows with the total rarity of all your machines.' },
+  'use-game': { title: 'Use in-game squad', body: 'Replaces the plan on this page with the machines and crews from the squad number in the Squad box.' },
+  slot: { title: 'Squad number', body: 'Which of your 3 in-game squads "Apply to game" and "Use in-game squad" work with. Campaign and arena each remember their own number, so they never overwrite each other.' },
+  apply: { title: 'Apply to game', body: 'Sends this squad and its crews to the squad number in the Squad box. The bot swaps the machines and heroes for you. Nothing is spent.' },
+  'reset-edits': { title: 'Undo my edits', body: 'Throws away the levels, rarities, blueprints and jewels you changed on this page and goes back to the real numbers from your game.' },
+  auto: { title: 'Auto-build squad', body: 'Picks the strongest machines and the best crew for each, for the mode picked (Campaign or Arena), always keeping at least one tank. It only changes this page until you press Apply to game.' },
+  'auto-schedule': { title: 'Auto-apply', body: 'While this page and the game are both open, the planner rebuilds this mode\'s squad every few hours and applies it if the new squad is stronger by at least the % you set.',
+    howTitle: 'It skips a check when', how: ['The bot is busy applying a squad or spending shards', 'You have edits on this page, or artifacts and inscriptions typed in by hand', 'That squad number is empty in the game', 'The new squad isn\'t stronger by your %'] },
+  gauge: () => {
+    const bp = S.squad.reduce((a, id) => a + statsFor(id).battlePower, 0), need = E.requiredPower(S.difficulty, S.mission);
+    return { title: S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power',
+      body: `The big number is your squad's ${S.mode === 'arena' ? 'arena' : 'battle'} power added up. The ring compares battle power with what ${cap1(S.difficulty)} #${S.mission} needs, and turns blue once you have enough.`,
+      facts: [['Your battle power', fmt(bp)], ['Mission needs', fmt(need)], bp >= need ? ['Spare', fmt(bp - need), 'ok'] : ['Short', fmt(need - bp), 'short']],
+      foot: 'The requirement is about 80% of the enemy\'s power. Treat it as a guide, not a promise of a win.' };
+  },
+  curve: { title: 'Campaign power curve', body: 'How much power each mission in the chosen difficulty needs, from #1 to #90.', howTitle: 'How to read it',
+    how: ['Orange area: power each mission needs', 'Blue dashed line: your squad\'s battle power', 'Blue dot: the furthest mission your power covers', 'Thin orange dashes: the mission picked in Campaign target'],
+    foot: 'The height uses a log scale: each grid line up is at least 10 times more power.' },
+  target: { title: 'Campaign target', body: 'Pick a difficulty and mission number. The ring, the verdict and the curve all compare your squad with it. The line under the verdict shows the hardest mission your power reaches.',
+    foot: 'Requirements are about 80% of the enemy\'s power, so treat them as a guide.' },
+  engineer: () => ({ title: 'Engineer', body: 'The Engineer makes every war machine 5% stronger per level, stacking. It also unlocks crew seats: 4 to start, 5 at level 30 and 6 at level 60.',
+    facts: [['Level', String(S.engineerLevel)], ['Bonus', '×' + fmt(1 + E.engineerBonus(S.engineerLevel))], ['Crew seats', String(cap())]] }),
+  crewcap: () => ({ title: 'Crew seats', body: `Each machine carries up to ${cap()} heroes. ` +
+    (cap() >= 6 ? 'That\'s the most there is.' : cap() === 5 ? 'A 6th seat unlocks at Engineer level 60.' : 'A 5th seat unlocks at Engineer level 30, and a 6th at 60.') }),
+  'rarity-sum': () => ({ title: 'Total machine rarity', body: 'All your machines\' rarity steps added up (Common 0 to Celestial 8). Every machine gets +5% per step of this total, stacking, and arena power gets Mechanical Fury from it too. Raising any one machine\'s rarity helps them all.',
+    facts: [['Total', String(sumRarity())], ['Garage bonus', '×' + fmt(Math.pow(1.05, sumRarity()))], ['Mechanical Fury', '+' + pct(E.mechanicalFury(sumRarity()))]] }),
+  check: { title: 'Game check', body: 'Compares the planner\'s math with the stats your game shows, machine by machine, using each machine\'s in-game crew. Within 0.5% counts as a match.',
+    foot: 'Machines or heroes you edited on this page are skipped.' },
+  bench: { title: 'Crew bench', body: 'Heroes who aren\'t in a crew, best first for the selected machine. The gold number is how much power that hero would add to it.',
+    howTitle: 'To crew a hero', how: ['Drag them onto a machine', 'Or tap the hero, then tap an empty seat', 'Tap a hero\'s name to edit their jewels'] },
+  math: { title: 'Machine math', body: 'Every bonus behind the selected machine\'s stats, step by step. Change the level, rarity, cards or blueprints above the table to see what an upgrade would do before you spend anything.',
+    foot: 'When live, the numbers start from your game\'s own stats.' },
+  advisor: { title: 'Upgrade advisor', body: 'Shows which war machine upgrade gives the most power for what it costs, in the mode picked at the top, with each machine\'s current crew.', howTitle: 'How to read it',
+    how: ['The two tiles: the best level-up and the best blueprint for your squad right now', 'Level table: workshop upgrades needed for the next level, and whether that machine has the screws, cogs and metal',
+      'Blueprint table: the next blueprint level for each stat', '"Per upgrade" and "Per 100 blueprints": power for the cost. Bigger is better', 'Hover any number for details and where to get more'],
+    foot: 'It only reads your game. To let the bot spend, turn on Battle → War Machines in the bot menu.' },
+  shards: { title: 'Ethereal shard advisor', body: 'Ranks the next jewel enchant for every crew hero in your squad by power gained per 100 ethereal shards. Jewels on crew heroes are what make war machines stronger.',
+    howTitle: 'Where shards come from', how: WHERE.shards },
+  budget: { title: 'Shard budget', body: 'The most ethereal shards "Spend for me" may use. It takes the best enchant that fits, re-ranks, and repeats until the budget runs out.' },
+  spend: { title: 'Spend for me', body: 'Spends real ethereal shards in your game on the enchants from this table, best value first, up to your budget.', foot: 'This can\'t be undone.' },
+  'h-upgrades': { title: 'Upgrades', body: 'Workshop upgrades needed to reach the next level. Each one adds 100 XP; the small number is the XP the machine has now.\n~ means the game didn\'t report its XP, so this assumes the start of the level.' },
+  'h-tokens': { title: 'Expedition tokens', body: '500 per workshop upgrade. Tokens are shared by all your machines.', howTitle: 'Where tokens come from', how: WHERE.tokens, foot: 'The personal tree and Chaos Rift spend tokens too.' },
+  'h-gain': { title: 'Power gained', body: 'How much stronger the machine gets by reaching the next level, with its current crew, in the mode picked at the top.' },
+  'h-per-upgrade': { title: 'Per upgrade', body: 'Power gained divided by the upgrades it takes. Every upgrade costs the same tokens and parts, so this is the fair way to compare machines. Bigger is better.' },
+  'h-bp-level': { title: 'Blueprint level', body: 'Current level → next. "cap" is the highest it can go right now; the cap goes up by 5 every 5 machine levels.' },
+  'h-bp-cost': { title: 'Blueprints', body: 'Cost of the next level: 100 + 5 × its current level. Blueprints are shared by all your machines.', howTitle: 'Where blueprints come from', how: WHERE.blueprints },
+  'h-bp-gain': { title: 'Power gained', body: 'How much stronger the machine gets from one more blueprint level (+5% to that stat).' },
+  'h-per-bp': { title: 'Per 100 blueprints', body: 'Power gained for every 100 blueprints spent. Bigger is better.' },
+  'h-shards': { title: 'Shards', body: 'Ethereal shards for the next enchant. The cost doubles every level: 60, 120, 240, 480… The first enchant of a jewel (~) is estimated at 30.', howTitle: 'Where shards come from', how: WHERE.shards },
+  'h-per-shards': { title: 'Per 100 shards', body: 'Squad power gained for every 100 shards spent. Bigger is better.' },
+  'ed-cards': { title: 'Sacred card stars', body: '+5% per star, stacking.' },
+};
+for (const [k, label] of PARTS) TIPS['h-' + k] = { title: label,
+  body: `${PER_UPGRADE[k]} per workshop upgrade. ${label} belong to one machine and can't be shared, so each row shows that machine's own: "have" means it has enough, "short" is how many it's missing.`,
+  howTitle: `Where ${label.toLowerCase()} come from`, how: WHERE.chests, foot: PARTS_FOOT };
+const LEDGER_TIPS = {
+  Base: 'The machine\'s starting stats, before any bonus.',
+  Level: '+5% per machine level, stacking.',
+  Engineer: '+5% per Engineer level, stacking. Applies to every machine.',
+  Blueprint: '+5% per blueprint level in that stat, stacking.',
+  Rarity: 'This machine\'s rarity plus the total rarity of all your machines, +5% per step, stacking.',
+  'Sacred card': '+5% per sacred card star, stacking.',
+  Inscription: 'Lost Inscriptions. Typed in by hand under "War machine artifacts & inscriptions".',
+  Artifacts: 'Third-generation artifacts: +30% at Epic and +5% per rarity step above it. Typed in by hand under "War machine artifacts & inscriptions".',
+  'Pre-crew': 'Your game\'s own stats for this machine without crew, scaled by anything you changed on this page.',
+  Crew: 'Each crew hero adds the sum of their jewel bonuses for this stat (a hero with no jewel for it adds 40%). Heroes whose class matches the stat add 40% more: damage heroes for damage, healers for health, tanks for armor.',
+  Battle: 'Final stats in normal battles like the campaign. Power = (10 × damage)^0.7 + health^0.7 + (10 × armor)^0.7.',
+  Arena: 'Arena stats: very big numbers are shrunk (log scale), then multiplied by Mechanical Fury from your total machine rarity.',
+  'Game now': 'What your game shows for this machine right now, with its in-game crew. The Game check compares against this.',
+};
+for (const [k, v] of Object.entries(LEDGER_TIPS)) TIPS['led-' + slug(k)] = { title: k, body: v };
+
+const tipped = (n, id, tip) => { n.dataset.tipId = id; if (tip) n._tip = tip; return n; };
+const Tip = (() => {
+  const box = $('#tip');
+  let cur = null, curId = null, pinned = false, showT = 0, hideT = 0, pending = null, lastPointer = 'mouse';
+  const trig = (t) => t instanceof Element ? t.closest('[data-tip-id]') : null;
+  const content = (n) => { const f = n._tip || TIPS[n.dataset.tipId]; return typeof f === 'function' ? f(n) : f; };
+  const byId = (id) => id ? document.querySelector(`[data-tip-id="${CSS.escape(id)}"]`) : null;
+  function build(c) {
+    const kids = [];
+    if (c.title) kids.push(el('h4', {}, c.title));
+    if (c.body) kids.push(el('p', {}, c.body));
+    if (c.facts?.length) kids.push(el('dl', {}, ...c.facts.flatMap(([k, v, tone]) => [el('dt', {}, k), el('dd', tone ? { class: tone } : {}, v)])));
+    if (c.how?.length) kids.push(el('div', { class: 'how' }, el('b', {}, c.howTitle || 'How to get more'), el('ul', {}, ...c.how.map(x => el('li', {}, x)))));
+    if (c.foot) kids.push(el('p', { class: 'foot' }, c.foot));
+    box.replaceChildren(...kids);
+  }
+  function place() {
+    if (!cur) return;
+    const r = cur.getBoundingClientRect();
+    if (!cur.isConnected || (!r.width && !r.height) || r.bottom < 0 || r.top > innerHeight) { hide(); return; }
+    const w = box.offsetWidth, h = box.offsetHeight, gap = 10, m = 8;
+    const fitsAbove = r.top - gap - h >= m, fitsBelow = r.bottom + gap + h <= innerHeight - m;
+    const side = fitsAbove ? 'above' : fitsBelow ? 'below' : (r.top > innerHeight - r.bottom ? 'above' : 'below');
+    const top = Math.max(m, Math.min(side === 'above' ? r.top - gap - h : r.bottom + gap, innerHeight - h - m));
+    const cx = r.left + r.width / 2, left = Math.max(m, Math.min(cx - w / 2, innerWidth - w - m));
+    box.dataset.side = side;
+    box.style.left = left + 'px'; box.style.top = top + 'px';
+    box.style.setProperty('--ax', Math.max(14, Math.min(w - 14, cx - left)) + 'px');
+  }
+  function attach(n) {
+    n.setAttribute('aria-describedby', 'tip');
+    if (n.classList.contains('tipbtn')) n.setAttribute('aria-expanded', 'true');
+  }
+  function detach() {
+    if (!cur) return;
+    if (cur.getAttribute('aria-describedby') === 'tip') cur.removeAttribute('aria-describedby');
+    if (cur.classList.contains('tipbtn')) cur.setAttribute('aria-expanded', 'false');
+  }
+  function show(n, pin = false) {
+    const c = content(n); if (!c) return;
+    clearTimeout(showT); clearTimeout(hideT); pending = null;
+    const was = !!cur;
+    if (cur !== n) detach();
+    cur = n; curId = n.dataset.tipId; pinned = pin;
+    attach(n); build(c);
+    box.hidden = false; place();
+    if (!was) { box.classList.remove('on'); requestAnimationFrame(() => cur && box.classList.add('on')); }
+  }
+  function hide() {
+    clearTimeout(showT); clearTimeout(hideT); pending = null;
+    if (!cur) return;
+    detach(); cur = null; curId = null; pinned = false;
+    box.classList.remove('on'); box.hidden = true;
+  }
+  // render() rebuilds most of the page every few seconds; follow the tip to the new copy of its trigger.
+  function refresh() {
+    if (!cur) return;
+    const n = cur.isConnected ? cur : byId(curId);
+    if (!n) { hide(); return; }
+    if (n !== cur) { const pin = pinned; detach(); cur = n; pinned = pin; attach(n); }
+    const c = content(n); if (!c) { hide(); return; }
+    build(c); place();
+  }
+  document.addEventListener('pointerover', (e) => {
+    if (e.pointerType === 'touch') return;
+    if (box.contains(e.target)) { clearTimeout(hideT); return; }
+    const n = trig(e.target);
+    if (!n || n === pending) return;
+    if (n === cur) { clearTimeout(hideT); return; }
+    if (pinned) return;
+    clearTimeout(showT); clearTimeout(hideT);
+    pending = n; const id = n.dataset.tipId;
+    showT = setTimeout(() => { const t = pending && pending.isConnected ? pending : byId(id); pending = null; if (t) show(t); }, cur ? 60 : 280);
+  });
+  document.addEventListener('pointerout', (e) => {
+    if (e.pointerType === 'touch') return;
+    const to = e.relatedTarget;
+    if (pending && pending.contains(e.target) && !(to && pending.contains(to))) { clearTimeout(showT); pending = null; }
+    if (!cur || pinned) return;
+    if (!(cur.contains(e.target) || box.contains(e.target))) return;
+    if (to && (cur.contains(to) || box.contains(to))) return;
+    clearTimeout(hideT); hideT = setTimeout(hide, 140);
+  });
+  document.addEventListener('pointerdown', (e) => {
+    lastPointer = e.pointerType;
+    if (cur && !box.contains(e.target) && !cur.contains(e.target)) hide();
+  }, true);
+  document.addEventListener('click', (e) => {
+    const n = trig(e.target); if (!n) return;
+    if (n.classList.contains('tipbtn')) {
+      e.preventDefault(); e.stopPropagation();
+      if (cur === n && pinned) hide(); else show(n, true);
+    } else if (lastPointer === 'touch' && !n.closest('button,input,select,label,a,[draggable="true"]')) {
+      if (cur === n && pinned) hide(); else show(n, true);
+    }
+  }, true);
+  document.addEventListener('focusin', (e) => {
+    const n = trig(e.target);
+    if (n && n !== cur && e.target.matches(':focus-visible')) show(n);
+  });
+  document.addEventListener('focusout', (e) => {
+    if (!cur || pinned || !cur.contains(e.target)) return;
+    if (!(e.relatedTarget && cur.contains(e.relatedTarget))) hide();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && cur) { e.preventDefault(); hide(); } });
+  document.addEventListener('dragstart', hide, true);
+  addEventListener('scroll', () => { if (cur) place(); }, { capture: true, passive: true });
+  addEventListener('resize', () => { if (cur) place(); });
+  document.querySelectorAll('.tipbtn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  return { show, hide, refresh };
+})();
+
 // ---------- render ----------
 function heroChip(h, { wmId, gain } = {}) {
   const c = el('div', { class: 'hero' + (picked === h.id ? ' picked' : ''), draggable: 'true', tabindex: '0', 'data-hero': h.id,
@@ -1003,8 +1355,13 @@ function heroChip(h, { wmId, gain } = {}) {
   nm.addEventListener('click', (e) => { e.stopPropagation(); openHero(h.id); });
   nm.style.cursor = 'pointer';
   c.append(nm);
-  if (wmId) c.append(el('button', { class: 'x', title: 'Remove from crew', 'aria-label': `Remove ${h.name}`, onclick: (e) => { e.stopPropagation(); assign(h.id, null); } }, '×'));
-  else c.append(el('span', { class: 'gain', title: 'Power added to selected machine' }, gain != null ? '+' + fmt(gain) : ''));
+  if (wmId) c.append(tipped(el('button', { class: 'x', 'aria-label': `Remove ${h.name}`, onclick: (e) => { e.stopPropagation(); assign(h.id, null); } }, '×'),
+    'rm-' + h.id, { title: 'Remove from crew', body: `Sends ${h.name} back to the bench.` }));
+  else if (gain != null && S.selected) {
+    const on = E.WAR_MACHINES[S.selected]?.name || 'the selected machine';
+    c.append(tipped(el('span', { class: 'gain' }, '+' + fmt(gain)), 'gain-' + h.id, () => ({ title: `${h.name} on ${on}`,
+      body: `Adding ${h.name} to ${on}'s crew would add ${fmt(gain)} ${S.mode === 'arena' ? 'arena' : 'battle'} power. Heroes add their jewel bonuses, and a hero whose class matches a stat adds 40% more to it.` })));
+  } else c.append(el('span', { class: 'gain' }));
   c.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', h.id); e.dataTransfer.effectAllowed = 'move'; });
   c.addEventListener('click', (e) => { e.stopPropagation(); picked = picked === h.id ? null : h.id; render(); });
   c.addEventListener('keydown', (e) => { if (e.key === 'Enter') { picked = picked === h.id ? null : h.id; render(); } });
@@ -1073,9 +1430,11 @@ function renderLive() {
     bar.querySelectorAll('svg').forEach(x => { x.setAttribute('width', 16); x.setAttribute('height', 16); });
     box.append(bar);
   }
-  box.append(el('span', { class: 'label' }, 'Game check'), v,
-    ...res.map(r => el('span', { class: 'pill' + (r.worst > 0.005 ? ' off' : ''), title: 'Largest gap between planner and game' },
-      E.WAR_MACHINES[r.id].name, el('b', {}, r.worst < 0.0001 ? 'exact' : (r.worst * 100).toFixed(2) + '%'))));
+  box.append(tipped(el('span', { class: 'label has-tip', tabindex: '0' }, 'Game check'), 'check'), v,
+    ...res.map(r => { const name = E.WAR_MACHINES[r.id].name, gap = (r.worst * 100).toFixed(2);
+      return tipped(el('span', { class: 'pill' + (r.worst > 0.005 ? ' off' : '') }, name, el('b', {}, r.worst < 0.0001 ? 'exact' : gap + '%')), 'check-' + r.id,
+        { title: name, body: r.worst < 0.0001 ? 'The planner matches your game exactly for this machine.'
+          : `The biggest difference between the planner and your game for this machine is ${gap}% (damage, health, armor or power). Under 0.5% counts as a match.` }); }));
 }
 
 // Next jewel enchant for every crew hero in the squad, ranked by squad power gained per shard.
@@ -1145,80 +1504,125 @@ function renderShards(total) {
   $('#shard-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + ' · top ' + rows.length;
   if (!rows.length) { t.replaceChildren(el('tr', {}, el('td', {}, 'No jewel enchants left on your squad\'s crews (or no jewels yet).'))); return; }
   t.replaceChildren(
-    el('thead', {}, el('tr', {}, ...['Hero', 'Machine', 'Jewel', 'Level', 'Shards', 'Power gained', 'Per 100 shards'].map(x => el('th', {}, x)))),
+    el('thead', {}, el('tr', {}, ...[['Hero'], ['Machine'], ['Jewel'], ['Level'], ['Shards', 'h-shards'], ['Power gained'], ['Per 100 shards', 'h-per-shards']]
+      .map(([x, id]) => id ? tipped(el('th', { class: 'has-tip' }, x), id) : el('th', {}, x)))),
     el('tbody', {}, ...rows.map((r, i) => el('tr', {},
       el('td', {}, r.hero), el('td', {}, r.machine), el('td', {}, r.jewel), el('td', {}, r.lv + ' → ' + (r.lv + 1)),
-      el('td', {}, (r.lv ? '' : '~') + r.cost.toLocaleString()), el('td', {}, '+' + fmt(r.gain)),
+      el('td', {}, tipped(el('span', { class: 'has-tip', tabindex: '0' }, (r.lv ? '' : '~') + r.cost.toLocaleString()), `sh-${r.hid}-${r.type}`, () => shardTip(r))),
+      el('td', {}, '+' + fmt(r.gain)),
       el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per))))));
 }
 
+// Squad machines first, then the rest; within each group, most power per upgrade (or per 100 blueprints) first.
 function machineUpgradeOptions() {
-  const acct = account();
-  const out = [];
-  const crewFor = (wm) => {
-    const ids = S.squad.includes(wm.id) ? (S.crews[wm.id] || []) : (wm.gameCrew || []);
-    return ids.map(heroById).filter(Boolean);
-  };
+  const acct = account(), levels = [], blueprints = [];
+  const crewFor = (wm) => (S.squad.includes(wm.id) ? (S.crews[wm.id] || []) : (wm.gameCrew || [])).map(heroById).filter(Boolean);
   const score = (wm, crew) => scoreOf(E.machineStats(wm, acct, crew));
-
   for (const wm of S.machines.filter(m => m.owned)) {
-    const crew = crewFor(wm);
-    const level = Number(wm.level) || 1;
-    const current = score(wm, crew);
-    const nextLevel = { ...wm, level: level + 1 };
-    const levelGain = score(nextLevel, crew) - current;
-    if (levelGain > 0) for (const cost of MACHINE_LEVEL_RESOURCES) {
-      out.push({
-        resource: cost.resource, upgrade: `${E.WAR_MACHINES[wm.id].name} level`,
-        level: `${level} → ${level + 1}`, cost: cost.cost, gain: levelGain,
-        estimated: ![1, 13, 15].includes(level),
-        per: levelGain / cost.cost * 100,
-      });
-    }
-
-    const cap = E.blueprintCap(level);
-    for (const attr of ATTRS) {
-      const blueprintLevel = wm.blueprints?.[attr] || 0;
-      if (blueprintLevel >= cap) continue;
-      const next = {
-        ...wm,
-        blueprints: { ...wm.blueprints, [attr]: blueprintLevel + 1 },
-      };
-      const gain = score(next, crew) - current;
-      const cost = blueprintUpgradeCost(blueprintLevel);
-      if (gain > 0) out.push({
-        resource: 'Blueprints', upgrade: `${E.WAR_MACHINES[wm.id].name} ${attr}`,
-        level: `${blueprintLevel} → ${blueprintLevel + 1}`, cost, gain,
-        estimated: ![0, 4, 20].includes(blueprintLevel),
-        per: gain / cost * 100,
-      });
+    const crew = crewFor(wm), name = mName(wm), current = score(wm, crew), inSquad = S.squad.includes(wm.id);
+    const plan = levelPlan(wm);
+    const gain = score({ ...wm, level: plan.level + 1 }, crew) - current;
+    if (gain > 0) levels.push({ wm, name, inSquad, plan, gain, per: gain / plan.steps });
+    const bpCap = E.blueprintCap(plan.level);
+    for (const attr of E.ATTRS) {
+      const lv = wm.blueprints?.[attr] || 0;
+      if (lv >= bpCap) continue;
+      const g = score({ ...wm, blueprints: { ...wm.blueprints, [attr]: lv + 1 } }, crew) - current;
+      const cost = blueprintUpgradeCost(lv);
+      if (g > 0) blueprints.push({ wm, name, inSquad, attr, lv, cap: bpCap, cost, gain: g, per: g / cost * 100 });
     }
   }
-  return out;
+  const order = (a, b) => (b.inSquad - a.inSquad) || (b.per - a.per);
+  return { levels: levels.sort(order), blueprints: blueprints.sort(order) };
+}
+
+const ADV_TOP = 6, advShow = { lvl: false, bp: false };
+const haveSmall = (have, need) => have == null ? null
+  : have >= need ? el('small', { class: 'ok' }, 'have ' + n0(have)) : el('small', { class: 'short' }, 'short ' + n0(need - have));
+const advTh = (label, id, cls) => { const a = {}; const c = [id ? 'has-tip' : '', cls || ''].join(' ').trim(); if (c) a.class = c; if (id) a['data-tip-id'] = id; return el('th', a, label); };
+const machineCell = (r) => el('td', { class: 'l' }, r.name, r.inSquad ? null : el('small', {}, 'not in squad'));
+function moreButton(btn, key, count) {
+  btn.hidden = count <= ADV_TOP;
+  btn.textContent = advShow[key] ? `Show top ${ADV_TOP}` : `Show all ${count}`;
+  btn.setAttribute('aria-expanded', String(advShow[key]));
+}
+
+function renderPicks(levels, bps) {
+  const box = $('#adv-picks'), tiles = [];
+  const top = levels[0];
+  if (!top) tiles.push(el('div', { class: 'pick' }, el('strong', {}, 'Nothing to level'), el('span', { class: 'sub' }, 'Own a war machine to see level-ups here.')));
+  else {
+    // The best value is no use if that machine is missing parts; offer the best one that can level right now.
+    const group = levels.filter(r => r.inSquad === top.inSquad);
+    const pick = top.plan.have && !partsReady(top.plan) ? (group.find(r => partsReady(r.plan)) || top) : top;
+    const p = pick.plan, id = pick.wm.id;
+    const lines = [el('span', { class: 'sub' }, `${p.level} → ${p.level + 1} · ${p.known ? '' : '~'}${plural(p.steps, 'upgrade')} · ${n0(p.tokens)} tokens · +${fmt(pick.gain)} power`)];
+    if (!p.have) lines.push(el('span', { class: 'sub' }, 'Screws, cogs and metal on hand weren\'t reported by the game'));
+    else if (partsReady(p)) lines.push(el('span', { class: 'sub' }, el('span', { class: 'ok' }, '✓ Has the screws, cogs and metal for it')));
+    else lines.push(el('span', { class: 'sub' }, el('span', { class: 'short' }, 'Short ' + shortList(p)), top.inSquad ? ' · no squad machine has the parts for its next level yet' : ''));
+    if (pick !== top) lines.push(el('span', { class: 'sub' }, `Best value is ${top.name}, but it's short ${shortList(top.plan)}.`));
+    tiles.push(tipped(el('div', { class: 'pick', tabindex: '0' }, el('strong', {}, 'Level up ', el('b', {}, pick.name)), ...lines), 'pick-level', () => levelTip(wmById(id))));
+  }
+  const b = bps[0];
+  if (!b) tiles.push(el('div', { class: 'pick bp' }, el('strong', {}, 'No blueprint upgrades'), el('span', { class: 'sub' }, 'Every stat is at its cap. Level machines to raise the caps.')));
+  else {
+    const have = haveOf('blueprints'), id = b.wm.id, attr = b.attr;
+    tiles.push(tipped(el('div', { class: 'pick bp', tabindex: '0' },
+      el('strong', {}, 'Blueprint ', el('b', {}, `${b.name} ${attr}`)),
+      el('span', { class: 'sub' }, `${b.lv} → ${b.lv + 1} · ${n0(b.cost)} blueprints · +${fmt(b.gain)} power`),
+      have == null ? null : el('span', { class: 'sub' }, have >= b.cost ? el('span', { class: 'ok' }, `✓ You have ${n0(have)} blueprints`) : el('span', { class: 'short' }, `Short ${n0(b.cost - have)} blueprints`))),
+      'pick-bp', () => bpTip(wmById(id), attr)));
+  }
+  box.replaceChildren(...tiles);
+}
+
+function renderLevelTable(rows) {
+  const t = $('#upgrades'), tk = haveOf('expeditionTokens');
+  moreButton($('#lvl-more'), 'lvl', rows.length);
+  if (!rows.length) { t.replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'l' }, 'No machine levels to rank. Own a war machine to see options.')))); return; }
+  const shown = advShow.lvl ? rows : rows.slice(0, ADV_TOP);
+  t.replaceChildren(
+    el('thead', {}, el('tr', {}, advTh('#'), advTh('Machine', null, 'l'), advTh('Level'), advTh('Upgrades', 'h-upgrades'), advTh('Tokens', 'h-tokens'),
+      ...PARTS.map(([k, label]) => advTh(label, 'h-' + k)), advTh('Power gained', 'h-gain'), advTh('Per upgrade', 'h-per-upgrade'))),
+    el('tbody', {}, ...shown.map((r, i) => {
+      const p = r.plan, id = r.wm.id;
+      const up = tipped(el('span', { class: 'has-tip', tabindex: '0' }, (p.known ? '' : '~') + p.steps), 'lv-up-' + id, () => levelTip(wmById(id)));
+      return el('tr', {},
+        el('td', {}, String(i + 1)), machineCell(r), el('td', {}, `${p.level} → ${p.level + 1}`),
+        el('td', {}, up, p.known ? el('small', {}, `${n0(p.progress)}/${n0(p.need)} XP`) : null),
+        tipped(el('td', {}, n0(p.tokens), tk != null && tk < p.tokens ? el('small', { class: 'short' }, 'short ' + n0(p.tokens - tk)) : null), 'lv-tok-' + id, () => tokenTip(wmById(id))),
+        ...PARTS.map(([k]) => tipped(el('td', {}, n0(p.cost[k]), haveSmall(partHave(p, k), p.cost[k])), `lv-${k}-${id}`, () => partTip(wmById(id), k))),
+        el('td', {}, '+' + fmt(r.gain)), el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per)));
+    })));
+}
+
+function renderBpTable(rows) {
+  const t = $('#bp-upgrades'), have = haveOf('blueprints');
+  moreButton($('#bp-more'), 'bp', rows.length);
+  if (!rows.length) { t.replaceChildren(el('tbody', {}, el('tr', {}, el('td', { class: 'l' }, 'No blueprint upgrades to rank. Every stat is at its cap; level machines to raise the caps.')))); return; }
+  const shown = advShow.bp ? rows : rows.slice(0, ADV_TOP);
+  t.replaceChildren(
+    el('thead', {}, el('tr', {}, advTh('#'), advTh('Machine', null, 'l'), advTh('Stat', null, 'l'), advTh('Level', 'h-bp-level'), advTh('Blueprints', 'h-bp-cost'),
+      advTh('Power gained', 'h-bp-gain'), advTh('Per 100 blueprints', 'h-per-bp'))),
+    el('tbody', {}, ...shown.map((r, i) => {
+      const id = r.wm.id, attr = r.attr;
+      const cost = tipped(el('span', { class: 'has-tip', tabindex: '0' }, n0(r.cost)), `bp-${id}-${attr}`, () => bpTip(wmById(id), attr));
+      return el('tr', {},
+        el('td', {}, String(i + 1)), machineCell(r), el('td', { class: 'l' }, ATTR_NAME[attr]),
+        el('td', {}, `${r.lv} → ${r.lv + 1}`, el('small', {}, 'cap ' + r.cap)),
+        el('td', {}, cost, have != null && have < r.cost ? el('small', { class: 'short' }, 'short ' + n0(r.cost - have)) : null),
+        el('td', {}, '+' + fmt(r.gain)), el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per)));
+    })));
 }
 
 function renderUpgradeAdvisor() {
-  const resourceOrder = ['Expedition tokens', 'Screws', 'Cogs', 'Metal', 'Blueprints'];
-  const rows = machineUpgradeOptions().sort((a, b) =>
-    resourceOrder.indexOf(a.resource) - resourceOrder.indexOf(b.resource) || b.per - a.per);
-  $('#upgrade-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + ` · ${rows.length} options`;
-  const table = $('#upgrades');
-  if (!rows.length) {
-    table.replaceChildren(el('tr', {}, el('td', {}, 'No owned machine upgrades are currently available.')));
-    return;
-  }
-
-  let resource = '', rank = 0;
-  table.replaceChildren(
-    el('thead', {}, el('tr', {}, ...['Resource', 'Rank', 'Upgrade', 'Level', 'Cost', 'Power gained', 'Per 100'].map(x => el('th', {}, x)))),
-    el('tbody', {}, ...rows.map(r => {
-      rank = r.resource === resource ? rank + 1 : 1;
-      resource = r.resource;
-      return el('tr', {},
-        el('td', {}, r.resource), el('td', {}, String(rank)), el('td', {}, r.upgrade),
-        el('td', {}, r.level), el('td', {}, (r.estimated ? '~' : '') + r.cost.toLocaleString()),
-        el('td', {}, '+' + fmt(r.gain)), el('td', { class: rank === 1 ? 'best' : '' }, (r.estimated ? '~' : '+') + fmt(r.per)));
-    })));
+  const { levels, blueprints } = machineUpgradeOptions();
+  const tk = haveOf('expeditionTokens'), bp = haveOf('blueprints');
+  const have = [tk != null ? n0(tk) + ' tokens' : '', bp != null ? n0(bp) + ' blueprints' : ''].filter(Boolean);
+  $('#upgrade-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + (have.length ? ' · You have ' + have.join(' · ') : '');
+  renderPicks(levels, blueprints);
+  renderLevelTable(levels);
+  renderBpTable(blueprints);
 }
 
 function render() {
@@ -1266,22 +1670,25 @@ function render() {
       el('div', { class: 'bay-name' }, svgUse('g-' + base.spec), el('h3', {}, base.name), el('span', { class: 'slotno' }, '0' + (idx + 1))),
       el('div', { class: 'meta' },
         el('span', { class: 'tag' }, SPEC_NAME[base.spec] + (base.target === 'multi' ? ' · AoE' : '')),
-        el('span', { class: 'tag' }, 'Lv ' + wm.level),
-        el('span', { class: 'tag r' }, RARITY[wm.rarity] || 'Common'),
-        el('span', { class: 'tag' }, 'OD ' + Math.round(st.overdrive * 100) + '%')));
+        tipped(el('span', { class: 'tag', tabindex: '0' }, 'Lv ' + wm.level), 'bay-lv-' + id, () => levelTip(wmById(id))),
+        tipped(el('span', { class: 'tag r', tabindex: '0' }, RARITY[wm.rarity] || 'Common'), 'bay-rar-' + id, () => rarityTip(wmById(id))),
+        tipped(el('span', { class: 'tag' }, 'OD ' + Math.round(st.overdrive * 100) + '%'), 'bay-od-' + id, { title: 'Overdrive',
+          body: `${base.name}'s overdrive chance is ${Math.round(st.overdrive * 100)}%. It grows with rarity: 25% plus 3% per rarity step. It isn't counted in the power score.` })));
     const sw = el('select', { class: 'swap', 'aria-label': 'Swap machine', onclick: (e) => e.stopPropagation(),
       onchange: (e) => { const nid = e.target.value; const crew = S.crews[id] || []; delete S.crews[id]; S.squad[idx] = nid; S.crews[nid] = crew.slice(0, cap()); S.selected = nid; save(); render(); } },
       ...owned.filter(m => m.id === id || !S.squad.includes(m.id)).map(m => el('option', { value: m.id, selected: m.id === id }, (m.id === id ? 'Swap: ' : '') + E.WAR_MACHINES[m.id].name)));
     head.append(sw);
     const rows = el('div', { class: 'gauges' },
       ...[['damage', 'DMG', 'dmg', 'o'], ['health', 'HP', 'hp', 'c'], ['armor', 'ARM', 'arm', 'v']].map(([a, k, c, tone]) =>
-        el('div', { class: 'g', title: `${k} ${fmt(vals[a])} (bar = share of the squad's best)` },
+        tipped(el('div', { class: 'g' },
           ring(id + ':' + a, vals[a] / maxV[a], tone),
           el('span', { class: 'in k-' + c }, k),
-          el('span', { class: 'val' }, fmt(vals[a])))));
+          el('span', { class: 'val' }, fmt(vals[a]))), `bay-g-${id}-${a}`,
+          { title: `${base.name} · ${ATTR_NAME[a]}`, body: `${fmt(vals[a])} ${S.mode === 'arena' ? 'arena' : 'battle'} ${a}. The ring shows it against the strongest ${a} in this squad.` })));
     const pwNum = el('b', { class: 'num' });
     countTo(pwNum, 'bay:' + id, scoreOf(st));
-    const pw = el('div', { class: 'bay-pow' }, el('span', { class: 'label' }, 'Power'), pwNum);
+    const pw = tipped(el('div', { class: 'bay-pow' }, el('span', { class: 'label' }, 'Power'), pwNum), 'bay-pow-' + id,
+      { title: `${base.name} power`, body: 'Power = (10 × damage)^0.7 + health^0.7 + (10 × armor)^0.7. Damage and armor count 10 times more than health. The squad total is what campaign missions and the arena compare.' });
     const crew = el('div', { class: 'crew' });
     const members = S.crews[id] || [];
     for (let i = 0; i < 6; i++) {
@@ -1293,7 +1700,8 @@ function render() {
         s.addEventListener('drop', (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), id); });
         s.addEventListener('click', (e) => { if (picked) { e.stopPropagation(); assign(picked, id); } });
         crew.append(s);
-      } else crew.append(el('div', { class: 'slot locked', title: i === 4 ? 'Engineer 30' : 'Engineer 60' }, i === 4 ? 'Eng 30' : 'Eng 60'));
+      } else crew.append(tipped(el('div', { class: 'slot locked' }, i === 4 ? 'Eng 30' : 'Eng 60'), `bay-lock-${id}-${i}`,
+        { title: `Seat ${i + 1} is locked`, body: `Seat ${i + 1} unlocks at Engineer level ${i === 4 ? 30 : 60}. Each extra crew hero adds their jewel bonuses to this machine.` }));
     }
     crew.addEventListener('dragover', (e) => e.preventDefault());
     crew.addEventListener('drop', (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), id); });
@@ -1314,6 +1722,7 @@ function render() {
   b.ondrop = (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), null); };
 
   renderLedger(); renderGarage(); renderArts();
+  Tip.refresh();
 }
 const cap1 = (s) => s[0].toUpperCase() + s.slice(1);
 
@@ -1329,15 +1738,19 @@ function renderLedger() {
   $('#led-title').textContent = base.name + ' · math';
   const ed = $('#wm-edit'); ed.replaceChildren();
   const bpCap = E.blueprintCap(wm.level);
-  const num = (label, key, max, sub) => {
+  const num = (label, key, max, sub, tip) => {
     const inp = el('input', { type: 'number', min: 0, max, value: sub ? wm[key][sub] : wm[key], id: `ed-${key}${sub || ''}` });
     inp.addEventListener('change', () => { let v = Math.max(0, Math.min(max, parseInt(inp.value) || 0)); if (key === 'level') v = Math.max(1, v); if (sub) wm[key][sub] = v; else wm[key] = v; rememberMachine(wm); save(); render(); });
-    return el('label', {}, el('span', { class: 'label' }, label), inp);
+    return el('label', {}, tip ? tipped(el('span', { class: 'label has-tip' }, label), ...tip) : el('span', { class: 'label' }, label), inp);
   };
   const rs = el('select', { id: 'ed-rarity' }, ...RARITY.map((n, i) => el('option', { value: i, selected: i === wm.rarity }, n)));
   rs.addEventListener('change', () => { wm.rarity = +rs.value; rememberMachine(wm); save(); render(); });
-  ed.append(num('Level', 'level', 999), el('label', {}, el('span', { class: 'label' }, 'Rarity'), rs), num('Card stars', 'cardStars', 99),
-    num(`BP dmg ≤${bpCap}`, 'blueprints', bpCap, 'damage'), num(`BP hp ≤${bpCap}`, 'blueprints', bpCap, 'health'), num(`BP arm ≤${bpCap}`, 'blueprints', bpCap, 'armor'));
+  const bpLabel = (attr) => ['ed-bp-' + attr, () => bpTip(wmById(id), attr)];
+  ed.append(num('Level', 'level', 999, null, ['ed-level', () => levelTip(wmById(id))]),
+    el('label', {}, tipped(el('span', { class: 'label has-tip' }, 'Rarity'), 'ed-rarity', () => rarityTip(wmById(id))), rs),
+    num('Card stars', 'cardStars', 99, null, ['ed-cards']),
+    num(`BP dmg ≤${bpCap}`, 'blueprints', bpCap, 'damage', bpLabel('damage')), num(`BP hp ≤${bpCap}`, 'blueprints', bpCap, 'health', bpLabel('health')),
+    num(`BP arm ≤${bpCap}`, 'blueprints', bpCap, 'armor', bpLabel('armor')));
 
   const rows = [
     ['Base', a => fmt(base[a]), 'wiki'],
@@ -1358,12 +1771,13 @@ function renderLedger() {
   const t = $('#ledger'); t.replaceChildren();
   t.append(el('thead', {}, el('tr', {}, el('th', {}, 'Step'), el('th', {}, 'Formula'), el('th', { class: 'k-dmg' }, 'DMG'), el('th', { class: 'k-hp' }, 'HP'), el('th', { class: 'k-arm' }, 'ARM'))));
   const tb = el('tbody');
-  for (const [n, f, form] of rows) tb.append(el('tr', {}, el('td', {}, n), el('td', { class: 'f' }, form), ...E.ATTRS.map(a => el('td', { class: 'num' }, f(a)))));
-  tb.append(el('tr', { class: 'tot' }, el('td', {}, 'Battle'), el('td', { class: 'f' }, ''), ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(st.battle[a])))));
-  tb.append(el('tr', { class: 'tot' }, el('td', {}, 'Arena'), el('td', { class: 'f' }, 'log-scaled'), ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(st.arena[a])))));
+  const stepCell = (n) => TIPS['led-' + slug(n)] ? tipped(el('td', { class: 'has-tip' }, n), 'led-' + slug(n)) : el('td', {}, n);
+  for (const [n, f, form] of rows) tb.append(el('tr', {}, stepCell(n), el('td', { class: 'f' }, form), ...E.ATTRS.map(a => el('td', { class: 'num' }, f(a)))));
+  tb.append(el('tr', { class: 'tot' }, stepCell('Battle'), el('td', { class: 'f' }, ''), ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(st.battle[a])))));
+  tb.append(el('tr', { class: 'tot' }, stepCell('Arena'), el('td', { class: 'f' }, 'log-scaled'), ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(st.arena[a])))));
   if (wm.game) {
     const same = sameCrew(id);
-    tb.append(el('tr', { class: 'game' }, el('td', {}, 'Game now'), el('td', { class: 'f' }, same ? 'same crew as planner' : 'your in-game crew'),
+    tb.append(el('tr', { class: 'game' }, stepCell('Game now'), el('td', { class: 'f' }, same ? 'same crew as planner' : 'your in-game crew'),
       ...E.ATTRS.map(a => el('td', { class: 'num' }, fmt(wm.game[a])))));
   }
   t.append(tb);
@@ -1373,10 +1787,11 @@ function renderGarage() {
   const g = $('#garage'); g.replaceChildren();
   for (const m of S.machines) {
     const b = E.WAR_MACHINES[m.id];
-    const cb = el('input', { type: 'checkbox', checked: m.owned, id: 'own-' + m.id, 'aria-label': 'Owned ' + b.name, disabled: LIVE && !!G, title: LIVE && G ? 'Read from your game' : '' });
+    const cb = el('input', { type: 'checkbox', checked: m.owned, id: 'own-' + m.id, 'aria-label': 'Owned ' + b.name, disabled: LIVE && !!G });
     cb.addEventListener('change', () => { m.owned = cb.checked; if (!m.owned && S.squad.includes(m.id)) { toast(b.name + ' left the squad'); const r = E.optimize(account(), { mode: S.mode, requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = S.squad[0]; } save(); render(); });
-    g.append(el('label', { class: 'gm' + (m.owned ? '' : ' off'), for: 'own-' + m.id }, cb,
-      el('span', { class: 'n' }, b.name, el('small', {}, `${SPEC_NAME[b.spec]} · ${b.ability}`)), svgUse('g-' + b.spec)));
+    const lab = el('label', { class: 'gm' + (m.owned ? '' : ' off'), for: 'own-' + m.id }, cb,
+      el('span', { class: 'n' }, b.name, el('small', {}, `${SPEC_NAME[b.spec]} · ${b.ability}`)), svgUse('g-' + b.spec));
+    g.append(LIVE && G ? tipped(lab, 'own-' + m.id, { title: b.name, body: m.owned ? 'You own this machine. Read from your game.' : 'You don\'t own this machine yet. Read from your game.' }) : lab);
   }
 }
 
@@ -1403,6 +1818,7 @@ function renderArts() {
 
 // hero editor
 function openHero(id) {
+  Tip.hide();
   const h = heroById(id); const d = $('#dlg');
   $('#dlg-title').textContent = h.name; $('#dlg-specname').textContent = SPEC_NAME[h.spec];
   $('#dlg-spec').querySelector('use').setAttribute('href', '#g-' + h.spec);
@@ -1433,6 +1849,8 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 $('#auto').onclick = runAuto;
 $('#apply').onclick = () => applyToGame();
 $('#spend').onclick = spendForMe;
+for (const [btn, key] of [['#lvl-more', 'lvl'], ['#bp-more', 'bp']])
+  $(btn).onclick = () => { advShow[key] = !advShow[key]; renderUpgradeAdvisor(); Tip.refresh(); };
 $('#auto-schedule').onchange = (e) => {
   autoApply.enabled = e.target.checked;
   autoApply.nextAt = autoApply.enabled ? Date.now() + autoApply.hours * 60 * 60 * 1000 : 0;

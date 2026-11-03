@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.51 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.52 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -62,7 +62,8 @@ saves for the first available target and can leave lower priorities waiting inde
 When War Machine Blueprints is set to All, separate priority chips order damage, health and armor.
 Auto-build squad picks machines and crews together, so a machine can make the squad because of the heroes
 that boost it. The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
-The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
+The planner's read-only upgrade advisor shows the best machine to level and the best blueprint to buy, and
+checks each machine's own screws, cogs and metal. Hover over planner numbers (or tap ?) for explanations.
 
 ARENA
 Arena picks the lowest readable opponent power within your F1 power limit and rechecks the opponent's

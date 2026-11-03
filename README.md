@@ -177,7 +177,8 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - Only heroes you have unlocked are used. It only saves when the squad on screen matches the plan, so a half-done change never replaces a working squad.
 - **Hero faces** come from your own game (open Engineer > Select crew once).
 - **Plan upgrades** by editing levels, rarities, blueprints or jewels.
-- **Upgrade advisor** ranks machine levels and blueprints by power gained per resource; unsampled costs are marked as estimates. It is read-only.
+- **Upgrade advisor** shows the best machine to level and the best blueprint to buy for the selected mode, then ranks every machine level and blueprint by power gained per expedition token or blueprint. Levels count the real workshop upgrades from the machine's current XP and check that machine's own screws, cogs and metal. It is read-only.
+- **Tooltips**: hover over a number or label, or tap its **?**, to see what it means, what it costs and where to get more.
 - **Ethereal shard advisor** ranks the next jewel enchant for every hero in your squad by war machine power per shard. **Spend for me** does those enchants for you within a shard budget.
 
 <img src="assets/planner.jpg" alt="War Machine Planner in the browser" width="100%">

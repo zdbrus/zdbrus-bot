@@ -85,6 +85,7 @@ public static class RosterExport
             w.WriteBoolean("ok", JewelSpender.Ok);
             w.WriteString("status", JewelSpender.Status ?? "");
             w.WriteEndObject();
+            WriteCurrencies(w, loader);
 
             // ---- war machines (owned) ----
             w.WriteStartArray("machines");
@@ -191,6 +192,17 @@ public static class RosterExport
         w.WriteNumber("lostInscriptions", m.lostInscriptions);
         w.WriteNumber("slot", m.slot);
         w.WriteBoolean("favourite", m.isFavourite);
+        // XP drives the level-up bill: each workshop upgrade adds a fixed 100 XP.
+        Num(w, "xp", m.xp);
+        Num(w, "xpVisual", m.xpVisual);
+        Num(w, "xpForNext", m.xpForNextLevelVisual);
+
+        // Screws, cogs and metal belong to each machine, not to the account.
+        w.WriteStartObject("components");
+        if (m.componentsDict != null)
+            foreach (var kv in m.componentsDict)
+                if (kv.Value != null) w.WriteNumber(kv.Key.ToString().ToLowerInvariant(), kv.Value.amount);
+        w.WriteEndObject();
 
         w.WriteStartObject("blueprints");
         if (m.blueprintUpgradesDict != null)
@@ -304,6 +316,31 @@ public static class RosterExport
         Num(w, "crewHealth", cb?.health ?? 0);
         Num(w, "crewArmor", cb?.armor ?? 0);
         w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    /// <summary>Account balances the upgrade advisor's tooltips compare against (have vs. need).</summary>
+    private static void WriteCurrencies(Utf8JsonWriter w, HandlerLoader loader)
+    {
+        w.WriteStartObject("currencies");
+        try
+        {
+            var all = loader.currencyHandler?.currencies;
+            if (all != null)
+                foreach (var kv in all)
+                {
+                    if (kv.Value == null) continue;
+                    var name = kv.Key switch
+                    {
+                        CurrencyCode.ExpeditionToken => "expeditionTokens",
+                        CurrencyCode.Blueprint => "blueprints",
+                        CurrencyCode.EtherealShard => "etherealShards",
+                        _ => null,
+                    };
+                    if (name != null) Num(w, name, kv.Value.amount);
+                }
+        }
+        catch (Exception) { /* currencies not loaded yet: the planner shows needs without balances */ }
         w.WriteEndObject();
     }
 

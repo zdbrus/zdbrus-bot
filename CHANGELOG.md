@@ -1,5 +1,12 @@
 ﻿# Changelog
 
+## 0.7.52 (2026-11-03)
+- War Machine Planner: the upgrade advisor was rebuilt. It used to charge a whole machine level as a single workshop upgrade, so levels looked up to about 20 times cheaper than they are, and it listed each level four times and compared machines by parts they cannot share.
+- The advisor now opens with two picks, the best machine to level and the best blueprint to buy, followed by a level table and a blueprint table. Levels count the real number of workshop upgrades from the machine's current XP (each upgrade costs 500 expedition tokens, 20 screws, 12 cogs and 1 metal and gives 100 XP). Blueprints show the stat, the cost and the level cap.
+- The advisor checks each machine's own screws, cogs and metal and your expedition tokens and blueprints. When the best-value machine is short on parts, it suggests the best machine you can level now.
+- Hover tooltips (or tap the **?**) explain the planner's numbers: parts needed for a machine and where to get more, level and blueprint costs, overdrive, Game check, power, crew gains, shards and the advisor's columns.
+- The planner now reads each machine's XP and parts and your expedition tokens, blueprints and ethereal shards from the game.
+
 ## 0.7.51 (2026-11-02)
 - War Machine Planner: Auto-build now picks machines and crews together. A machine that is weak on its own but gains a lot from the heroes available to it can now make the squad. Arena mode places crews by arena power.
 
