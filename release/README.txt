@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.50 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.51 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -60,7 +60,8 @@ Talents read the live tree directly and open only eligible priority previews, no
 For hero gold and guardian holy upgrades, Balance tries all selected targets in order; Focus first
 saves for the first available target and can leave lower priorities waiting indefinitely.
 When War Machine Blueprints is set to All, separate priority chips order damage, health and armor.
-The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
+Auto-build squad picks machines and crews together, so a machine can make the squad because of the heroes
+that boost it. The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
 The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
 
 ARENA

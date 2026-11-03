@@ -527,14 +527,17 @@ function requiredPower(difficulty, mission) {
 const cloneCrews = (c) => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v.slice()]));
 
 // ---- Optimizer ----
-// Picks the 5 machines and assigns heroes (each hero used once) to maximize squad battle power.
-// Greedy fill then pairwise-swap hill climb until no swap improves.
-function optimize(account, opts = {}) {
+// Assigns crews to a fixed squad, then improves it with crew swaps.
+function optimizeForSquad(account, opts = {}, fixedSquad = null) {
   const machines = account.machines.filter(m => m.owned !== false);
   const heroes = account.heroes.slice();
   const cap = account.crewSlots || maxCrew(account.engineerLevel);
   const squadSize = Math.min(5, machines.length);
   const locked = opts.locked || {}; // { heroId: machineId }
+  const machinePower = (wm, crew) => {
+    const stats = machineStats(wm, account, crew);
+    return opts.mode === 'arena' ? stats.arenaPower : stats.battlePower;
+  };
 
   const score = (assign) => {
     let total = 0; const detail = [];
@@ -547,11 +550,11 @@ function optimize(account, opts = {}) {
     return { total, detail };
   };
 
-  // 1. machine selection by solo power with an average crew
+  // Use solo power only to seed the squad; the outer optimizer compares fully crewed squads.
   const ranked = machines
-    .map(wm => ({ wm, p: machineStats(wm, account, []).battlePower }))
+    .map(wm => ({ wm, p: machinePower(wm, []) }))
     .sort((a, b) => b.p - a.p);
-  let squad = ranked.slice(0, squadSize).map(r => r.wm);
+  let squad = fixedSquad ? fixedSquad.slice() : ranked.slice(0, squadSize).map(r => r.wm);
   if (opts.requireTank) {
     const hasTank = squad.some(w => WAR_MACHINES[w.id].spec === SPEC.TANK);
     const bestTank = ranked.find(r => WAR_MACHINES[r.wm.id].spec === SPEC.TANK);
@@ -561,16 +564,23 @@ function optimize(account, opts = {}) {
   // 2. greedy crew fill: each slot takes the hero with the biggest marginal power gain
   const crews = Object.fromEntries(squad.map(w => [w.id, []]));
   const used = new Set();
-  for (const [hid, mid] of Object.entries(locked)) if (crews[mid]) { crews[mid].push(hid); used.add(hid); }
+  for (const [hid, mid] of Object.entries(locked)) {
+    const hero = heroes.find(h => String(h.id) === hid);
+    if (crews[mid] && hero && crews[mid].length < cap) {
+      crews[mid].push(hero.id);
+      used.add(hero.id);
+    }
+  }
   let improved = true;
   while (improved) {
     improved = false; let best = null;
     for (const wm of squad) {
       if (crews[wm.id].length >= cap) continue;
-      const cur = machineStats(wm, account, crews[wm.id].map(id => heroes.find(h => h.id === id))).battlePower;
+      const currentCrew = crews[wm.id].map(id => heroes.find(h => h.id === id));
+      const cur = machinePower(wm, currentCrew);
       for (const h of heroes) {
         if (used.has(h.id)) continue;
-        const next = machineStats(wm, account, [...crews[wm.id], h.id].map(id => heroes.find(x => x.id === id))).battlePower;
+        const next = machinePower(wm, [...currentCrew, h]);
         const gain = next - cur;
         if (!best || gain > best.gain) best = { gain, wm: wm.id, h: h.id };
       }
@@ -607,6 +617,45 @@ function optimize(account, opts = {}) {
   }
   const result = score(state);
   return { squad: squad.map(w => w.id), crews: state.crews, squadPower: result.total, machines: result.detail };
+}
+
+// Improve the complete squad by trying one-machine replacements with a fresh crew assignment.
+// This lets a machine win on the power its available crew can add, not only its solo power.
+function optimize(account, opts = {}) {
+  const machines = account.machines.filter(m => m.owned !== false);
+  const size = Math.min(5, machines.length);
+  const soloPower = wm => {
+    const stats = machineStats(wm, account, []);
+    return opts.mode === 'arena' ? stats.arenaPower : stats.battlePower;
+  };
+  const ranked = machines.slice().sort((a, b) => soloPower(b) - soloPower(a));
+  let current = optimizeForSquad(account, opts, ranked.slice(0, size));
+  const lockedMachines = new Set(Object.values(opts.locked || {}));
+  const seen = new Set();
+
+  for (let iteration = 0; iteration < Math.min(10, machines.length); iteration++) {
+    const key = current.squad.slice().sort().join(',');
+    if (seen.has(key)) break;
+    seen.add(key);
+    let best = null;
+    for (let i = 0; i < current.squad.length; i++) {
+      const removed = current.squad[i];
+      if (lockedMachines.has(removed)) continue;
+      for (const added of machines) {
+        if (current.squad.includes(added.id)) continue;
+        const candidateSquad = current.squad.slice();
+        candidateSquad[i] = added.id;
+        const candidateMachines = candidateSquad.map(id => machines.find(m => m.id === id));
+        if (opts.requireTank && !candidateMachines.some(m => WAR_MACHINES[m.id]?.spec === SPEC.TANK)) continue;
+        const candidate = optimizeForSquad(account, opts, candidateMachines);
+        if (candidate.squadPower > (best?.squadPower ?? current.squadPower) + 1e-9)
+          best = candidate;
+      }
+    }
+    if (!best) break;
+    current = best;
+  }
+  return current;
 }
 
 const WMEngineAPI = {

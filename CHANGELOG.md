@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.51 (2026-11-02)
+- War Machine Planner: Auto-build now picks machines and crews together. A machine that is weak on its own but gains a lot from the heroes available to it can now make the squad. Arena mode places crews by arena power.
+
 ## 0.7.50 (2026-11-02)
 - Notification quiet periods and the separate Chaos Rift and Mystery Box retries now survive game restarts. Scheduled task checks are not blocked by a quiet notification.
 - Saved task schedules and retry delays are shared across accounts on the same installation, so switching accounts can carry over a wait.
