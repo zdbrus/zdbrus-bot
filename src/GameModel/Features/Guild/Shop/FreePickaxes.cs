@@ -14,7 +14,15 @@ public static class FreePickaxes
     private static string QuantityTxt =>
         new GameText(Paths.MenusLoc.CanvasLoc.GuildLoc.GuildShopLoc.FreePickaxeLoc.QuantityTxt).GetParsedText();
 
-    public static int Quantity => StringUtils.TryParseIntFromString(QuantityTxt, out var val) ? val : 0;
+    public static bool TryGetQuantity(out int quantity)
+    {
+        quantity = 0;
+        if (!StringUtils.TryParseCount(QuantityTxt, out var count) || count > int.MaxValue) return false;
+        quantity = (int)count;
+        return true;
+    }
+
+    public static int Quantity => TryGetQuantity(out var quantity) ? quantity : 0;
 
     public static IEnumerator Claim =>
         new GameButton(Paths.MenusLoc.CanvasLoc.GuildLoc.GuildShopLoc.FreePickaxeLoc.ClaimBtn).Click();

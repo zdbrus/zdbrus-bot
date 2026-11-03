@@ -395,6 +395,14 @@ internal static class ArenaTests
 
         f = Setup();
         f.IntSetting("arena_squad").Value = 2;
+        SquadApplier.Unreadable.Add(2);
+        Run(f.Task.Execute());
+        Check(SquadApplier.Requests.Count == 0 && f.PreviewClicks == 0 &&
+              Logger.Messages.Any(s => s.Contains("could not be read")),
+            "An unreadable Arena squad was treated as empty and allowed to fight.");
+
+        f = Setup();
+        f.IntSetting("arena_squad").Value = 2;
         f.SetTokens(0);
         Run(f.Task.Execute());
         Check(SquadApplier.Requests.Count == 0 && f.PreviewClicks == 0, "A squad was switched without tokens.");

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace Firebot.Utilities;
@@ -53,5 +54,16 @@ public abstract class StringUtils
         if (string.IsNullOrWhiteSpace(input)) return false;
         var digits = new string(input.Where(char.IsDigit).ToArray());
         return int.TryParse(digits, out value);
+    }
+
+    public static bool TryParseCount(string input, out long count)
+    {
+        count = 0;
+        if (string.IsNullOrWhiteSpace(input)) return false;
+        var text = input.Trim();
+        if (!Regex.IsMatch(text, @"^(?:[xX]\s*)?(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)$"))
+            return false;
+        if (text[0] is 'x' or 'X') text = text[1..].TrimStart();
+        return long.TryParse(text.Replace(",", ""), NumberStyles.None, CultureInfo.InvariantCulture, out count);
     }
 }

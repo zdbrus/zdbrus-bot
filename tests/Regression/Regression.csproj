@@ -13,6 +13,7 @@
     <Compile Include="..\..\src\BotActions\AutoSkill.cs" Link="AutoSkill.cs" />
     <Compile Include="..\..\src\BotActions\Hotkey.cs" Link="Hotkey.cs" />
     <Compile Include="..\..\src\Core\PrestigePolicy.cs" Link="PrestigePolicy.cs" />
+    <Compile Include="..\..\src\Utilities\StringUtils.cs" Link="StringUtils.cs" />
     <Compile Include="..\..\src\Core\PlayerStats.cs" Link="PlayerStats.cs" />
     <Compile Include="..\..\src\Core\BossAttemptTracker.cs" Link="BossAttemptTracker.cs" />
     <Compile Include="..\..\src\Core\ScarabSpinPolicy.cs" Link="ScarabSpinPolicy.cs" />
@@ -45,6 +46,12 @@
     <Compile Include="..\..\src\Behaviors\Extra\NativeAutoPlay.cs" Link="NativeAutoPlay.cs" />
     <Compile Include="..\..\src\Core\TaskNavigation.cs" Link="TaskNavigation.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\ArenaTask.cs" Link="ArenaTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\ChaosRiftTask.cs" Link="ChaosRiftTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\MysteryBoxOpener.cs" Link="MysteryBoxOpener.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\ArenaMatchupRecorder.cs" Link="ArenaMatchupRecorder.cs" />
+    <Compile Include="..\..\src\Behaviors\Guild\FreePickaxesTask.cs" Link="FreePickaxesTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Town\DailyRewardsTask.cs" Link="DailyRewardsTask.cs" />
+    <Compile Include="..\..\src\GameModel\Features\Guild\Shop\FreePickaxes.cs" Link="FreePickaxes.cs" />
+    <Compile Include="..\..\src\GameModel\Features\Guild\Shop\GuildShop.cs" Link="GuildShop.cs" />
   </ItemGroup>
 </Project>

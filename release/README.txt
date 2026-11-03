@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.47 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.48 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -21,6 +21,9 @@ cost, currency or inventory changes after purchases, and stop when progress cann
 Reward logs report observed state changes without claiming a reward was granted unless the game
 exposes a reliable receipt. Liberation Missions can run Easy (1 star), Normal (2 stars), or both.
 Battle Pass skips scrolling when its rewards marker is present but hidden.
+Mystery Box claims are retried when the offer or claim cannot be confirmed. Boxes are opened only
+when their amount is readable and the opening control shows no price; otherwise they are kept.
+Free Pickaxes claims are retried when the game does not show a readable confirmation.
 F1 > Prestige shows the last decision and controls. Growth efficiency is the primary free-prestige
 trigger: two hourly samples below the configured share of average growth can trigger without waiting
 for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
@@ -62,10 +65,11 @@ name, rank and power plus your squad power in the preview. Power is not a win pr
 changed values and unconfirmed fights stop the attempt. If One Fight Per Day is enabled, after 20:00
 local time it may attempt the weakest opponent once above the limit when all three opponents are
 readable and refresh is unavailable; an unconfirmed attempt still counts for that day.
-The configured Arena squad must be verified. If that squad is empty, the bot warns once and fights with
-your current squad instead. The bot allows time to restore the previous squad and logs
-a failure, but stopping the bot, changing accounts or closing the game mid-task can interrupt restoration.
-Check the active squad afterward. If the runtime is too short to switch, raise F1 > General > Max Task Runtime.
+The configured Arena squad must be verified. If it is confirmed empty, the bot warns once and fights
+with your current squad instead. If the squad cannot be read, the bot skips the fight rather than
+guessing. The bot allows time to restore the previous squad and logs a failure, but stopping the bot,
+changing accounts or closing the game mid-task can interrupt restoration. Check the active squad
+afterward. If the runtime is too short to switch, raise F1 > General > Max Task Runtime.
 
 MATCHUP RECORDING
 F1 > Battle > Arena > Record Arena Matchups is off by default, even with Enable All On Launch.

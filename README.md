@@ -70,7 +70,7 @@ Every feature can be switched on or off in the F1 panel.
 
 | Area | Automated |
 |------|-----------|
-| **Daily** | Daily rewards, check-in, free shop items, free Mystery Box, mail rewards, daily and weekly quests, battle pass free rewards (skips empty-track scans), opens your chests and Mystery Boxes (keeps the ones you choose) |
+| **Daily** | Daily rewards, check-in, free shop items, free Mystery Box, mail rewards, daily and weekly quests, battle pass free rewards (skips empty-track scans), opens eligible chests and free Mystery Boxes (keeps the ones you choose) |
 | **Town** | Firestone research (your priority order), meteorite research, alchemist, Oracle rituals and blessings, engineer tools, guardian training and enlightenment, exotic merchant (sell, upgrades, emblem chests), tavern (beer to tokens, cards), Scarab's game, Pharaoh's vault and milestones |
 | **Guild** | Expeditions, free pickaxes, guild crystal, Chaos Rift (hits, eclipse stones, tomes, holy upgrades for the guardians you choose), personal tree, hero awakening, forbidden knowledge |
 | **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (Easy 1 star, Normal 2 stars, or both) |
@@ -79,6 +79,10 @@ Every feature can be switched on or off in the F1 panel.
 | **Character** | Spends talent points the moment you earn them (and saves them) |
 | **Progress** | Retries the stage boss after a lost fight; repeated attempts at one stage can trigger a free prestige |
 | **Prestige** | Free Temple prestige when growth efficiency drops, after repeated boss attempts at one stage, or when the fallback stall timer expires; status and controls have their own F1 tab |
+
+Mystery Box claims are retried if the offer or claim cannot be confirmed. Opening boxes requires a
+readable amount and a free opening control with no visible price marker; otherwise the boxes are kept.
+Free Pickaxes claims are also retried when the game does not show a readable confirmation.
 
 ### Arena safety
 
@@ -90,9 +94,10 @@ unconfirmed fights stop the attempt. A refresh must produce a stable changed opp
 If **One Fight Per Day** is enabled, after 20:00 local time the bot may try the weakest opponent once
 even above your limit when all three opponents are readable and refresh is unavailable. An attempted
 exception is recorded even if the outcome cannot be confirmed. A configured Arena squad must be verified;
-if it has no war machines, the bot warns once and fights with your current squad instead;
-the bot allows time to switch back and logs if restoration fails. Stopping the bot, changing accounts or
-closing the game mid-task can interrupt the switch back, so check the active squad afterward. If the
+if it is confirmed empty, the bot warns once and fights with your current squad instead. If the squad
+cannot be read, it skips the fight rather than guessing. The bot allows time to switch back and logs if
+restoration fails. Stopping the bot, changing accounts or closing the game mid-task can interrupt the
+switch back, so check the active squad afterward. If the
 log says there is not enough time to switch, raise **F1 > General > Max Task Runtime**.
 
 **Matchup recording:** Turn on **F1 > Battle > Arena > Record Arena Matchups**

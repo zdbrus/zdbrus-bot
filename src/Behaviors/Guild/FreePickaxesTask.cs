@@ -40,25 +40,40 @@ public class FreePickaxesTask : BotTask
     {
         yield return Notifications.FreePickaxes;
 
-        if (FreePickaxes.Quantity >= PickaxeClaimThreshold)
+        if (!FreePickaxes.TryGetQuantity(out var before))
         {
-            var before = FreePickaxes.Quantity;
+            Logger.Warning("[Free Pickaxes] The available quantity could not be read; trying again later.");
+            NextRunTime = DateTime.Now.AddMinutes(10);
+            yield return GuildShop.Close;
+            yield break;
+        }
+
+        if (before >= PickaxeClaimThreshold)
+        {
             var confirmed = false;
             const string claimButton =
                 P.Menus + "/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/purchaseButton";
-            // Quantity is the unclaimed amount on the shop card, so a successful claim makes it drop.
+            const string claimedMarker =
+                P.Menus + "/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/claimedBG";
+            var wasClaimed = Ui.Visible(claimedMarker);
             yield return Ui.ClickUntil(Ui.Find(claimButton),
-                () => FreePickaxes.Quantity < before || !Ui.Clickable(claimButton),
+                () => (FreePickaxes.TryGetQuantity(out var after) && after < before) ||
+                      (!wasClaimed && Ui.Visible(claimedMarker)),
                 value => confirmed = value, "Free pickaxes claim", 1.5f);
             if (confirmed)
-                Logger.Info($"[Free Pickaxes] Claimed {before} pickaxes.");
+                Logger.Info("[Free Pickaxes] The claim was confirmed by the game.");
             else
-                Logger.Warning("[Free Pickaxes] The claim button did not respond; will try again later.");
+            {
+                Logger.Warning("[Free Pickaxes] The claim could not be confirmed; trying again later.");
+                NextRunTime = DateTime.Now.AddMinutes(10);
+                yield return GuildShop.Close;
+                yield break;
+            }
         }
         else
         {
             Logger.Info($"[Free Pickaxes] Waiting for {PickaxeClaimThreshold} pickaxes; " +
-                        $"{FreePickaxes.Quantity} available.");
+                        $"{before} available.");
         }
 
         NextRunTime = FreePickaxes.NextRunTime;

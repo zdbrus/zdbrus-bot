@@ -367,12 +367,32 @@ public static class SquadApplier
         return 0;
     }
 
-    /// <summary>True when squad N has at least one machine saved.</summary>
-    public static bool HasMachines(int slot)
+    /// <summary>Reads whether squad N has machines; false means the squad data was unavailable.</summary>
+    public static bool TryHasMachines(int slot, out bool hasMachines)
     {
-        try { return Formation(slot)?.warMachinesData?.formationList?.Count > 0; }
-        catch { return false; }
+        hasMachines = false;
+        try
+        {
+            var machines = Formation(slot)?.warMachinesData?.formationList;
+            if (machines == null) return false;
+            for (var i = 0; i < machines.Count; i++)
+            {
+                var machine = machines[i];
+                if (machine == null || string.IsNullOrWhiteSpace(machine.code)) continue;
+                hasMachines = true;
+                break;
+            }
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.Debug($"[Squads] Could not read squad {slot}: {e.Message}");
+            return false;
+        }
     }
+
+    /// <summary>True when squad N has at least one machine saved.</summary>
+    public static bool HasMachines(int slot) => TryHasMachines(slot, out var hasMachines) && hasMachines;
 
     /// <summary>
     ///     Makes squad N the active squad (Engineer, Squads, "Set active"), the same as a player does. Does nothing
@@ -381,7 +401,7 @@ public static class SquadApplier
     public static IEnumerator SetActive(int slot, string why)
     {
         if (slot < 1 || slot > 3 || ActiveSlot() == slot) yield break;
-        if (!HasMachines(slot)) { Logger.Warning($"[Squads] Squad {slot} is empty, so it was not set active ({why})."); yield break; }
+        if (!HasMachines(slot)) { Logger.Warning($"[Squads] Squad {slot} is empty or unavailable, so it was not set active ({why})."); yield break; }
 
         yield return Watchdog.ForceClearAll($"before switching to squad {slot}");
         yield return Ui.OpenTownBuilding("engineer");

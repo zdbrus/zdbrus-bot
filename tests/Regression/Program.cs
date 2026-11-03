@@ -45,6 +45,11 @@ internal static class Program
             Test("boss retry threshold can use an already-open free preview", PrestigeBossRetryTrigger);
             Test("prestige task waits for two slow growth samples", PrestigeTaskGrowth);
             Test("zero prestige boost waits for hourly sampling without blocking boss checks", PrestigeZeroGainSampling);
+            Test("blocked prestige previews preserve the hourly sample and retry safely", PrestigeBlockedPreview);
+            Test("free pickaxe claims distinguish unreadable data from success", LogIssueTests.FreePickaxeClaims);
+            Test("closed Chaos Rift leaves guardian upgrade notifications active", LogIssueTests.ChaosRiftCooldown);
+            Test("Mystery Box store claims distinguish claimed and unreadable states", LogIssueTests.MysteryBoxClaims);
+            Test("Mystery Box openings require free controls and readable confirmation", LogIssueTests.MysteryBoxOpening);
             Test("arena power, rank and token readings fail closed", ArenaTests.PowerParsing);
             Test("arena selects the weakest valid in-limit opponent", ArenaTests.Selection);
             Test("arena refuses stale, mismatched and changed previews", ArenaTests.PreviewSafety);
@@ -629,6 +634,51 @@ internal static class Program
         Run(fixture.Task.Execute());
         Check(opened == 3 && fixture.FreeClicks == 0 && fixture.PaidClicks == 0,
             "Hourly sampling blocked a qualifying boss check or allowed zero-gain prestige.");
+    }
+
+    private static void PrestigeBlockedPreview()
+    {
+        var fixture = SetupPrestige();
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value = 0;
+        var oldSample = DateTime.Now.AddMinutes(-20).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value = oldSample;
+        Ui.Texts[PrestigeFixture.Gain] = "+0%";
+        var started = DateTime.Now;
+        Run(fixture.Task.Execute());
+        Check(((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value == oldSample,
+            "A zero-gain stall check postponed the hourly sample.");
+        Check(fixture.Task.NextRunTime >= started.AddMinutes(4.9) &&
+              fixture.Task.NextRunTime <= started.AddMinutes(5.1) && fixture.FreeClicks == 0,
+            "A zero-gain stall check did not defer the preview without resetting.");
+
+        fixture = SetupPrestige();
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value = 0;
+        oldSample = DateTime.Now.AddMinutes(-58).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value = oldSample;
+        Ui.Texts[PrestigeFixture.Gain] = "+20%";
+        started = DateTime.Now;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 &&
+              fixture.Task.NextRunTime >= started.AddMinutes(1.9) &&
+              fixture.Task.NextRunTime <= started.AddMinutes(2.1),
+            "The minimum-gain delay postponed a nearly due hourly sample.");
+        Check(((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value == oldSample,
+            "A blocked preview changed an hourly sample that was not due.");
+
+        fixture = SetupPrestige();
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        ((MelonPreferences_Entry<int>)fixture.Settings["min_hours_played"]).Value = 26;
+        ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value = 100;
+        oldSample = DateTime.Now.AddMinutes(-50).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value = oldSample;
+        started = DateTime.Now;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 &&
+              fixture.Task.NextRunTime >= started.AddMinutes(9.9) &&
+              fixture.Task.NextRunTime <= started.AddMinutes(10.1),
+            "The minimum-run-age delay postponed a nearly due hourly sample.");
     }
 
     private static void ScarabSpinSafety()

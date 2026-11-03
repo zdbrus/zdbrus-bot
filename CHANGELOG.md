@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 0.7.48 (2026-11-02)
+- Arena falls back to the current squad only when the chosen squad is confirmed empty. Unreadable squad data stops the fight instead of being mistaken for an empty squad.
+- Free Pickaxes confirms claims only from a readable quantity decrease or a newly visible claimed marker; uncertain claims are retried.
+- Mystery Box claims require a claimed marker or rewards screen, and an unconfirmed claim is retried without postponing other daily rewards. Opening boxes requires a readable amount and a free control with no visible price marker.
+- Chaos Rift's six-hour retry no longer mutes Guardian Holy Upgrade notifications.
+- Temple's delayed previews preserve the next hourly growth sample, including when a boss or stall trigger checks a zero boost.
+- These changes passed simulated regression checks, but the Arena empty-squad representation and the Mystery Box store tab have not yet been verified in the live game.
+
 ## 0.7.47 (2026-11-02)
 - Balanced AutoUpgrade uses idle gaps even when a scheduled task is less than 30 seconds away. Frequent Temple and boss checks no longer keep it paused between tasks; ready and running tasks still take priority, and Focus keeps its early pause.
 - Free Pickaxes no longer reports a successful claim as failed. The game counts down unclaimed pickaxes after a claim, and the bot now checks for that.

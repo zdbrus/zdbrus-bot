@@ -93,6 +93,18 @@ public class TemplePrestigeTask : BotTask
         MelonPreferences.Save();
     }
 
+    private void DelayBlockedPreview(TimeSpan wait)
+    {
+        var now = DateTime.Now;
+        var next = now + wait;
+        if (_efficiency.Value > 0 &&
+            DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind, out var sampledAt) &&
+            sampledAt <= now && sampledAt.AddHours(1) > now && sampledAt.AddHours(1) < next)
+            next = sampledAt.AddHours(1);
+        NextRunTime = next;
+    }
+
     private bool TryGetStall(out int stage, out double stalled)
     {
         stalled = 0;
@@ -115,19 +127,6 @@ public class TemplePrestigeTask : BotTask
 
         stalled = (now - at).TotalHours;
         return true;
-    }
-
-    private static bool HasPriceMarker(Transform button)
-    {
-        if (button == null) return true;
-        foreach (var child in button.GetComponentsInChildren<Transform>(true))
-        {
-            if (child == null || !child.gameObject.activeInHierarchy || child == button) continue;
-            var name = child.name.ToLowerInvariant();
-            if (name.Contains("cost") || name.Contains("price") || name.Contains("currency")) return true;
-        }
-
-        return false;
     }
 
     private static IEnumerator CloseTemple(bool closeScreen)
@@ -226,6 +225,7 @@ public class TemplePrestigeTask : BotTask
             stalled = 0;
             isStalled = false;
             bossRetriesReached = false;
+            sampleDue = _efficiency.Value > 0;
             stageReading = $"Stage {stage} | 0.0h without a new best";
             Logger.Info("Temple: new or previously untracked run; cleared old growth samples.");
             BossAttemptTracker.Reset();
@@ -260,13 +260,14 @@ public class TemplePrestigeTask : BotTask
         Logger.Info($"Temple: {reading}.");
         if (gain <= 0)
         {
-            if (_efficiency.Value > 0)
+            if (_efficiency.Value > 0 && sampleDue)
             {
                 _lastGain.Value = 0;
                 _lastGainAt.Value = DateTime.Now.ToString("o");
                 _slowStreak = 0;
                 MelonPreferences.Save();
             }
+            if (isStalled || bossRetriesReached) DelayBlockedPreview(TimeSpan.FromMinutes(5));
             Report("No gold boost yet; keeping the run.", reading);
             yield return CloseTemple(closeScreen);
             yield break;
@@ -312,11 +313,10 @@ public class TemplePrestigeTask : BotTask
         Logger.Info($"Temple: proceeding on {trigger} trigger.");
         if (gain < _minGain.Value || played < _minHours.Value)
         {
-            // Re-checking every minute just reopens the preview; the boost grows slowly, so pause a few minutes.
             var wait = gain < _minGain.Value
                 ? TimeSpan.FromMinutes(5)
                 : TimeSpan.FromHours(Math.Min(Math.Max(_minHours.Value - played, 1 / 60d), 0.5));
-            NextRunTime = DateTime.Now + wait;
+            DelayBlockedPreview(wait);
             Report(gain < _minGain.Value ? "Waiting for the minimum gold boost." : "Waiting for the minimum run age.", reading);
             yield return CloseTemple(closeScreen);
             yield break;
@@ -341,7 +341,7 @@ public class TemplePrestigeTask : BotTask
         }
 
         var freeButton = Ui.Find(FreeEmpower);
-        if (!Ui.Clickable(freeButton) || HasPriceMarker(freeButton))
+        if (!Ui.Clickable(freeButton) || Ui.HasPriceMarker(freeButton))
         {
             InvalidateRate();
             Report("Free empower control unavailable; no reset attempted.", reading);
@@ -352,7 +352,7 @@ public class TemplePrestigeTask : BotTask
 
         var freeClicked = false;
         yield return Ui.ClickIf(FreeEmpower,
-            () => !Ui.Visible(Confirmation) && !HasPriceMarker(Ui.Find(FreeEmpower)) &&
+            () => !Ui.Visible(Confirmation) && !Ui.HasPriceMarker(Ui.Find(FreeEmpower)) &&
                   StageStillQualifies(stage, trigger),
             value => freeClicked = value, 2f, "free temple empower");
         var actionObserved = false;
@@ -367,7 +367,7 @@ public class TemplePrestigeTask : BotTask
             yield return Ui.ClickIf(ConfirmEmpower,
                 () => Ui.Visible(Confirmation) &&
                       string.Equals(Ui.Text(ConfirmationMessage), EmpowerQuestion, StringComparison.Ordinal) &&
-                      !HasPriceMarker(Ui.Find(ConfirmEmpower)) && StageStillQualifies(stage, trigger),
+                      !Ui.HasPriceMarker(Ui.Find(ConfirmEmpower)) && StageStillQualifies(stage, trigger),
                 value => confirmationClicked = value, 2f, "confirm free temple empower");
             if (!confirmationClicked)
             {
