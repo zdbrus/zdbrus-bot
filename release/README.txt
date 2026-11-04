@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.55 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.56 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -65,9 +65,15 @@ that boost it. The planner can auto-apply a stronger squad on a schedule when en
 The planner's read-only upgrade advisor shows the best machine to level and the best blueprint to buy, and
 checks each machine's own screws, cogs and metal. Hover over planner numbers (or tap ?) for explanations.
 The planner's tier list ranks every war machine S to C for long-term investment and marks a goal squad.
+F4 now has a Void Crystal advisor for hero gear. Choose damage, health, armor or gold, for all heroes
+or one hero. Gear on benched heroes counts when it boosts everyone. Prices and effects come from the
+game; locked and maxed gear is skipped. Enter a budget and confirm Spend for me to buy the cheapest
+matching enchants, re-checking after each one. Stop spending cancels further buys; a pending enchant
+may still finish. Each request stops after 40 enchants or an uncertain result. It never buys crystals,
+unlocks tiers or spends other currencies. Void Crystals improve heroes, not war machines.
 
 WAR MACHINE TIPS
-Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.55/WAR-MACHINES.md
+Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.56/WAR-MACHINES.md
 - Only jewel chests (Wooden, Iron, Golden, Diamond and up) give war machine parts and the conduits that
   unlock new machines. Gear chests (Common to Mythic) don't.
 - You can't pick which machine unlocks next. Machines 1-2 are single-target attackers, 3 is a tank,

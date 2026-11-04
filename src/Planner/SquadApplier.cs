@@ -80,6 +80,7 @@ public static class SquadApplier
     public static string Request(List<PlannedMachine> plan, int slot = 1)
     {
         if (Busy) return "Already applying a squad.";
+        if (VoidCrystalSpender.Busy) return "Void Crystal spending is running. Wait for it to finish.";
         if (plan.Count == 0) return "The plan is empty.";
         _slot = slot is >= 1 and <= 3 ? slot : 1;
         Confirmed.Clear();

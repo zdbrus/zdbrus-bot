@@ -59,7 +59,8 @@ public static class RosterExport
         if (loader == null) return null;
         var wmh = loader.warMachineHandler;
         var heroes = loader.heroServerHandler;
-        if (wmh == null || heroes == null || !wmh.hasLoaded || !heroes.hasLoaded) return null;
+        if (heroes == null || !heroes.hasLoaded || heroes.heroesDict == null) return null;
+        if (wmh != null && !wmh.hasLoaded) wmh = null;
 
         using var ms = new MemoryStream();
         using (var w = new Utf8JsonWriter(ms))
@@ -73,8 +74,8 @@ public static class RosterExport
             w.WriteNumber("engineerLevel", eng?.level ?? 0);
             w.WriteNumber("crewSlots", eng?.heroSpots ?? 0);
             Num(w, "engineerEffect", eng?.engineerEffect ?? 0);
-            Num(w, "formationBattlePower", wmh.myFormationBattlePower);
-            Num(w, "formationArenaPower", wmh.myFormationArenaPower);
+            Num(w, "formationBattlePower", wmh?.myFormationBattlePower ?? 0);
+            Num(w, "formationArenaPower", wmh?.myFormationArenaPower ?? 0);
             w.WriteStartObject("apply");
             w.WriteBoolean("busy", SquadApplier.Busy);
             w.WriteBoolean("ok", SquadApplier.Ok);
@@ -87,10 +88,11 @@ public static class RosterExport
             w.WriteEndObject();
             WriteCurrencies(w, loader);
             WriteCampaign(w, loader);
+            VoidCrystalSpender.WriteSnapshot(w);
 
             // ---- war machines (owned) ----
             w.WriteStartArray("machines");
-            var data = wmh.warMachineData;
+            var data = wmh?.warMachineData;
             if (data?.warMachineList != null)
                 for (var i = 0; i < data.warMachineList.Count; i++)
                 {

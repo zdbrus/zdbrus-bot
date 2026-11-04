@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 0.7.56 (2026-11-03)
+- New **Void Crystal advisor** in F4: choose hero damage, health, armor or gold, then see the cheapest matching gear enchants across your whole roster. Global gear counts even on benched heroes. Pick one hero to include their personal weapon, chest and boots. These upgrades help heroes, not war machines.
+- Prices, current effects and next effects are read from the game. Locked tiers, missing gear and maxed enchants are excluded. Equal-price ties favor relics because they help all three hero stats.
+- **Spend for me** starts only after you enter a crystal budget and confirm. It re-reads prices and re-ranks after every enchant, verifies both the level and exact crystal debit, and stops on changed data or an unconfirmed result. There is a Stop spending button and a 40-enchant limit per request. No crystal purchases, tier unlocks or other currencies are used.
+- Crystal spending waits for the bot's current job, pauses AutoUpgrade, blocks overlapping planner actions and cancels on game scene changes. New accounts can load the hero advisor before their war machines are available.
+
 ## 0.7.55 (2026-11-03)
 - New accounts: the bot now waits while the game's guided tutorial has a step on screen, instead of clicking over the highlighted button. AutoUpgrade and AutoSkill pause too, and the upgrades menu stays open for the tutorial's own upgrade step. Tasks show **Tutorial** on F2 while this happens.
 - Tasks for features the game hasn't given you yet (Tavern, Guild, Oracle, Arena, World Map and the rest) are held back until the game unlocks them. F2 shows what each one is waiting on, like **Locked (Guild)**, and the log says when the game unlocks it. Accounts at level 200 and up work exactly as before.

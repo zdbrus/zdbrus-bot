@@ -42,6 +42,27 @@ resource_type = "0,1"   # comma-separated ids; empty = the task's default
 
 ---
 
+## Void Crystal advisor
+
+In F4, select a goal (hero damage, health, armor or gold) and either all heroes or one hero.
+Global gear is read from the whole unlocked roster, not just the party or machine crews.
+Personal tier 1 gear only participates when its owner is selected. The ranking compares the
+current price of a matching enchant; it is not a combat simulation or a total-DPS prediction.
+At equal prices, relics are preferred, then global gear. No price curve is extrapolated.
+
+The crystal budget starts at zero and is not persisted. Spending requires an explicit confirmation,
+reads the current price before every click, and requires a one-level increase plus the exact
+crystal debit before continuing. A mismatch or timeout stops the run without retrying that purchase.
+The bot re-ranks after each confirmed enchant and stops at 40 enchants per request. A stopped or
+cancelled request may still have one in-flight purchase; refresh the game state before starting again.
+No other currencies, gear-tier unlocks or crystal purchases are allowed.
+
+The planner receives the read-only `crystals` snapshot through `/roster.json`. Crystal actions use
+a bounded JSON `POST /crystals`, a same-origin check, a custom request header and a game-session
+epoch. Repeated request IDs are rejected. Scene changes invalidate the epoch and stop the worker.
+The worker waits for the current bot task, pauses AutoUpgrade and rejects overlapping planner
+actions. It leaves the Hall of Heroes open so you can inspect the result.
+
 ## Arena matchup recording
 
 **F1 > Battle > Arena > Record Arena Matchups** is off by default, including when Enable All On Launch

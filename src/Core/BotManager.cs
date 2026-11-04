@@ -253,7 +253,7 @@ public static class BotManager
             }
 
             // The planner is applying a squad: let it finish its clicks before the next job starts.
-            var plannerBusy = Planner.SquadApplier.Busy || Planner.JewelSpender.Busy;
+            var plannerBusy = Planner.SquadApplier.Busy || Planner.JewelSpender.Busy || Planner.VoidCrystalSpender.Busy;
             if (plannerBusy) readyTask = null;
 
             // A new account's tutorial step waits for the player to press one highlighted thing. A task opening

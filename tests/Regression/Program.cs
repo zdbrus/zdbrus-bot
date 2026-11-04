@@ -99,6 +99,12 @@ internal static class Program
             Test("new accounts hold tasks until the game unlocks their feature", NewAccountTests.FeatureGating);
             Test("the guided tutorial is detected and logged once per step", NewAccountTests.TutorialState);
             Test("upgrades and combos wait out tutorial steps without closing the menu", AutomationTests.TutorialHold);
+            Test("Void Crystal goals rank matching gear across the whole roster", VoidCrystalTests.Ranking);
+            Test("Void Crystal budgets reject stale targets, prices and unreadable balances", VoidCrystalTests.Budget);
+            Test("Void Crystal receipts require one level and the exact currency debit", VoidCrystalTests.Receipts);
+            Test("Void Crystal spending re-ranks real gear and enforces caps and budgets", VoidCrystalTests.Spending);
+            Test("Void Crystal spending stops after stale prices, failed receipts, timeouts and cancellation", VoidCrystalTests.SpendingFailures);
+            Test("Void Crystal requests reject replays, changed sessions, tutorials and overlapping actions", VoidCrystalTests.RequestSafety);
         }
         finally
         {

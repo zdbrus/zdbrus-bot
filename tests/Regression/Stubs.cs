@@ -2,6 +2,11 @@ using System.Collections;
 
 namespace UnityEngine
 {
+    public static class Object
+    {
+        public static object TestInstance;
+        public static T FindObjectOfType<T>() where T : class => TestInstance as T;
+    }
     public class Component
     {
         public GameObject gameObject { get; internal set; }
@@ -375,6 +380,7 @@ namespace Firebot.Core
     }
     public static class BotManager
     {
+        public static bool IsBusy => IsRunning && IsTaskExecuting;
         public static bool IsRunning;
         public static bool IsTaskExecuting;
         public static bool PauseAutoUpgrade;
@@ -422,6 +428,7 @@ namespace Firebot.Planner
 {
     public static class SquadApplier
     {
+        public static bool Busy;
         public static int Active = 1;
         public static readonly HashSet<int> Populated = new() { 1, 2, 3 };
         public static readonly HashSet<int> Unreadable = new();
@@ -458,6 +465,8 @@ namespace Firebot.Planner
         public static void Stop() { }
         public static void Tick() { }
     }
+
+    public static class JewelSpender { public static bool Busy; }
 }
 
 namespace Firebot.UI.Config
@@ -737,6 +746,8 @@ namespace Firebot.Behaviors.Extra
         {
             if (OpenTownWorks && building == "templeOfEternals")
                 GameObject.CreatePath("menus/TempleOfEternals").activeSelf = true;
+            if (OpenTownWorks && building == "hallOfHeroes")
+                GameObject.CreatePath("menus/HallOfHeroes").activeSelf = true;
             yield break;
         }
         public static IEnumerator OpenGuildBuilding(string building) { yield break; }
@@ -810,6 +821,9 @@ namespace Il2Cpp
 
     public class HandlerLoader
     {
+        public HeroServerHandler heroServerHandler = new();
+        public HeroDeck heroDeck = new();
+        public CurrencyHandler currencyHandler = new();
         public CharacterLevel CharacterLevel = new();
         public MainBattle MainBattle = new();
         public UnlockMechanismsData UnlockMechanismsData = new();
@@ -867,7 +881,7 @@ namespace Il2Cpp
         public int levelCap = 25;
         public bool unlocked = true;
     }
-    public enum CurrencyCode { NoblesToken, PharaohsToken, Gem }
+    public enum CurrencyCode { NoblesToken, PharaohsToken, Gem, VoidCrystal }
     public struct PlayTokenSelection
     {
         public CurrencyCode SelectedCurrency;
@@ -877,6 +891,7 @@ namespace Il2Cpp
     }
     public class MenuLoader
     {
+        public HallOfHeroesMech HallOfHeroesMech = new();
         public AwakeningMech AwakeningMech = new();
         public ScarabGameMech ScarabGameMech = new();
         public TutorialGuidance TutorialGuidance = new();

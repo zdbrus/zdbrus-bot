@@ -18,7 +18,7 @@ Ideas for the next updates. Nothing here is promised; it is the list we work fro
 - Note from the planner math: crew heroes boost war machines through their jewels and through matching the machine's specialization (+40%), not through hero level. So this optimizer focuses on jewels and crew placement.
 - A separate view for the hero party itself (gear, soulstones, levels) for campaign damage.
 - **Spend optimizer** (verified from in-game screenshots, 2026-10-27):
-  - Void crystals: gear enchanting. Hero stats only (no war machine effect). Each enchant doubles that gear piece's effect; cost looks like 60 x 2^(level-1).
+  - Void crystals: implemented in the F4 advisor. Goal-specific rankings cover all owned heroes, with optional budgeted spending. Prices and effect descriptions come from the game, not an assumed cost curve. Hero gear only; no war machine effect.
   - Ethereal shards: jewel enchanting. **Raises war machine stats** for the machine the hero crews. Our planner jewel math matches the game exactly (Boris: rare damage jewel lv5 = 1,400% -> 1,600%; epic health lv3 = 1,900% -> 2,000%). Cost looks like 60 x 2^(level-1) (lv3 = 240, lv5 = 960). Plan: rank every crew hero's next jewel enchant by squad power gained per shard, using `jewelEffect` in engine.js.
   - Soul shards: soulstone enchanting. Hero stats only; each enchant doubles the effect; level 1 costs 30.
   - Gear tier unlocks use a separate material and need a gear power total (Valerius: tier 2 = 480, needs 1,300 gear power).

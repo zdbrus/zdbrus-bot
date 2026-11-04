@@ -28,6 +28,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:30;bac
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ground)}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
+#crystal-advisor [hidden]{display:none!important}
+#crystal-advisor button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+#crystal-advisor .note{max-width:75ch}
+#crystal-budget{width:110px}
+#crystal-target{max-width:220px}
 .wrap{max-width:1440px;margin:0 auto;display:grid;gap:16px}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .label{font:600 11px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
@@ -451,6 +456,29 @@ table.ledger.adv{min-width:700px}
     </div>
   </section>
 
+  <section class="panel shards" id="crystal-advisor" aria-label="Void Crystal advisor">
+    <div class="panel-h">
+      <h2 class="lh">Void Crystal advisor <button class="tipbtn" type="button" data-tip-id="crystals" aria-label="About Void Crystal upgrades">?</button></h2>
+      <span class="note" id="crystal-balance"></span>
+    </div>
+    <div class="panel-b">
+      <div class="inline">
+        <label class="field"><span class="label">Goal</span><select id="crystal-goal" aria-label="Crystal upgrade goal">
+          <option value="damage">Hero damage</option><option value="health">Hero health</option>
+          <option value="armor">Hero armor</option><option value="gold">Gold earnings</option>
+        </select></label>
+        <label class="field"><span class="label">For</span><select id="crystal-target" aria-label="Hero to improve"><option value="-1">All heroes</option></select></label>
+        <label class="field"><span class="label">Budget</span><input id="crystal-budget" type="number" min="0" step="1" value="0" aria-label="Maximum Void Crystals to spend"></label>
+        <button class="btn primary" id="crystal-spend" type="button" disabled>Spend for me</button>
+        <button class="btn" id="crystal-stop" type="button" hidden>Stop spending</button>
+      </div>
+      <p class="note">Hero gear, not war machines. Cheapest matching enchant first, across your whole roster. Global gear counts even on benched heroes. Choose one hero to include their personal weapon, chest and boots.</p>
+      <p id="crystal-status" role="status" aria-live="polite"></p>
+      <div class="ledger-wrap"><table class="ledger" id="crystals"></table></div>
+      <p class="note">Prices, current effects and next effects come from the game. Each enchant doubles that slot's effect; this is not a prediction of total party damage. At the same price, relics win ties because they help all three stats. Spending re-reads and re-ranks after every enchant, stays within your budget and stops after 40 enchants or any unconfirmed result. It never buys crystals, unlocks tiers or spends other currencies. Enchants stay on the slot when you get better gear.</p>
+    </div>
+  </section>
+
   <details class="more">
     <summary>Garage · owned machines</summary>
     <div class="garage" id="garage"></div>
@@ -468,6 +496,11 @@ table.ledger.adv{min-width:700px}
 </dialog>
 <div class="toast" id="toast" role="status"></div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
+<dialog id="crystal-confirm" aria-labelledby="crystal-confirm-title">
+  <div class="dlg-h"><h2 id="crystal-confirm-title">Spend Void Crystals?</h2></div>
+  <div class="panel-b"><p id="crystal-confirm-text"></p><p class="note">These are real upgrades in your game and cannot be undone. You can stop further enchants while it runs.</p></div>
+  <div class="dlg-f"><button class="btn" id="crystal-cancel" type="button">Cancel</button><button class="btn primary" id="crystal-confirm-spend" type="button">Confirm spending</button></div>
+</dialog>
 
 <script>
 // Zdbrus War Machine Planner: math engine
@@ -977,7 +1010,7 @@ async function applyToGame(squad = S.squad, crews = S.crews, automatic = false) 
 // Poll quickly while the bot is applying, so progress shows as it happens.
 function fastPoll() {
   let n = 0;
-  const t = setInterval(async () => { await poll(); n++; if (n > 150 || (!applying && !spending && !(G && G.apply && G.apply.busy) && !(G && G.spend && G.spend.busy))) clearInterval(t); }, 1200);
+  const t = setInterval(async () => { await poll(); n++; if (n > 150 || (!applying && !spending && !crystalSending && !G?.crystals?.busy && !(G && G.apply && G.apply.busy) && !(G && G.spend && G.spend.busy))) clearInterval(t); }, 1200);
 }
 async function poll() {
   try {
@@ -1013,6 +1046,7 @@ function runAuto() {
 }
 let checkingAutoApply = false;
 async function checkScheduledAutoApply() {
+  if (G?.crystals?.busy || crystalSending) return;
   if (!LIVE || !G || !autoApply.enabled || checkingAutoApply || Date.now() < autoApply.nextAt) return;
   if (applying || spending || G.apply?.busy || G.spend?.busy) {
     autoApply.status = 'Waiting for the current game action to finish.';
@@ -1213,6 +1247,8 @@ function rarityTip(wm) {
 }
 
 const TIPS = {
+  crystals: { title: 'Void Crystals: hero gear', body: 'Choose damage, health, armor or gold. The advisor uses real enchant prices and ranks the cheapest matching effect first across every unlocked hero, including the bench. A relic wins equal-price ties because it also helps the other hero stats.',
+    foot: 'All heroes excludes personal tier 1 gear. Choose a hero to include it. Spend for me requires a budget and confirmation; it never spends automatically in the background.' },
   source: () => ({ title: 'Where these numbers come from', body: ({
     live: 'Live from your game. While the bot runs, this page re-reads your machines, heroes, jewels, parts and currencies every few seconds.',
     connecting: 'Looking for Zdbrus Bot on this computer…',
@@ -1464,7 +1500,7 @@ function renderLive() {
     offline: 'Game closed or bot off', live: 'Live from game' }[liveState];
   chip.replaceChildren(el('span', { class: 'dot' }), txt);
   $('#use-game').hidden = !(LIVE && G);
-  const ap = G && G.apply; const busy = !!(ap && ap.busy) || applying;
+  const ap = G && G.apply; const busy = !!(ap && ap.busy) || applying || !!G?.crystals?.busy || crystalSending;
   $('#apply').hidden = !(LIVE && G); $('#apply').disabled = busy;
   $('#slot-wrap').hidden = !(LIVE && G); $('#slot').value = String(slotFor(S.mode)); $('#slot').disabled = busy;
   $('#apply').textContent = busy ? 'Applying…' : 'Apply to game';
@@ -1569,7 +1605,7 @@ function renderShards(total) {
     bar.append(el('b', {}, 'Spend for me: '), sp.status || 'Sending the plan to the bot…');
     sbox.append(bar);
   }
-  $('#spend').disabled = !!(sp && sp.busy) || spending;
+  $('#spend').disabled = !!(sp && sp.busy) || spending || !!G?.crystals?.busy || crystalSending;
   const t = $('#shards'); if (!t) return;
   const rows = shardOptions(total).slice(0, 10);
   $('#shard-sub').textContent = (S.mode === 'arena' ? 'Arena power' : 'Battle power') + ' · top ' + rows.length;
@@ -1582,6 +1618,95 @@ function renderShards(total) {
       el('td', {}, tipped(el('span', { class: 'has-tip', tabindex: '0' }, (r.lv ? '' : '~') + r.cost.toLocaleString()), `sh-${r.hid}-${r.type}`, () => shardTip(r))),
       el('td', {}, '+' + fmt(r.gain)),
       el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per))))));
+}
+
+const CRYSTAL_SLOTS = ['Weapon', 'Chest', 'Boots', 'Wrist', 'Shoulder', 'Belt', 'Ring', 'Relic'];
+let crystalSending = false, crystalPending = null, crystalNotice = '', crystalEpoch = '', crystalHeroKey = '';
+const wholeCrystals = n => Number.isSafeInteger(n) && n >= 0;
+function crystalOptions(items, goal, target) {
+  if (!['damage', 'health', 'armor', 'gold'].includes(goal) || !Number.isInteger(target) || target < -1) return [];
+  const slots = { damage: [0, 3, 7], health: [1, 4, 7], armor: [2, 5, 7], gold: [6] }[goal];
+  return (items || []).filter(i => Number.isInteger(i.hero) && i.hero >= 0 && Number.isInteger(i.slot) &&
+    Number.isInteger(i.level) && i.level >= 0 && wholeCrystals(i.cost) && i.cost > 0 &&
+    slots.includes(i.slot) && (i.slot >= 3 || i.hero === target))
+    .sort((a, b) => a.cost - b.cost || Number(b.slot === 7) - Number(a.slot === 7) ||
+      Number(b.slot >= 3) - Number(a.slot >= 3) || a.hero - b.hero || a.slot - b.slot);
+}
+const crystalLive = () => LIVE && G?.crystals?.available && liveState === 'live' && Date.now() - liveAt < 10000;
+const crystalGoal = () => $('#crystal-goal').value;
+const crystalTarget = () => Number($('#crystal-target').value);
+function crystalCanSpend() {
+  const budget = Number($('#crystal-budget').value), c = G?.crystals;
+  return crystalLive() && !crystalSending && !c.busy && !G?.apply?.busy && !G?.spend?.busy && !applying && !spending &&
+    wholeCrystals(budget) && budget > 0 && budget <= c.balance &&
+    crystalOptions(c.items, crystalGoal(), crystalTarget()).some(i => i.cost <= budget);
+}
+function renderCrystals() {
+  const c = G?.crystals, busy = !!c?.busy || crystalSending;
+  if (c && c.epoch !== crystalEpoch) {
+    crystalEpoch = c.epoch; $('#crystal-budget').value = '0';
+    crystalPending = null; $('#crystal-confirm').close(); crystalNotice = '';
+  }
+  const heroes = (G?.heroes || []).filter(h => h.owned);
+  const key = JSON.stringify(heroes.map(h => [h.id, h.code]));
+  if (key !== crystalHeroKey) {
+    crystalHeroKey = key;
+    const select = $('#crystal-target'), previous = select.value;
+    select.replaceChildren(el('option', { value: '-1' }, 'All heroes'),
+      ...heroes.map(h => el('option', { value: String(h.id) }, h.code)));
+    select.value = heroes.some(h => String(h.id) === previous) ? previous : '-1';
+  }
+  $('#crystal-goal').disabled = busy;
+  $('#crystal-target').disabled = busy || crystalGoal() === 'gold';
+  $('#crystal-budget').disabled = busy || !crystalLive();
+  $('#crystal-spend').disabled = !crystalCanSpend();
+  $('#crystal-stop').hidden = !c?.busy;
+  $('#crystal-stop').disabled = crystalSending || liveState !== 'live';
+  $('#crystal-balance').textContent = c?.available ? n0(c.balance) + ' crystals available' : 'Waiting for live gear';
+  $('#crystal-status').textContent = crystalNotice || c?.status || (!LIVE
+    ? 'Open F4 in the game to import your gear. This example roster does not include live crystal upgrades.'
+    : !c ? 'Waiting for gear data. If this stays empty, restart the game to load the latest bot.'
+    : !c.available ? c.error || 'Gear is not loaded yet.'
+    : liveState !== 'live' ? 'Disconnected. Spending is disabled until the game reconnects.'
+    : 'Choose a goal and a budget. Nothing is spent until you confirm.');
+  const rows = crystalOptions(c?.available ? c.items : [], crystalGoal(), crystalTarget());
+  const plain = text => String(text || '').replace(/<[^>]*>/g, '');
+  const table = $('#crystals');
+  table.replaceChildren(el('thead', {}, el('tr', {},
+    ...['Hero', 'Gear', 'Helps', 'Level', 'Crystals', 'Current effect', 'Next effect'].map(t => el('th', {}, t)))));
+  table.append(el('tbody', {}, ...(rows.length ? rows.map((r, index) => el('tr', {},
+    el('td', {}, r.name), el('td', {}, CRYSTAL_SLOTS[r.slot]),
+    el('td', {}, r.slot === 6 ? 'Gold earnings' : r.slot >= 3 ? 'All heroes' : r.name + ' only'),
+    el('td', {}, r.level + ' → ' + (r.level + 1)), el('td', { class: index === 0 ? 'best' : '' }, n0(r.cost)),
+    el('td', {}, plain(r.current)), el('td', {}, plain(r.next))))
+    : [el('tr', {}, el('td', { colspan: '7' }, c?.available
+      ? 'No unlocked, non-maxed gear matches this goal. On a new account, choose an individual hero for tier 1 gear.'
+      : 'Live gear data is needed before recommendations can be shown.'))])));
+}
+function prepareCrystals() {
+  if (!crystalCanSpend()) return;
+  crystalPending = { action: 'start', epoch: G.crystals.epoch, requestId: crypto.randomUUID(),
+    goal: crystalGoal(), target: crystalTarget(), budget: Number($('#crystal-budget').value) };
+  const target = $('#crystal-target').selectedOptions[0].textContent;
+  $('#crystal-confirm-text').textContent = `Spend up to ${n0(crystalPending.budget)} Void Crystals on ${crystalGoal() === 'gold' ? 'gold earnings' : crystalGoal() + ' for ' + target}? The bot chooses the cheapest matching enchant, checks the result, then re-ranks. Maximum 40 enchants.`;
+  $('#crystal-confirm').showModal();
+}
+async function sendCrystals(request) {
+  if (crystalSending || !request) return;
+  if (!crystalLive() || request.epoch !== G.crystals.epoch) { toast('The game session changed or disconnected. Refresh first.'); return; }
+  crystalSending = true; crystalNotice = 'Sending your request...'; renderCrystals();
+  try {
+    const response = await fetch('/crystals', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Zdbrus-Action': 'crystals' },
+      body: JSON.stringify(request), cache: 'no-store' });
+    if (!response.ok) throw new Error('The bot rejected the request (' + response.status + ').');
+    const reply = await response.json();
+    crystalNotice = reply.result === 'Spending' ? '' : reply.result;
+    $('#crystal-budget').value = '0';
+    toast(reply.result === 'Spending' ? 'Crystal spending started. Progress appears below.' : reply.result);
+  } catch (e) {
+    crystalNotice = 'No confirmed response. Spending may have started; refresh and check its status before trying again. ' + e.message;
+    $('#crystal-budget').value = '0';
+  } finally { crystalSending = false; renderCrystals(); fastPoll(); }
 }
 
 // Squad machines first, then the rest; within each group, most power per upgrade (or per 100 blueprints) first.
@@ -1806,6 +1931,7 @@ function render() {
   const total = all.reduce((a, st) => a + scoreOf(st), 0);
   renderUpgradeAdvisor();
   renderShards(total);
+  renderCrystals();
   countTo($('#pow'), 'squad', total);
   $('#pow-label').textContent = S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power';
   $('#pow-sub').textContent = S.mode === 'arena' ? 'Arena stats, log-scaled' : 'vs ' + cap1(S.difficulty) + ' #' + S.mission;
@@ -2024,6 +2150,15 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 $('#auto').onclick = runAuto;
 $('#apply').onclick = () => applyToGame();
 $('#spend').onclick = spendForMe;
+$('#crystal-goal').onchange = renderCrystals;
+$('#crystal-target').onchange = renderCrystals;
+$('#crystal-budget').oninput = () => { $('#crystal-spend').disabled = !crystalCanSpend(); };
+$('#crystal-spend').onclick = prepareCrystals;
+$('#crystal-cancel').onclick = () => { crystalPending = null; $('#crystal-confirm').close(); };
+$('#crystal-confirm-spend').onclick = () => {
+  const request = crystalPending; crystalPending = null; $('#crystal-confirm').close(); sendCrystals(request);
+};
+$('#crystal-stop').onclick = () => sendCrystals({ action: 'stop', epoch: G.crystals.epoch });
 for (const [btn, key] of [['#lvl-more', 'lvl'], ['#bp-more', 'bp']])
   $(btn).onclick = () => { advShow[key] = !advShow[key]; renderUpgradeAdvisor(); Tip.refresh(); };
 $('#auto-schedule').onchange = (e) => {

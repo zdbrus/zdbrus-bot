@@ -418,6 +418,7 @@ public static class AutoUpgrade
     /// </summary>
     private static string HoldReason()
     {
+        if (Planner.VoidCrystalSpender.Busy) return "the planner is spending Void Crystals";
         if (GameTutorial.ShouldHold) return "the game's tutorial is running";
         if (GameUnlocks.Check(GameFeature.Upgrades) == false) return "the game has not unlocked upgrades yet";
         return null;

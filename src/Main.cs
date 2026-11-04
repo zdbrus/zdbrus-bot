@@ -77,6 +77,7 @@ public class Main : MelonMod
 
     private void SuspendAutomation()
     {
+        Planner.VoidCrystalSpender.Cancel();
         if (_isGameReady) _resumeBotAfterScene = BotManager.IsRunning;
         _isGameReady = false;
         BotManager.Stop();
