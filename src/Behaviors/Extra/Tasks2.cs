@@ -268,62 +268,6 @@ internal static class Cooldown
     }
 }
 
-public class MeteoriteResearchTask : BotTask
-{
-    public override GameFeature RequiredFeature => GameFeature.Library;
-
-    protected override string NotificationPath => P.Notifications + "/MeteoriteResearch";
-    protected override bool UseScheduledTime => true;
-
-    private const string L = P.Menus + "/Library";
-    private const string M = L + "/submenus/meteoriteResearch";
-    private const string Meteorites = L + "/counters/currencyInteraction (Meteorite)/quantity";
-    private MelonPreferences_Entry<int> _keep;
-    private MelonPreferences_Entry<string> _priority;
-
-    protected override void OnConfigure(MelonPreferences_Category c)
-    {
-        _keep = c.CreateEntry("keep_meteorites", 0, "Meteorites To Keep", "Meteorites to leave unspent.");
-        _priority = c.CreateEntry("priority",
-            "Attribute damage,All main attributes,Raining gold,Hero level up cost,Attribute health,Attribute armor,Firestone finder,Powerless boss,Powerless enemy",
-            "Priority", "Meteorite research upgrades are filled in this order; lower tiers wait until higher tiers are maxed.");
-    }
-
-    public override IEnumerator Execute()
-    {
-        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
-        NextRunTime = DateTime.Now.AddHours(4);
-        yield return Ui.OpenTownBuilding("library");
-        yield return Ui.WaitFor(L);
-        yield return Ui.Click(L + "/submenuButtons/meteoriteResearch", 1.5f);
-        if (!Ui.Visible(M)) yield break;
-
-        var tree = Ui.VisibleChildren(M + "/submenus").FirstOrDefault();
-        if (tree == null) yield break;
-        var nodes = new List<Transform>();
-        for (var i = 0; i < tree.childCount; i++)
-        {
-            var c = tree.GetChild(i);
-            if (c.name.StartsWith("research") && !c.name.StartsWith("researchPath") && c.gameObject.activeInHierarchy)
-                nodes.Add(c);
-        }
-
-        yield return NodeBuyer.Run(nodes, new NodeBuyer.Layout
-        {
-            Preview = P.Popups + "/MeteoriteResearchPreview/bg",
-            Name = "researchName", Level = "level", Buy = "unlocked/researchButton",
-            Cost = "unlocked/researchButton/cost", Close = "closeButton"
-        }, () => Ui.NumberAt(Meteorites), _priority.Value, _keep.Value, scope: "meteorite/" + tree.name,
-            retrySoon: () =>
-            {
-                NextRunTime = DateTime.Now.AddMinutes(2);
-                BubbleQuietUntil = NextRunTime;
-            });
-
-        yield return Ui.Click(L + "/closeButton");
-    }
-}
-
 public class ForbiddenKnowledgeTask : BotTask
 {
     public override GameFeature RequiredFeature => GameFeature.Guilds;

@@ -153,8 +153,14 @@ Blessings, Exotic Merchant and selected War Machines use their priority order; E
 only selected items. A higher available tier that cannot yet be afforded holds its currency instead
 of falling through to a lower tier. Level-locked Exotic upgrades are skipped until unlocked.
 The bot remembers discovered upgrade names between launches, not prices or completion state; some
-previously unknown preview-based upgrades must still be inspected once. Talents instead read names,
+previously unknown preview-based upgrades must still be inspected once. Talents and Meteorite Research read names,
 levels and unlock state directly from the live tree, then verify only the selected preview before spending.
+
+In **F1 > Meteorite Research**, **Meteorites To Keep** is the minimum left after a purchase, not a
+starting-balance target. Research buys one level at a time using the game's actual balance and cost,
+checks the latest reserve immediately before each purchase, and waits for both the level and exact
+debit before buying again. It stops rather than guessing from rounded or unreadable numbers.
+Raising the reserve applies to the next purchase; one already sent to the game may still finish.
 
 Hero/guardian gold upgrades and guardian holy-damage upgrades can keep growing without a known
 cap. For each of those categories, choose **Balance** to try every selected target in order, or

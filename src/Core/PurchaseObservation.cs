@@ -8,6 +8,10 @@ internal static class PurchaseObservation
 {
     private static readonly Regex FirstNumber = new(@"\d+", RegexOptions.CultureInvariant);
 
+    public static bool CanAffordWithReserve(double balance, double cost, double reserve) =>
+        double.IsFinite(balance) && double.IsFinite(cost) && double.IsFinite(reserve) &&
+        balance >= 0 && cost > 0 && reserve >= 0 && balance - cost >= reserve;
+
     public static bool IsMaxed(string level)
     {
         var match = Regex.Match(level ?? "", @"(\d+)\s*/\s*(\d+)");

@@ -881,7 +881,7 @@ namespace Il2Cpp
         public int levelCap = 25;
         public bool unlocked = true;
     }
-    public enum CurrencyCode { NoblesToken, PharaohsToken, Gem, VoidCrystal }
+    public enum CurrencyCode { NoblesToken, PharaohsToken, Gem, VoidCrystal, Meteorite }
     public struct PlayTokenSelection
     {
         public CurrencyCode SelectedCurrency;
@@ -891,6 +891,7 @@ namespace Il2Cpp
     }
     public class MenuLoader
     {
+        public MeteoriteResearchPreviewPopup MeteoriteResearchPreviewPopup = new();
         public HallOfHeroesMech HallOfHeroesMech = new();
         public AwakeningMech AwakeningMech = new();
         public ScarabGameMech ScarabGameMech = new();

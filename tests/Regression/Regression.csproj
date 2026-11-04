@@ -44,6 +44,7 @@
     <Compile Include="..\..\src\Behaviors\Extra\HolyUpgradeBuyer.cs" Link="HolyUpgradeBuyer.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\TemplePrestigeTask.cs" Link="TemplePrestigeTask.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\TalentsTask.cs" Link="TalentsTask.cs" />
+    <Compile Include="..\..\src\Behaviors\Extra\MeteoriteResearchTask.cs" Link="MeteoriteResearchTask.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\AwakenHeroesTask.cs" Link="AwakenHeroesTask.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\ScarabAutoPlay.cs" Link="ScarabAutoPlay.cs" />
     <Compile Include="..\..\src\Behaviors\Extra\NativeAutoPlay.cs" Link="NativeAutoPlay.cs" />

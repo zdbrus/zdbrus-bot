@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.57 (2026-11-03)
+- Meteorite Research now protects **Meteorites To Keep** using the game's actual balance and cost, not rounded screen numbers. It buys at x1 and checks the latest reserve again at the purchase click, so changes to the setting take effect before the next purchase.
+- Research waits for both the level increase and the exact meteorite debit before buying again. Changed selections, prices or unreadable values stop spending; an unaffordable higher priority still blocks cheaper lower priorities.
+- Meteorite Research reads names and unlocks directly from the live tree instead of relying on remembered previews. Your existing reserve and priority settings are kept. A purchase already sent to the game can still finish if you raise the reserve afterward.
+
 ## 0.7.56 (2026-11-03)
 - New **Void Crystal advisor** in F4: choose hero damage, health, armor or gold, then see the cheapest matching gear enchants across your whole roster. Global gear counts even on benched heroes. Pick one hero to include their personal weapon, chest and boots. These upgrades help heroes, not war machines.
 - Prices, current effects and next effects are read from the game. Locked tiers, missing gear and maxed enchants are excluded. Equal-price ties favor relics because they help all three hero stats.

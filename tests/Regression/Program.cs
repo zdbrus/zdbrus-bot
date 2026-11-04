@@ -105,6 +105,11 @@ internal static class Program
             Test("Void Crystal spending re-ranks real gear and enforces caps and budgets", VoidCrystalTests.Spending);
             Test("Void Crystal spending stops after stale prices, failed receipts, timeouts and cancellation", VoidCrystalTests.SpendingFailures);
             Test("Void Crystal requests reject replays, changed sessions, tutorials and overlapping actions", VoidCrystalTests.RequestSafety);
+            Test("meteorite research preserves the exact reserve instead of trusting rounded UI values", MeteoriteTests.Boundaries);
+            Test("meteorite research rechecks live reserve, balance, price and selection at the click", MeteoriteTests.LiveGuard);
+            Test("meteorite research waits for both the level and exact debit before buying again", MeteoriteTests.Receipts);
+            Test("meteorite research forces single-level purchases and preserves priorities", MeteoriteTests.QuantityAndPriorities);
+            Test("meteorite research stops on unreadable native state", MeteoriteTests.Unreadable);
         }
         finally
         {

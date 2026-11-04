@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.56 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.57 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -56,7 +56,11 @@ Numbered priority chips keep your chosen order: tap to remove an item, then tap 
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
 Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,
 then remembered between launches. Prices and completion state are not persisted.
-Talents read the live tree directly and open only eligible priority previews, not every talent popup.
+Talents and Meteorite Research read the live tree directly and open only eligible priority previews.
+Meteorite Research's "Meteorites To Keep" is the minimum left after each purchase, not a target to
+reach before spending. It buys at x1 using the game's actual balance and cost, rechecks the latest
+reserve before each purchase, and waits for both the level and exact debit before buying again.
+Changed or unreadable values stop spending. Raising the reserve cannot undo an already-sent purchase.
 For hero gold and guardian holy upgrades, Balance tries all selected targets in order; Focus first
 saves for the first available target and can leave lower priorities waiting indefinitely.
 When War Machine Blueprints is set to All, separate priority chips order damage, health and armor.
@@ -73,7 +77,7 @@ may still finish. Each request stops after 40 enchants or an uncertain result. I
 unlocks tiers or spends other currencies. Void Crystals improve heroes, not war machines.
 
 WAR MACHINE TIPS
-Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.56/WAR-MACHINES.md
+Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.57/WAR-MACHINES.md
 - Only jewel chests (Wooden, Iron, Golden, Diamond and up) give war machine parts and the conduits that
   unlock new machines. Gear chests (Common to Mythic) don't.
 - You can't pick which machine unlocks next. Machines 1-2 are single-target attackers, 3 is a tank,
