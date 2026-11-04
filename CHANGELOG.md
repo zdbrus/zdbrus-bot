@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.54 (2026-11-03)
+- War Machine Planner: **Mission needs** now comes straight from the game. Firestone patch 9.1.4 raised the recommended power on war machine campaign missions, and the planner's old estimate ran low, so it could say you were ready when you weren't. The ring, the verdict, "Power covers up to" and the power curve all use the game's numbers once the planner is linked. Until then it shows the old estimate with a note saying so.
+- The mission box and the curve follow however many campaign missions the game has, instead of assuming 90.
+- Checked the bot against patch 9.1.4: it builds against the updated game and loads cleanly. Campaign fighting doesn't use recommended power, so it's unaffected.
+
 ## 0.7.53 (2026-11-03)
 - War Machine Planner: dragging a hero from the bench into a machine works again with live game data. Hero IDs from the game are numbers, and the drop compared them as text, so heroes could be moved to the bench but not back. Saved crews with mixed IDs are repaired on load, and the live refresh waits while you're dragging.
 - New **War machine tier list** panel ranks every machine S to C for long-term investment, grouped by damage, tank and healer, with a goal squad (Cloudfist, Talos, Thunderclap, Goliath, Hunter) to work toward. Each role says the best machine you have and what to hope for. Tiers come from a Japanese player wiki (Sept 2025), with 2024 arena simulations from a Steam guide as a second opinion in each tooltip.

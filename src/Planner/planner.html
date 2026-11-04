@@ -896,7 +896,7 @@ function applyGame(g) {
     return { id: h.id, name: h.code, spec: SPEC_OF[h.spec] || 'damage', jewels: o ? structuredClone(o.jewels) : jewels, gameJewels: jewels, game: h.game, edited: !!o };
   });
   S = { ...S, engineerLevel: g.engineerLevel, crewSlots: g.crewSlots, artifacts: [], inscriptionBonus: { damage: 0, health: 0, armor: 0 },
-    currencies: g.currencies || null, machines, heroes, mode, difficulty: diff, mission };
+    currencies: g.currencies || null, campaignNeed: (g.campaign && g.campaign.need) || S.campaignNeed || null, machines, heroes, mode, difficulty: diff, mission };
   // The game's pre-crew numbers are the base; remember what our formula says for the unedited machine so edits scale it.
   const acct0 = account();
   for (const t of machines.filter(m => m.owned && m.game)) {
@@ -998,6 +998,13 @@ const wmById = (id) => S.machines.find(m => m.id === id);
 const cap = () => S.crewSlots || E.maxCrew(S.engineerLevel);
 const statsFor = (id, extra) => E.machineStats(wmById(id), account(), [...(S.crews[id] || []).map(heroById), ...(extra ? [extra] : [])]);
 const scoreOf = (st) => S.mode === 'arena' ? st.arenaPower : st.battlePower;
+// Mission requirements come from the game once it has been linked (patch 9.1.4 changed them); the formula is only a fallback.
+const gameNeed = (diff) => { const a = S.campaignNeed && S.campaignNeed[diff]; return Array.isArray(a) && a.length ? a : null; };
+const missionCount = () => (gameNeed(S.difficulty) || []).length || 90;
+const needFor = (diff, m) => { const a = gameNeed(diff); const v = a && a[m - 1]; return v > 0 ? v : E.requiredPower(diff, m); };
+const needNote = () => gameNeed(S.difficulty)
+  ? 'Mission needs comes straight from your game: the same recommended power it shows on that mission. Treat it as a guide, not a promise of a win.'
+  : 'This is an estimate until the planner has been linked to your game once. Game patch 9.1.4 raised the real numbers, so the estimate can run low.';
 
 function runAuto() {
   const r = E.optimize(account(), { mode: S.mode, requireTank: true });
@@ -1084,12 +1091,12 @@ function countTo(node, key, value) {
 let lastCurveKey = '';
 function drawCurve(bp) {
   const svg = $('#curve'); const W = 640, H = 170, L = 64, R = 10, T = 10, B = 22;
-  const diff = S.difficulty, pts = [];
-  for (let m = 1; m <= 90; m++) pts.push([m, Math.log10(Math.max(1, E.requiredPower(diff, m)))]);
+  const diff = S.difficulty, pts = [], N = missionCount();
+  for (let m = 1; m <= N; m++) pts.push([m, Math.log10(Math.max(1, needFor(diff, m)))]);
   const ys = pts.map(p => p[1]).concat(Math.log10(Math.max(1, bp)));
   const y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
-  const X = m => L + (m - 1) / 89 * (W - L - R), Y = v => T + (1 - (v - y0) / Math.max(1, y1 - y0)) * (H - T - B);
-  const key = diff + '|' + y0 + '|' + y1;
+  const X = m => L + (m - 1) / Math.max(1, N - 1) * (W - L - R), Y = v => T + (1 - (v - y0) / Math.max(1, y1 - y0)) * (H - T - B);
+  const key = diff + '|' + y0 + '|' + y1 + '|' + N;
   svg.replaceChildren();
   const defs = sv('defs'); const g = sv('linearGradient', { id: 'needFill', x1: 0, y1: 0, x2: 0, y2: 1 });
   g.append(sv('stop', { offset: '0%', 'stop-color': 'rgba(255,138,61,.45)' }), sv('stop', { offset: '100%', 'stop-color': 'rgba(255,138,61,0)' }));
@@ -1098,16 +1105,16 @@ function drawCurve(bp) {
     svg.append(sv('line', { class: 'axis', x1: L, x2: W - R, y1: Y(v), y2: Y(v), 'stroke-dasharray': '2 4' }));
     const t = sv('text', { x: L - 6, y: Y(v) + 3, 'text-anchor': 'end' }); t.textContent = fmt(Math.pow(10, v)); svg.append(t);
   }
-  for (const m of [1, 30, 60, 90]) { const t = sv('text', { x: X(m), y: H - 6, 'text-anchor': 'middle' }); t.textContent = '#' + m; svg.append(t); }
+  for (const m of [...new Set([1, Math.round(N / 3), Math.round(N * 2 / 3), N])]) { const t = sv('text', { x: X(m), y: H - 6, 'text-anchor': 'middle' }); t.textContent = '#' + m; svg.append(t); }
   const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ');
-  const area = sv('path', { class: 'need' + (MOTION && key !== lastCurveKey ? ' draw' : ''), d: d + ` L${X(90)} ${H - B} L${X(1)} ${H - B} Z` });
+  const area = sv('path', { class: 'need' + (MOTION && key !== lastCurveKey ? ' draw' : ''), d: d + ` L${X(N)} ${H - B} L${X(1)} ${H - B} Z` });
   svg.append(area);
   const yy = Y(Math.log10(Math.max(1, bp)));
   svg.append(sv('line', { class: 'you', x1: L, x2: W - R, y1: yy, y2: yy }));
   const lbl = sv('text', { class: 'you-lbl', x: W - R - 4, y: yy - 6, 'text-anchor': 'end' }); lbl.textContent = 'YOUR SQUAD ' + fmt(bp); svg.append(lbl);
-  let best = 0; for (let m = 1; m <= 90; m++) if (E.requiredPower(diff, m) <= bp) best = m;
+  let best = 0; for (let m = 1; m <= N; m++) if (needFor(diff, m) <= bp) best = m;
   if (best) svg.append(sv('circle', { class: 'mark', cx: X(best), cy: Y(pts[best - 1][1]), r: 4 }));
-  const tgt = Math.min(90, Math.max(1, S.mission));
+  const tgt = Math.min(N, Math.max(1, S.mission));
   svg.append(sv('line', { x1: X(tgt), x2: X(tgt), y1: T, y2: H - B, stroke: 'var(--brass)', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: .7 }));
   lastCurveKey = key;
 }
@@ -1222,17 +1229,17 @@ const TIPS = {
   'auto-schedule': { title: 'Auto-apply', body: 'While this page and the game are both open, the planner rebuilds this mode\'s squad every few hours and applies it if the new squad is stronger by at least the % you set.',
     howTitle: 'It skips a check when', how: ['The bot is busy applying a squad or spending shards', 'You have edits on this page, or artifacts and inscriptions typed in by hand', 'That squad number is empty in the game', 'The new squad isn\'t stronger by your %'] },
   gauge: () => {
-    const bp = S.squad.reduce((a, id) => a + statsFor(id).battlePower, 0), need = E.requiredPower(S.difficulty, S.mission);
+    const bp = S.squad.reduce((a, id) => a + statsFor(id).battlePower, 0), need = needFor(S.difficulty, S.mission);
     return { title: S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power',
       body: `The big number is your squad's ${S.mode === 'arena' ? 'arena' : 'battle'} power added up. The ring compares battle power with what ${cap1(S.difficulty)} #${S.mission} needs, and turns blue once you have enough.`,
       facts: [['Your battle power', fmt(bp)], ['Mission needs', fmt(need)], bp >= need ? ['Spare', fmt(bp - need), 'ok'] : ['Short', fmt(need - bp), 'short']],
-      foot: 'The requirement is about 80% of the enemy\'s power. Treat it as a guide, not a promise of a win.' };
+      foot: needNote() };
   },
-  curve: { title: 'Campaign power curve', body: 'How much power each mission in the chosen difficulty needs, from #1 to #90.', howTitle: 'How to read it',
+  curve: () => ({ title: 'Campaign power curve', body: `How much power each mission in the chosen difficulty needs, from #1 to #${missionCount()}.`, howTitle: 'How to read it',
     how: ['Orange area: power each mission needs', 'Blue dashed line: your squad\'s battle power', 'Blue dot: the furthest mission your power covers', 'Thin orange dashes: the mission picked in Campaign target'],
-    foot: 'The height uses a log scale: each grid line up is at least 10 times more power.' },
-  target: { title: 'Campaign target', body: 'Pick a difficulty and mission number. The ring, the verdict and the curve all compare your squad with it. The line under the verdict shows the hardest mission your power reaches.',
-    foot: 'Requirements are about 80% of the enemy\'s power, so treat them as a guide.' },
+    foot: 'The height uses a log scale: each grid line up is at least 10 times more power.' }),
+  target: () => ({ title: 'Campaign target', body: 'Pick a difficulty and mission number. The ring, the verdict and the curve all compare your squad with it. The line under the verdict shows the hardest mission your power reaches.',
+    foot: needNote() }),
   engineer: () => ({ title: 'Engineer', body: 'The Engineer makes every war machine 5% stronger per level, stacking. It also unlocks crew seats: 4 to start, 5 at level 30 and 6 at level 60.',
     facts: [['Level', String(S.engineerLevel)], ['Bonus', '×' + fmt(1 + E.engineerBonus(S.engineerLevel))], ['Crew seats', String(cap())]] }),
   crewcap: () => ({ title: 'Crew seats', body: `Each machine carries up to ${cap()} heroes. ` +
@@ -1790,6 +1797,9 @@ function renderUpgradeAdvisor() {
 }
 
 function render() {
+  const mc = missionCount();
+  $('#mission').max = mc;
+  if (S.mission > mc) { S.mission = mc; $('#mission').value = mc; }
   renderLive();
   const acct = account();
   const all = S.squad.map(id => statsFor(id));
@@ -1807,7 +1817,7 @@ function render() {
 
   // campaign verdict (battle power vs requirement)
   const bp = all.reduce((a, st) => a + st.battlePower, 0);
-  const need = E.requiredPower(S.difficulty, S.mission);
+  const need = needFor(S.difficulty, S.mission);
   $('#req').textContent = `${cap1(S.difficulty)} #${S.mission} needs ${fmt(need)}`;
   ring('gauge', need > 0 ? bp / need : 0, bp >= need ? 'c' : 'o', $('#gauge'));
   drawCurve(bp);
@@ -1816,7 +1826,7 @@ function render() {
   else { v.append(svgUse('g-bad', ''), `Short ${fmt(need - bp)}`); v.style.color = 'var(--bad)'; }
   v.querySelector('svg').setAttribute('width', 20); v.querySelector('svg').setAttribute('height', 20);
   let bestM = 0;
-  for (let m = 1; m <= 90; m++) if (E.requiredPower(S.difficulty, m) <= bp) bestM = m;
+  for (let m = 1; m <= mc; m++) if (needFor(S.difficulty, m) <= bp) bestM = m;
   $('#best').textContent = bestM ? `Power covers up to ${cap1(S.difficulty)} #${bestM}` : `Below ${cap1(S.difficulty)} #1`;
 
   // bays
@@ -2045,7 +2055,7 @@ $('#m-arena').onclick = () => { S.mode = 'arena'; save(); render(); };
 $('#eng').onchange = (e) => { S.engineerLevel = Math.max(1, parseInt(e.target.value) || 1); for (const k of Object.keys(S.crews)) S.crews[k] = S.crews[k].slice(0, cap()); save(); render(); };
 const ds = $('#diff'); ds.append(...Object.keys(E.DIFFICULTY).map(d => el('option', { value: d, selected: d === S.difficulty }, cap1(d))));
 ds.onchange = () => { S.difficulty = ds.value; save(); render(); };
-const mi = $('#mission'); mi.value = S.mission; mi.onchange = () => { S.mission = Math.max(1, Math.min(90, parseInt(mi.value) || 1)); mi.value = S.mission; save(); render(); };
+const mi = $('#mission'); mi.value = S.mission; mi.onchange = () => { S.mission = Math.max(1, Math.min(missionCount(), parseInt(mi.value) || 1)); mi.value = S.mission; save(); render(); };
 $('#q').oninput = render;
 document.addEventListener('click', () => { if (picked) { picked = null; render(); } });
 render();

@@ -86,6 +86,7 @@ public static class RosterExport
             w.WriteString("status", JewelSpender.Status ?? "");
             w.WriteEndObject();
             WriteCurrencies(w, loader);
+            WriteCampaign(w, loader);
 
             // ---- war machines (owned) ----
             w.WriteStartArray("machines");
@@ -342,6 +343,74 @@ public static class RosterExport
         }
         catch (Exception) { /* currencies not loaded yet: the planner shows needs without balances */ }
         w.WriteEndObject();
+    }
+
+    private static Dictionary<string, double[]> _campaignNeed;
+    private static float _campaignAt = float.MinValue;
+    private static bool _campaignLogged;
+
+    /// <summary>
+    ///     The power the game recommends for every war machine campaign mission, by difficulty, in mission order.
+    ///     Read from the game's own method because patch 9.1.4 changed how it is worked out. The numbers only change
+    ///     with game data, so they are re-read every 10 minutes rather than every snapshot.
+    /// </summary>
+    private static void WriteCampaign(Utf8JsonWriter w, HandlerLoader loader)
+    {
+        if (_campaignNeed == null || Time.unscaledTime - _campaignAt > 600f)
+            try
+            {
+                var need = ReadCampaignNeed(loader);
+                if (need != null) { _campaignNeed = need; _campaignAt = Time.unscaledTime; }
+            }
+            catch (Exception) { /* campaign not loaded yet: the planner falls back to its estimate */ }
+        if (_campaignNeed == null) return;
+
+        w.WriteStartObject("campaign");
+        w.WriteStartObject("need");
+        foreach (var kv in _campaignNeed)
+        {
+            w.WriteStartArray(kv.Key);
+            foreach (var v in kv.Value) w.WriteNumberValue(v);
+            w.WriteEndArray();
+        }
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static Dictionary<string, double[]> ReadCampaignNeed(HandlerLoader loader)
+    {
+        var h = loader.wFCampaignMissionHandler;
+        var missions = h?.missionsDict;
+        if (h == null || !h.missionsHasLoaded || missions == null || missions.Count == 0) return null;
+        var order = new List<int>();
+        foreach (var kv in missions)
+            if (kv.Value != null) order.Add(kv.Value.missionIndex);
+        order.Sort();
+        for (var i = 1; i < order.Count; i++)
+            if (order[i] != order[0] + i) return null; // gaps would shift mission numbers: use the planner's estimate
+
+        var result = new Dictionary<string, double[]>();
+        foreach (GameMode mode in Enum.GetValues(typeof(GameMode)))
+        {
+            var need = new double[order.Count];
+            var ok = true;
+            for (var i = 0; i < order.Count && ok; i++)
+            {
+                var v = WFCampaignMissionHandler.GetMissionPowerReq(order[i], mode);
+                ok = v > 0 && !double.IsInfinity(v); // not ready: that difficulty keeps the planner's estimate
+                need[i] = v;
+            }
+            if (ok) result[mode.ToString().ToLowerInvariant()] = need;
+        }
+        if (result.Count == 0) return null;
+
+        if (!_campaignLogged && result.TryGetValue("normal", out var normal) && normal.Length > 0)
+        {
+            _campaignLogged = true;
+            Core.Logger.Info($"[Planner] Campaign power needs read from the game: {normal.Length} missions, " +
+                             $"Normal #1 {normal[0]:G4}, Normal #{normal.Length} {normal[normal.Length - 1]:G4}.");
+        }
+        return result;
     }
 
     // JSON has no Infinity/NaN: write those as null so the page never fails to parse.
