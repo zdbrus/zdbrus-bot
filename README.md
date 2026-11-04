@@ -180,6 +180,9 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - **Upgrade advisor** shows the best machine to level and the best blueprint to buy for the selected mode, then ranks every machine level and blueprint by power gained per expedition token or blueprint. Levels count the real workshop upgrades from the machine's current XP and check that machine's own screws, cogs and metal. It is read-only.
 - **Tooltips**: hover over a number or label, or tap its **?**, to see what it means, what it costs and where to get more.
 - **Ethereal shard advisor** ranks the next jewel enchant for every hero in your squad by war machine power per shard. **Spend for me** does those enchants for you within a shard budget.
+- **War machine tier list** ranks every machine S to C for long-term investment (from community guides), marks a goal squad to work toward, and puts a tier badge on each machine across the planner. Hover a badge for why it's ranked there and what to spend on it. Auto-build still picks by today's numbers.
+
+New to war machines? The [War Machine Guide](WAR-MACHINES.md) explains jewel chests, unlocks, the tier list and where to spend, in plain language.
 
 <img src="assets/planner.jpg" alt="War Machine Planner in the browser" width="100%">
 

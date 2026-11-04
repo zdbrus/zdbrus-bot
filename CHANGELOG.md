@@ -1,5 +1,12 @@
 ﻿# Changelog
 
+## 0.7.53 (2026-11-03)
+- War Machine Planner: dragging a hero from the bench into a machine works again with live game data. Hero IDs from the game are numbers, and the drop compared them as text, so heroes could be moved to the bench but not back. Saved crews with mixed IDs are repaired on load, and the live refresh waits while you're dragging.
+- New **War machine tier list** panel ranks every machine S to C for long-term investment, grouped by damage, tank and healer, with a goal squad (Cloudfist, Talos, Thunderclap, Goliath, Hunter) to work toward. Each role says the best machine you have and what to hope for. Tiers come from a Japanese player wiki (Sept 2025), with 2024 arena simulations from a Steam guide as a second opinion in each tooltip.
+- Tier badges now appear on every machine in the bays, the garage, the advisor picks and the level and blueprint tables. Hover one for why it's ranked there and what to spend on it. The advisor adds a caution when its pick is tier C. Auto-build still picks by today's numbers.
+- Planner text now says **jewel chests** (Wooden, Iron, Golden and up) give war machine parts and conduits, not gear chests.
+- New [War Machine Guide](WAR-MACHINES.md): jewel vs gear chests, how unlocks work, the tier list, where to spend, expedition token tips and the chest timing trick, including which bot chest settings to untick for it.
+
 ## 0.7.52 (2026-11-03)
 - War Machine Planner: the upgrade advisor was rebuilt. It used to charge a whole machine level as a single workshop upgrade, so levels looked up to about 20 times cheaper than they are, and it listed each level four times and compared machines by parts they cannot share.
 - The advisor now opens with two picks, the best machine to level and the best blueprint to buy, followed by a level table and a blueprint table. Levels count the real number of workshop upgrades from the machine's current XP (each upgrade costs 500 expedition tokens, 20 screws, 12 cogs and 1 metal and gives 100 XP). Blueprints show the stat, the cost and the level cap.

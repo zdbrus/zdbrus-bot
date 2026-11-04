@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.52 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.53 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -64,6 +64,21 @@ Auto-build squad picks machines and crews together, so a machine can make the sq
 that boost it. The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
 The planner's read-only upgrade advisor shows the best machine to level and the best blueprint to buy, and
 checks each machine's own screws, cogs and metal. Hover over planner numbers (or tap ?) for explanations.
+The planner's tier list ranks every war machine S to C for long-term investment and marks a goal squad.
+
+WAR MACHINE TIPS
+Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.53/WAR-MACHINES.md
+- Only jewel chests (Wooden, Iron, Golden, Diamond and up) give war machine parts and the conduits that
+  unlock new machines. Gear chests (Common to Mythic) don't.
+- You can't pick which machine unlocks next. Machines 1-2 are single-target attackers, 3 is a tank,
+  4 hits several enemies, 5 is a healer, and the rest are random.
+- Campaign: level one main machine and never stop. Blueprints: damage first, then health.
+- Spend blueprints on S and A tier machines; go easy on B and C, since blueprints are lost if you replace them.
+- Levels and rarity on any machine help them all, so they're never wasted.
+- Never buy Opal chests with expedition tokens; buy Diamond chests and transmute them.
+- Chest timing trick (3-5 machines): save Iron and Golden chests and open 50 just before the next machine
+  unlocks, so the parts go to machines you already have. Untick Open Wooden, Iron and Golden Chests in
+  F1 > Daily > Open Chests while you do this, or the bot opens them every 20 minutes.
 
 ARENA
 Arena picks the lowest readable opponent power within your F1 power limit and rechecks the opponent's

@@ -273,9 +273,45 @@ table.ledger.adv{min-width:700px}
 .more-btn{margin-top:8px;background:none;border:1px dashed var(--seam-hi);border-radius:var(--r);padding:7px 12px;color:var(--ink-dim);font:600 11px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
 .more-btn:hover{border-color:var(--brass);color:var(--ink)}
 
+/* tier list: S..C bands across, one column per role; cyan = yours, dashed = not unlocked, dashed brass = a goal */
+.tier{display:inline-grid;place-items:center;min-width:19px;height:18px;padding:0 4px;border-radius:4px;border:1px solid var(--seam-hi);background:transparent;color:var(--ink);
+  font:700 11px/1 var(--f-display);letter-spacing:.02em;text-transform:none;vertical-align:2px}
+.tier.t-S{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
+.tier.t-A{border-color:var(--brass);color:var(--brass-hi)}
+.tier.t-C{border-style:dashed;color:var(--ink-dim)}
+.tag.tier{height:auto;padding:4px 6px;font:600 10.5px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;vertical-align:baseline}
+.goal{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 12px}
+.goal>b{font:700 11px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin-right:4px}
+.goal .gs{font:600 12px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;padding:5px 8px;border-radius:4px;border:1px dashed var(--brass);color:var(--brass-hi)}
+.goal .gs.on{border-style:solid;border-color:var(--cyan-dim);color:var(--cyan)}
+.goal .gn{font:500 12px/1 var(--f-num);color:var(--ink-dim);margin-left:4px}
+.tiers{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));grid-template-rows:auto repeat(4,auto);gap:1px;background:var(--seam);border:1px solid var(--seam);border-radius:var(--r);overflow:hidden}
+.tgut,.trole{grid-row:span 5;display:grid;grid-template-rows:subgrid;gap:1px;min-width:0}
+.tgut>div,.thead,.trow{background:var(--plate-2)}
+.tl{display:grid;place-items:center;font:700 22px/1 var(--f-display)}
+.tl.t-S{color:var(--brass-hi)} .tl.t-A{color:var(--brass)} .tl.t-B{color:var(--ink)} .tl.t-C{color:var(--ink-dim)}
+.tgut .tl.t-S{background:var(--brass);color:var(--brass-ink)}
+.trow.r-S{background:color-mix(in srgb,var(--brass) 7%,var(--plate-2))}
+.thead{display:grid;gap:5px;align-content:start;padding:10px 12px}
+.thead h3{display:flex;align-items:center;gap:8px;margin:0;font:700 13px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase}
+.thead p{margin:0;font-size:12.5px;line-height:1.4;color:var(--ink-dim)}
+.thead p b{color:var(--ink);font-weight:600}
+.trow{display:flex;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;gap:6px;padding:8px;min-height:54px;min-width:0}
+.trow .tl{display:none}
+.tm{display:grid;gap:3px;padding:6px 9px;border:1px solid var(--seam-hi);border-radius:var(--r);background:var(--plate);min-width:0}
+.tm strong{font:600 12.5px/1.1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.tm small{font:500 11px/1.1 var(--f-num);color:var(--ink-dim);white-space:nowrap}
+.tm.sq{border-color:var(--cyan-dim)} .tm.sq small{color:var(--cyan)}
+.tm.goal{border-style:dashed;border-color:var(--brass)} .tm.goal small{color:var(--brass-hi)}
+.tm.lock{border-style:dashed;background:transparent} .tm.lock strong{color:var(--ink-dim)}
+.tnone{padding:6px 2px;font:500 13px/1 var(--f-num);color:var(--ink-faint)}
+
 @media (max-width:1180px){.bays{grid-template-columns:repeat(3,minmax(0,1fr))}.deck{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){.bays{grid-template-columns:repeat(2,minmax(0,1fr))}.strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.strip>div:first-child{grid-column:1/-1}}
-@media (max-width:760px){.picks{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.picks{grid-template-columns:minmax(0,1fr)}
+  .tiers{grid-template-columns:minmax(0,1fr);grid-template-rows:none;gap:10px;background:none;border:0;border-radius:0}
+  .tgut{display:none} .trole{grid-row:auto;grid-template-rows:none;background:var(--seam);border:1px solid var(--seam);border-radius:var(--r);overflow:hidden}
+  .trow{min-height:0;position:relative;padding-left:38px} .trow .tl{display:grid;position:absolute;left:8px;top:8px;width:22px;height:31px;font-size:17px}}
 @media (max-width:460px){.bays{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:minmax(0,1fr)}.jw{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 64px;}.jw .jt{grid-column:1/-1}.jw .eff{grid-column:1/-1;text-align:left}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -390,6 +426,15 @@ table.ledger.adv{min-width:700px}
       <div class="ledger-wrap"><table class="ledger adv" id="bp-upgrades"></table></div>
       <button class="more-btn" id="bp-more" type="button" hidden></button>
       <p class="note">Sorted best value first, for the mode picked at the top (Campaign or Arena), with each machine's current crew. Levels and blueprints use different resources, so they're ranked separately. Screws, cogs and metal belong to each machine, so the level table shows whether that machine has enough. ~ means the machine's XP isn't known and the planner assumes it's at the start of its level. Hover any number for details and where to get more. This advisor only reads; to let the bot spend, use Battle → War Machines in the bot menu.</p>
+    </div>
+  </section>
+
+  <section class="panel shards" aria-label="War machine tier list">
+    <div class="panel-h"><h2 class="lh">War machine tier list <button class="tipbtn" type="button" data-tip-id="tiers" aria-label="How to use the tier list">?</button></h2><span class="note" id="tier-sub"></span></div>
+    <div class="panel-b">
+      <div class="goal" id="tier-goal"></div>
+      <div class="tiers" id="tiers"></div>
+      <p class="note">Tiers are the long view: how good each machine's ability is, plus the extra bonus some give the rest of your game (the guide says Cloudfist helps prestige, and Talos, Goliath and Hunter raise gold). The power numbers elsewhere on this page are about right now. You can't pick which machine unlocks next. New machines come from arcane conduits found in jewel chests (Wooden, Iron, Golden and up), not gear chests. The first five come in a set order of roles; after that it's random. Hover a machine to see why it's ranked there.</p>
     </div>
   </section>
 
@@ -812,6 +857,12 @@ const AUTO_KEY = 'zdbrus-garage-auto-apply-v1';
 let S, G = null, liveState = LIVE ? 'connecting' : 'sample', liveAt = 0;
 try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { S = null; }
 if (!S || !S.heroes) S = sample();
+// 0.7.52 and earlier could save a dragged live hero id as text, which crashed the page on load.
+if (S.crews) {
+  const ids = new Map(S.heroes.map(h => [String(h.id), h.id])), seen = new Set();
+  for (const k of Object.keys(S.crews))
+    S.crews[k] = (S.crews[k] || []).map(x => ids.get(String(x))).filter(x => x != null && !seen.has(x) && seen.add(x));
+}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
 let O; try { O = JSON.parse(localStorage.getItem(OKEY) || 'null'); } catch { O = null; }
 O = O || { machines: {}, heroes: {} };
@@ -935,7 +986,8 @@ async function poll() {
     else if (r.ok) { const g = await r.json(); applyGame(g); G = g; liveState = 'live'; liveAt = Date.now(); save(); await checkScheduledAutoApply(); }
     else liveState = 'offline';
   } catch { liveState = 'offline'; }
-  render();
+  // Rebuilding the page mid-drag removes the hero being dragged, so wait for the drop.
+  if (Date.now() - dragAt > 15000) render();
 }
 
 const sumRarity = () => S.machines.filter(m => m.owned).reduce((a, m) => a + (m.rarity || 0), 0);
@@ -1064,7 +1116,12 @@ let picked = null;
 // Faces come from the game via the bot; a miss is retried after a while (the face appears once seen in game).
 const faceMiss = new Map();
 const faceOk = (code) => !faceMiss.has(code) || Date.now() - faceMiss.get(code) > 20000;
+// Drag data arrives as text, but live hero ids are numbers.
+const heroIdOf = (v) => S.heroes.find(h => String(h.id) === String(v))?.id;
+let dragAt = 0;
 function assign(heroId, wmId) {
+  dragAt = 0;
+  heroId = heroIdOf(heroId); if (heroId == null) return;
   for (const k of Object.keys(S.crews)) S.crews[k] = S.crews[k].filter(x => x !== heroId);
   if (wmId) { S.crews[wmId] = S.crews[wmId] || []; if (S.crews[wmId].length < cap()) S.crews[wmId].push(heroId); }
   picked = null; save(); render();
@@ -1079,7 +1136,7 @@ const WHERE = {
   blueprints: ['Campaign missions', 'Warfront loot every 6 hours (bot: Map → Warfront loot)', 'Daily Liberation missions (bot: Map → Liberation missions)', 'Guild Shop'],
   shards: ['Duplicate jewels turn into ethereal shards', 'More jewel chests means more duplicates (campaign, Guild Shop, Emblem Market)'],
 };
-const PARTS_FOOT = 'Chests split parts about evenly across your machines, and a newly unlocked machine gets most of them until it catches up. With 6 or more machines you can favourite up to 5 in the Engineer so they get parts more often.';
+const PARTS_FOOT = 'Jewel chests split parts about evenly across your machines, and a newly unlocked machine gets most of them until it catches up. With 6 or more machines you can favourite up to 5 in the Engineer so they get parts more often.';
 const ATTR_NAME = { damage: 'Damage', health: 'Health', armor: 'Armor' };
 const mName = (wm) => E.WAR_MACHINES[wm.id].name;
 const plural = (n, w) => `${n0(n)} ${w}${Math.round(n) === 1 ? '' : 's'}`;
@@ -1194,6 +1251,12 @@ const TIPS = {
     foot: 'It only reads your game. To let the bot spend, turn on Battle → War Machines in the bot menu.' },
   shards: { title: 'Ethereal shard advisor', body: 'Ranks the next jewel enchant for every crew hero in your squad by power gained per 100 ethereal shards. Jewels on crew heroes are what make war machines stronger.',
     howTitle: 'Where shards come from', how: WHERE.shards },
+  tiers: { title: 'War machine tier list', body: 'How good each machine is in the long run, from S (best) to C (lowest), going by community guides. Use it to decide where your scarce resources go and which machines to look forward to.',
+    howTitle: 'How to use it', how: ['S and A: worth building all the way', 'B: fine for now. Level it, but go easy on blueprints', 'C: spend lightly until something better unlocks',
+      'Cyan: in your squad. Dashed: not unlocked yet. Dashed orange: a goal worth waiting for',
+      'Levels and rarity on any machine still help them all: levels give the Engineer XP, and each rarity step adds 5% to every machine',
+      'Blueprints only help the machine you spend them on, so they\'re what you lose if you bench it later'],
+    foot: 'Tiers: Japanese player wiki by MSY (Sept 2025, covers up to level 200). Each machine\'s tip adds a second opinion from 2024 arena simulations by Sreeper & Gragatrim (Steam). Auto-build still picks by today\'s numbers, not tiers.' },
   budget: { title: 'Shard budget', body: 'The most ethereal shards "Spend for me" may use. It takes the best enchant that fits, re-ranks, and repeats until the budget runs out.' },
   spend: { title: 'Spend for me', body: 'Spends real ethereal shards in your game on the enchants from this table, best value first, up to your budget.', foot: 'This can\'t be undone.' },
   'h-upgrades': { title: 'Upgrades', body: 'Workshop upgrades needed to reach the next level. Each one adds 100 XP; the small number is the XP the machine has now.\n~ means the game didn\'t report its XP, so this assumes the start of the level.' },
@@ -1320,7 +1383,7 @@ const Tip = (() => {
     if (n.classList.contains('tipbtn')) {
       e.preventDefault(); e.stopPropagation();
       if (cur === n && pinned) hide(); else show(n, true);
-    } else if (lastPointer === 'touch' && !n.closest('button,input,select,label,a,[draggable="true"]')) {
+    } else if (lastPointer === 'touch' && (n.classList.contains('tier') || !n.closest('button,input,select,label,a,[draggable="true"]'))) {
       if (cur === n && pinned) hide(); else show(n, true);
     }
   }, true);
@@ -1362,7 +1425,8 @@ function heroChip(h, { wmId, gain } = {}) {
     c.append(tipped(el('span', { class: 'gain' }, '+' + fmt(gain)), 'gain-' + h.id, () => ({ title: `${h.name} on ${on}`,
       body: `Adding ${h.name} to ${on}'s crew would add ${fmt(gain)} ${S.mode === 'arena' ? 'arena' : 'battle'} power. Heroes add their jewel bonuses, and a hero whose class matches a stat adds 40% more to it.` })));
   } else c.append(el('span', { class: 'gain' }));
-  c.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', h.id); e.dataTransfer.effectAllowed = 'move'; });
+  c.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', String(h.id)); e.dataTransfer.effectAllowed = 'move'; dragAt = Date.now(); });
+  c.addEventListener('dragend', () => { dragAt = 0; });
   c.addEventListener('click', (e) => { e.stopPropagation(); picked = picked === h.id ? null : h.id; render(); });
   c.addEventListener('keydown', (e) => { if (e.key === 'Enter') { picked = picked === h.id ? null : h.id; render(); } });
   return c;
@@ -1536,11 +1600,109 @@ function machineUpgradeOptions() {
   return { levels: levels.sort(order), blueprints: blueprints.sort(order) };
 }
 
+// ---------- tier list ----------
+// Community tiers: Japanese player wiki by MSY on note.com (last updated Sept 2025, covers up to character level 200);
+// Final Hive's tier list cites it. It ranks S to C; there is no D tier.
+const TIERS = {
+  cloudfist:      { t: 'S', why: 'Hits the hardest of any machine and is the strongest attacker. Its bonus also helps your prestige.' },
+  talos:          { t: 'S', why: 'The second-hardest hitter. Its bonus also raises gold.' },
+  thunderclap:    { t: 'A', why: 'Hits 3 random enemies at once. Strong in the arena.' },
+  aegis:          { t: 'B', why: 'An average single-target attacker.' },
+  firecracker:    { t: 'B', why: 'An average single-target attacker.' },
+  judgement:      { t: 'C', why: 'Hits every enemy, but weakly. The guide wasn\'t sure about it; it may have uses in the arena.' },
+  harvester:      { t: 'C', why: 'Hits the last 2 enemies. The guide wasn\'t sure about it; it may have uses in the arena.' },
+  goliath:        { t: 'S', why: 'The strongest tank by a wide margin (the guide calls it broken). Its bonus also raises gold.' },
+  fortress:       { t: 'B', why: 'An average tank.' },
+  earthshatterer: { t: 'B', why: 'An average tank.' },
+  hunter:         { t: 'S', why: 'The strongest healer for the arena. Its bonus also raises gold.' },
+  curator:        { t: 'A', why: 'A good healer; the guide gives no details.' },
+  sentinel:       { t: 'A', why: 'A good healer; the guide gives no details.' },
+};
+// Second opinion: arena simulations from "Ultimate War Machine strategy guide" by Sreeper & Gragatrim (Steam, 2024, patch 8.0.1). 1 is the best of 4.
+const ARENA_SIM = { goliath: 1, cloudfist: 1, talos: 1, fortress: 1, earthshatterer: 1, aegis: 2, firecracker: 2, thunderclap: 2, judgement: 2, harvester: 3, hunter: 4, sentinel: 4, curator: 4 };
+// The best of each kind from TIERS; Final Hive picks the same five.
+const GOAL_SQUAD = ['cloudfist', 'talos', 'thunderclap', 'goliath', 'hunter'];
+const TIER_ORDER = ['S', 'A', 'B', 'C'];
+const TIER_SPEND = { S: 'Worth building', A: 'Worth building', B: 'Fine for now', C: 'Spend lightly' };
+const ROLE_UNLOCK = {
+  damage: 'Your first two machines are always single-target attackers, and the 4th hits several enemies.',
+  tank: 'Your 3rd machine is always a tank.',
+  healer: 'Your 5th machine is always a healer.',
+};
+const tierOf = (id) => TIERS[id]?.t || 'C';
+const tierRank = (id) => TIER_ORDER.indexOf(tierOf(id));
+const kindName = (b) => b.spec === 'tank' ? 'Tank' : b.spec === 'healer' ? 'Healer' : b.target === 'multi' ? 'Attacker · hits several' : 'Attacker · hits one';
+function bestOwned(spec) {
+  return S.machines.filter(m => m.owned && E.WAR_MACHINES[m.id].spec === spec)
+    .sort((a, b) => (tierRank(a.id) - tierRank(b.id)) || ((b.level || 0) - (a.level || 0)))[0] || null;
+}
+// A locked machine worth waiting for: in the goal squad, or better than anything you own of its kind.
+function isGoal(m) {
+  if (m.owned) return false;
+  if (GOAL_SQUAD.includes(m.id)) return true;
+  const best = bestOwned(E.WAR_MACHINES[m.id].spec);
+  return !best || tierRank(m.id) < tierRank(best.id);
+}
+const tierStatus = (m) => !m.owned ? (isGoal(m) ? 'Goal · not unlocked' : 'Not unlocked')
+  : (S.squad.includes(m.id) ? '✓ In squad' : 'Owned') + ' · Lv ' + (m.level || 1);
+function tierTip(id) {
+  const m = wmById(id), b = E.WAR_MACHINES[id], t = tierOf(id), sim = ARENA_SIM[id], how = [];
+  if (!m.owned) how.push(isGoal(m) ? 'Not unlocked yet, but worth hoping for. New machines come from arcane conduits in jewel chests, and you can\'t pick which one.'
+    : 'Not unlocked yet. New machines come from arcane conduits in jewel chests.');
+  else if (t === 'S' || t === 'A') {
+    how.push('Worth building: levels, rarity and blueprints all pay off long term.');
+    if (!S.squad.includes(id)) how.push('Not in your squad right now, because today it\'s weaker than the ones picked. Levels close that gap.');
+  } else if (t === 'B') how.push('Fine for now. Level it while it\'s in your squad, but go easy on blueprints if a better one of its kind could replace it.');
+  else how.push('Spend lightly. Use it while you need it, and save blueprints for better machines.');
+  if (m.owned) how.push('Levels and rarity still help all your machines: levels give the Engineer XP, and each rarity step adds 5% to every machine.');
+  return { title: `${b.name} · Tier ${t}`, body: TIERS[id]?.why || '',
+    facts: [['Kind', kindName(b)], ['Community tier', `${t} · ${TIER_SPEND[t]}`], ['Arena sims, 2024', sim ? `Tier ${sim} of 4` : 'not ranked'], ['Yours', tierStatus(m)]],
+    howTitle: 'What to do', how, foot: 'Tiers: Japanese player wiki by MSY (Sept 2025). Arena sims: Steam guide by Sreeper & Gragatrim (2024).' };
+}
+// preventDefault keeps a click on the badge from ticking the garage checkbox around it.
+const tierBadge = (id, key, long) => tipped(el('span', { class: (long ? 'tag ' : '') + 'tier t-' + tierOf(id), tabindex: '0', 'aria-label': 'Community tier ' + tierOf(id),
+  onclick: (e) => e.preventDefault() }, long ? 'Tier ' + tierOf(id) : tierOf(id)), `tier-${key}-${id}`, () => tierTip(id));
+
+function renderTiers() {
+  const box = $('#tiers'), wmName = (id) => E.WAR_MACHINES[id].name;
+  $('#tier-sub').textContent = `${S.machines.filter(m => m.owned).length} of ${S.machines.length} machines unlocked · S best, C lowest`;
+  const goal = GOAL_SQUAD.map(wmById).filter(Boolean);
+  $('#tier-goal').replaceChildren(
+    tipped(el('b', { class: 'has-tip', tabindex: '0' }, 'Goal squad'), 'tier-goal', { title: 'Goal squad',
+      body: 'The best of each kind from the tier list: the two S attackers, the A attacker that hits 3 enemies, the S tank and the S healer. Something to work toward as they unlock.',
+      foot: 'For the arena, 2024 simulations preferred 2 tanks and 3 attackers over a healer. Either way, Auto-build picks your strongest squad by today\'s numbers.' }),
+    ...goal.map(m => el('span', { class: 'gs' + (m.owned ? ' on' : '') }, (m.owned ? '✓ ' : '') + wmName(m.id))),
+    el('span', { class: 'gn' }, `${goal.filter(m => m.owned).length} of ${goal.length} unlocked`));
+  const gutter = el('div', { class: 'tgut', 'aria-hidden': 'true' }, el('div', {}), ...TIER_ORDER.map(t => el('div', { class: 'tl t-' + t }, t)));
+  const roles = ['damage', 'tank', 'healer'].map(spec => {
+    const best = bestOwned(spec);
+    let adv = [ROLE_UNLOCK[spec]];
+    if (best) {
+      const bt = tierOf(best.id);
+      const hope = S.machines.filter(m => !m.owned && E.WAR_MACHINES[m.id].spec === spec && tierRank(m.id) < tierRank(best.id))
+        .sort((a, b) => (tierRank(a.id) - tierRank(b.id)) || (GOAL_SQUAD.includes(b.id) - GOAL_SQUAD.includes(a.id)))[0];
+      adv = ['Best you have: ', el('b', {}, wmName(best.id)), ` (${bt}).`];
+      if (bt === 'S') adv.push(' Build it.');
+      else if (hope) adv.push(' Hope for ', el('b', {}, wmName(hope.id)), ` (${tierOf(hope.id)}).`);
+    }
+    const rows = TIER_ORDER.map(t => {
+      const ms = S.machines.filter(m => E.WAR_MACHINES[m.id].spec === spec && tierOf(m.id) === t).sort((a, b) => wmName(a.id).localeCompare(wmName(b.id)));
+      return el('div', { class: 'trow r-' + t }, el('span', { class: 'tl t-' + t, 'aria-label': 'Tier ' + t }, t),
+        ms.length ? ms.map(m => tipped(el('span', { class: 'tm ' + (!m.owned ? (isGoal(m) ? 'goal' : 'lock') : S.squad.includes(m.id) ? 'sq' : 'own'), tabindex: '0' },
+          el('strong', {}, wmName(m.id)), el('small', {}, tierStatus(m))), 'tier-list-' + m.id, () => tierTip(m.id)))
+          : el('span', { class: 'tnone', 'aria-label': 'None' }, '—'));
+    });
+    return el('section', { class: 'trole', 'aria-label': SPEC_NAME[spec] + ' machines' },
+      el('div', { class: 'thead' }, el('h3', {}, svgUse('g-' + spec), SPEC_NAME[spec]), el('p', {}, adv)), rows);
+  });
+  box.replaceChildren(gutter, ...roles);
+}
+
 const ADV_TOP = 6, advShow = { lvl: false, bp: false };
 const haveSmall = (have, need) => have == null ? null
   : have >= need ? el('small', { class: 'ok' }, 'have ' + n0(have)) : el('small', { class: 'short' }, 'short ' + n0(need - have));
 const advTh = (label, id, cls) => { const a = {}; const c = [id ? 'has-tip' : '', cls || ''].join(' ').trim(); if (c) a.class = c; if (id) a['data-tip-id'] = id; return el('th', a, label); };
-const machineCell = (r) => el('td', { class: 'l' }, r.name, r.inSquad ? null : el('small', {}, 'not in squad'));
+const machineCell = (r, key) => el('td', { class: 'l' }, r.name, ' ', tierBadge(r.wm.id, key), r.inSquad ? null : el('small', {}, 'not in squad'));
 function moreButton(btn, key, count) {
   btn.hidden = count <= ADV_TOP;
   btn.textContent = advShow[key] ? `Show top ${ADV_TOP}` : `Show all ${count}`;
@@ -1561,16 +1723,18 @@ function renderPicks(levels, bps) {
     else if (partsReady(p)) lines.push(el('span', { class: 'sub' }, el('span', { class: 'ok' }, '✓ Has the screws, cogs and metal for it')));
     else lines.push(el('span', { class: 'sub' }, el('span', { class: 'short' }, 'Short ' + shortList(p)), top.inSquad ? ' · no squad machine has the parts for its next level yet' : ''));
     if (pick !== top) lines.push(el('span', { class: 'sub' }, `Best value is ${top.name}, but it's short ${shortList(top.plan)}.`));
-    tiles.push(tipped(el('div', { class: 'pick', tabindex: '0' }, el('strong', {}, 'Level up ', el('b', {}, pick.name)), ...lines), 'pick-level', () => levelTip(wmById(id))));
+    if (tierOf(id) === 'C') lines.push(el('span', { class: 'sub' }, 'Tier C in the community list: fine for now, but don\'t sink too much into it.'));
+    tiles.push(tipped(el('div', { class: 'pick', tabindex: '0' }, el('strong', {}, 'Level up ', el('b', {}, pick.name), ' ', tierBadge(id, 'pick-lv')), ...lines), 'pick-level', () => levelTip(wmById(id))));
   }
   const b = bps[0];
   if (!b) tiles.push(el('div', { class: 'pick bp' }, el('strong', {}, 'No blueprint upgrades'), el('span', { class: 'sub' }, 'Every stat is at its cap. Level machines to raise the caps.')));
   else {
     const have = haveOf('blueprints'), id = b.wm.id, attr = b.attr;
     tiles.push(tipped(el('div', { class: 'pick bp', tabindex: '0' },
-      el('strong', {}, 'Blueprint ', el('b', {}, `${b.name} ${attr}`)),
+      el('strong', {}, 'Blueprint ', el('b', {}, `${b.name} ${attr}`), ' ', tierBadge(id, 'pick-bp')),
       el('span', { class: 'sub' }, `${b.lv} → ${b.lv + 1} · ${n0(b.cost)} blueprints · +${fmt(b.gain)} power`),
-      have == null ? null : el('span', { class: 'sub' }, have >= b.cost ? el('span', { class: 'ok' }, `✓ You have ${n0(have)} blueprints`) : el('span', { class: 'short' }, `Short ${n0(b.cost - have)} blueprints`))),
+      have == null ? null : el('span', { class: 'sub' }, have >= b.cost ? el('span', { class: 'ok' }, `✓ You have ${n0(have)} blueprints`) : el('span', { class: 'short' }, `Short ${n0(b.cost - have)} blueprints`)),
+      tierOf(id) === 'C' ? el('span', { class: 'sub' }, 'Tier C in the community list: blueprints spent here are lost if you replace it later.') : null),
       'pick-bp', () => bpTip(wmById(id), attr)));
   }
   box.replaceChildren(...tiles);
@@ -1588,7 +1752,7 @@ function renderLevelTable(rows) {
       const p = r.plan, id = r.wm.id;
       const up = tipped(el('span', { class: 'has-tip', tabindex: '0' }, (p.known ? '' : '~') + p.steps), 'lv-up-' + id, () => levelTip(wmById(id)));
       return el('tr', {},
-        el('td', {}, String(i + 1)), machineCell(r), el('td', {}, `${p.level} → ${p.level + 1}`),
+        el('td', {}, String(i + 1)), machineCell(r, 'lv'), el('td', {}, `${p.level} → ${p.level + 1}`),
         el('td', {}, up, p.known ? el('small', {}, `${n0(p.progress)}/${n0(p.need)} XP`) : null),
         tipped(el('td', {}, n0(p.tokens), tk != null && tk < p.tokens ? el('small', { class: 'short' }, 'short ' + n0(p.tokens - tk)) : null), 'lv-tok-' + id, () => tokenTip(wmById(id))),
         ...PARTS.map(([k]) => tipped(el('td', {}, n0(p.cost[k]), haveSmall(partHave(p, k), p.cost[k])), `lv-${k}-${id}`, () => partTip(wmById(id), k))),
@@ -1608,7 +1772,7 @@ function renderBpTable(rows) {
       const id = r.wm.id, attr = r.attr;
       const cost = tipped(el('span', { class: 'has-tip', tabindex: '0' }, n0(r.cost)), `bp-${id}-${attr}`, () => bpTip(wmById(id), attr));
       return el('tr', {},
-        el('td', {}, String(i + 1)), machineCell(r), el('td', { class: 'l' }, ATTR_NAME[attr]),
+        el('td', {}, String(i + 1)), machineCell(r, 'bp-' + attr), el('td', { class: 'l' }, ATTR_NAME[attr]),
         el('td', {}, `${r.lv} → ${r.lv + 1}`, el('small', {}, 'cap ' + r.cap)),
         el('td', {}, cost, have != null && have < r.cost ? el('small', { class: 'short' }, 'short ' + n0(r.cost - have)) : null),
         el('td', {}, '+' + fmt(r.gain)), el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per)));
@@ -1670,6 +1834,7 @@ function render() {
       el('div', { class: 'bay-name' }, svgUse('g-' + base.spec), el('h3', {}, base.name), el('span', { class: 'slotno' }, '0' + (idx + 1))),
       el('div', { class: 'meta' },
         el('span', { class: 'tag' }, SPEC_NAME[base.spec] + (base.target === 'multi' ? ' · AoE' : '')),
+        tierBadge(id, 'bay', true),
         tipped(el('span', { class: 'tag', tabindex: '0' }, 'Lv ' + wm.level), 'bay-lv-' + id, () => levelTip(wmById(id))),
         tipped(el('span', { class: 'tag r', tabindex: '0' }, RARITY[wm.rarity] || 'Common'), 'bay-rar-' + id, () => rarityTip(wmById(id))),
         tipped(el('span', { class: 'tag' }, 'OD ' + Math.round(st.overdrive * 100) + '%'), 'bay-od-' + id, { title: 'Overdrive',
@@ -1721,7 +1886,7 @@ function render() {
   b.ondragover = (e) => e.preventDefault();
   b.ondrop = (e) => { e.preventDefault(); assign(e.dataTransfer.getData('text/plain'), null); };
 
-  renderLedger(); renderGarage(); renderArts();
+  renderLedger(); renderGarage(); renderArts(); renderTiers();
   Tip.refresh();
 }
 const cap1 = (s) => s[0].toUpperCase() + s.slice(1);
@@ -1790,7 +1955,7 @@ function renderGarage() {
     const cb = el('input', { type: 'checkbox', checked: m.owned, id: 'own-' + m.id, 'aria-label': 'Owned ' + b.name, disabled: LIVE && !!G });
     cb.addEventListener('change', () => { m.owned = cb.checked; if (!m.owned && S.squad.includes(m.id)) { toast(b.name + ' left the squad'); const r = E.optimize(account(), { mode: S.mode, requireTank: true }); S.squad = r.squad; S.crews = r.crews; S.selected = S.squad[0]; } save(); render(); });
     const lab = el('label', { class: 'gm' + (m.owned ? '' : ' off'), for: 'own-' + m.id }, cb,
-      el('span', { class: 'n' }, b.name, el('small', {}, `${SPEC_NAME[b.spec]} · ${b.ability}`)), svgUse('g-' + b.spec));
+      el('span', { class: 'n' }, b.name, ' ', tierBadge(m.id, 'gar'), el('small', {}, `${SPEC_NAME[b.spec]} · ${b.ability}`)), svgUse('g-' + b.spec));
     g.append(LIVE && G ? tipped(lab, 'own-' + m.id, { title: b.name, body: m.owned ? 'You own this machine. Read from your game.' : 'You don\'t own this machine yet. Read from your game.' }) : lab);
   }
 }
