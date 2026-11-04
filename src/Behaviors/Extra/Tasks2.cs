@@ -270,6 +270,8 @@ internal static class Cooldown
 
 public class MeteoriteResearchTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Library;
+
     protected override string NotificationPath => P.Notifications + "/MeteoriteResearch";
     protected override bool UseScheduledTime => true;
 
@@ -324,6 +326,8 @@ public class MeteoriteResearchTask : BotTask
 
 public class ForbiddenKnowledgeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     protected override string NotificationPath => P.Notifications + "/ForbiddenKnowledge";
     protected override bool UseScheduledTime => true;
 
@@ -387,6 +391,8 @@ public class ForbiddenKnowledgeTask : BotTask
 
 public class ScarabGameTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ScarabGame;
+
     protected override string NotificationPath => P.Notifications + "/ScarabGame";
     protected override bool UseScheduledTime => true;
 
@@ -452,6 +458,8 @@ public class ScarabGameTask : BotTask
 
 public class ScarabMilestonesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ScarabGame;
+
     protected override string NotificationPath => P.Notifications + "/ScarabGameMilestones";
 
     private const string S = P.Menus + "/ScarabGame";
@@ -693,6 +701,8 @@ public class BubbleRewardsTask : BotTask
 
 public class PharaohsVaultTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ScarabGame;
+
     protected override string NotificationPath => P.Notifications + "/PharaohsVault";
 
     private const string S = P.Menus + "/ScarabGame";
@@ -758,6 +768,8 @@ public class PharaohsVaultTask : BotTask
 /// </summary>
 public class EventExchangeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.EventManager;
+
     private MelonPreferences_Entry<string> _priority;
     private MelonPreferences_Entry<int> _keep;
 
@@ -870,6 +882,8 @@ public class EventExchangeTask : BotTask
 /// <summary>Battle pass (Path of Glory): claims every free-track reward that is ready. Never touches the golden pass.</summary>
 public class BattlePassTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.BattlePass;
+
     private const string B = P.Popups + "/BattlePass/bg";
     private const string Scroll = B + "/submenus/rewards/bg/scrollView";
 
@@ -930,6 +944,8 @@ public class BattlePassTask : BotTask
 /// </summary>
 public class OpenChestsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.InventoryBag;
+
     private const string Bag = P.Battle + "/bottomSideUIDesktop/menuButtons/inventoryButtonUI";
     private const string Inv = P.Menus + "/Inventory";
     private const string InventoryTitle = Inv + "/titleText";

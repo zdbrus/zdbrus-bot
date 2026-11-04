@@ -96,6 +96,9 @@ internal static class Program
             Test("F1 and hotkeys share one automation state", AutomationTests.ToggleState);
             Test("nested coroutine failures and cancellation release resources", AutomationTests.NestedGuard);
             Test("worker failures turn off truthfully and can be retried", AutomationTests.WorkerFailures);
+            Test("new accounts hold tasks until the game unlocks their feature", NewAccountTests.FeatureGating);
+            Test("the guided tutorial is detected and logged once per step", NewAccountTests.TutorialState);
+            Test("upgrades and combos wait out tutorial steps without closing the menu", AutomationTests.TutorialHold);
         }
         finally
         {

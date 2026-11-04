@@ -812,6 +812,37 @@ namespace Il2Cpp
     {
         public CharacterLevel CharacterLevel = new();
         public MainBattle MainBattle = new();
+        public UnlockMechanismsData UnlockMechanismsData = new();
+    }
+
+    /// <summary>Every flag starts unlocked, so tests that do not care about new accounts are unaffected.</summary>
+    public class UnlockMechanismsData
+    {
+        private static ObscuredBool On() => new() { Value = true };
+        public ObscuredBool AlchemistUnlocked = On(), ArenaOfKingsUnlocked = On(), AwakeningUnlocked = On(),
+            BattlePassUnlocked = On(), ChaosRiftUnlocked = On(), CharacterTalentsUnlocked = On(),
+            EventManagerUnlocked = On(), ExoticMerchantUnlocked = On(), GuardianStrengthenUnlocked = On(),
+            GuildsUnlocked = On(), InventoryBagUnlocked = On(), LibraryUnlocked = On(), OracleUnlocked = On(),
+            QuestsUnlocked = On(), ScarabGameUnlocked = On(), StoreUnlocked = On(), TavernUnlocked = On(),
+            TempleOfEternalsUnlocked = On(), UpgradesUnlocked = On(), WorldMapUnlocked = On();
+        public bool LiberationUnlocked = true;
+        public bool ThrowOnRead;
+        public bool IsLiberationUnlocked() =>
+            ThrowOnRead ? throw new InvalidOperationException("unlock read failed") : LiberationUnlocked;
+    }
+
+    public class TutorialGuidance
+    {
+        public bool isTutorialFinished = true;
+        public bool isCurrentTutorialPartInProgress;
+        public int currentTutorial;
+        public bool HasFinishedTutorial() => isTutorialFinished;
+
+        public static class TutorialIsolation
+        {
+            public static bool Forced;
+            public static bool IsForcedTutorialOpen() => Forced;
+        }
     }
 
     public class CharacterLevel
@@ -848,6 +879,7 @@ namespace Il2Cpp
     {
         public AwakeningMech AwakeningMech = new();
         public ScarabGameMech ScarabGameMech = new();
+        public TutorialGuidance TutorialGuidance = new();
     }
     public class AwakeningMech
     {
@@ -964,7 +996,8 @@ namespace Firebot.GameModel.Features.MainScene
     public static class Upgrades
     {
         public static bool IsVisible = true;
-        public static IEnumerator Close { get { yield break; } }
+        public static int Closes;
+        public static IEnumerator Close { get { Closes++; yield break; } }
         public static IEnumerator SetUpgradeLevel(string mode) { yield break; }
     }
 }

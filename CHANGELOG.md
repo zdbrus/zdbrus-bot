@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 0.7.55 (2026-11-03)
+- New accounts: the bot now waits while the game's guided tutorial has a step on screen, instead of clicking over the highlighted button. AutoUpgrade and AutoSkill pause too, and the upgrades menu stays open for the tutorial's own upgrade step. Tasks show **Tutorial** on F2 while this happens.
+- Tasks for features the game hasn't given you yet (Tavern, Guild, Oracle, Arena, World Map and the rest) are held back until the game unlocks them. F2 shows what each one is waiting on, like **Locked (Guild)**, and the log says when the game unlocks it. Accounts at level 200 and up work exactly as before.
+- Story pop-ups are clicked through between tasks: story dialogue, Aurelia's tips and "New hero!" screens. Finished storyline chapter rewards are claimed. Nothing is clicked while the tutorial is forcing you to press something.
+- AutoUpgrade no longer clicks the upgrade-mode button over and over on accounts that don't have it yet.
+
 ## 0.7.54 (2026-11-03)
 - War Machine Planner: **Mission needs** now comes straight from the game. Firestone patch 9.1.4 raised the recommended power on war machine campaign missions, and the planner's old estimate ran low, so it could say you were ready when you weren't. The ring, the verdict, "Power covers up to" and the power curve all use the game's numbers once the planner is linked. Until then it shows the old estimate with a note saying so.
 - The mission box and the curve follow however many campaign missions the game has, instead of assuming 90.

@@ -12,6 +12,8 @@ namespace Firebot.Behaviors.Extra;
 
 public class TalentsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.CharacterTalents;
+
     protected override string NotificationPath => P.Notifications + "/TalentAvailable";
     protected override bool EnabledByDefault => true;
     protected override bool UseScheduledTime => true;

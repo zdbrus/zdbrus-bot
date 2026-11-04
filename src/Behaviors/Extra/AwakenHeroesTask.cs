@@ -11,6 +11,8 @@ namespace Firebot.Behaviors.Extra;
 
 public class AwakenHeroesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Awakening;
+
     protected override string NotificationPath => P.Notifications + "/Awakening";
     protected override bool UseScheduledTime => true;
     private const string A = P.Menus + "/Awakening";

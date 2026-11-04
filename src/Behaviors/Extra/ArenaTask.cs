@@ -16,6 +16,8 @@ namespace Firebot.Behaviors.Extra;
 
 public class ArenaTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ArenaOfKings;
+
     protected override string NotificationPath => P.Notifications + "/ArenaTokens";
 
     private const string Menu = P.Menus + "/ArenaOfKings";

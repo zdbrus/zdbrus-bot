@@ -12,6 +12,8 @@ namespace Firebot.Behaviors.Guild;
 
 public class FreePickaxesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     private MelonPreferences_Entry<int> _pickaxeClaimThreshold;
 
     private int PickaxeClaimThreshold => _pickaxeClaimThreshold?.Value ?? 1;

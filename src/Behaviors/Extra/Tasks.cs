@@ -82,6 +82,8 @@ public class MailTask : BotTask
 
 public class TavernTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Tavern;
+
     protected override string NotificationPath => P.Notifications + "/BeerExchange";
 
     private const string Tavern = P.Menus + "/Tavern/helpCanvas";
@@ -166,6 +168,8 @@ public class TavernTask : BotTask
 
 public class ExoticMerchantTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ExoticMerchant;
+
     private const string M = P.Menus + "/ExoticMerchant/submenus";
     private const string ExoticCoins = P.Menus + "/ExoticMerchant/counters/currencyInteraction (ExoticCoin)/quantity";
     private const string SellGrid = M + "/bg/sellItemsSubmenu/Scroll View/Viewport/Content/productGrid";
@@ -420,6 +424,8 @@ public class ExoticMerchantTask : BotTask
 
 public class ArcaneCrystalTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     protected override string NotificationPath => P.Notifications + "/ArcaneCrystal";
 
     private const string C = P.Menus + "/ArcaneCrystal";
@@ -742,6 +748,8 @@ public class WarMachineUpgradeTask : BotTask
 
 public class EventChallengesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.EventManager;
+
     private const string List = P.Events + "/EventManager/bg/verticalLayout/Scroll View/Viewport/Content/activeEvents";
     private const string Mini = P.Events + "/MiniEvents/bg";
     private const string Challenges = Mini + "/submenus/challenges/bg/challengesLayout";
@@ -792,6 +800,8 @@ public class EventChallengesTask : BotTask
 
 public class LiberationMissionsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Liberation;
+
     private const string Map = P.Menus + "/WorldMap";
     private const string Campaign = Map + "/submenus/warfrontCampaignSubmenu";
     private const string Difficulty = Campaign + "/difficultySelector";
@@ -915,6 +925,8 @@ public class LiberationMissionsTask : BotTask
 
 public class OracleBlessingsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Oracle;
+
     protected override string NotificationPath => P.Notifications + "/OracleBlessings";
     protected override bool UseScheduledTime => true;
 
@@ -1050,6 +1062,8 @@ public class OracleBlessingsTask : BotTask
 
 public class PersonalTreeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     private const string T = P.Menus + "/TreeOfLife";
     private const string Nodes = T + "/submenus/personalTree/talentTree";
     private const string Tokens = T + "/submenus/personalTree/counters/currencyInteraction (ExpeditionToken)/quantity";
@@ -1231,6 +1245,8 @@ public class PersonalTreeTask : BotTask
 
 public class QuestsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Quests;
+
     private const string C = P.Popups + "/Character/bg";
     private const string Q = C + "/submenus/quests/bg";
 

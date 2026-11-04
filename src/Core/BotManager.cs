@@ -62,6 +62,9 @@ public static class BotManager
 
     private static string _autoUpgradePauseReason = "";
 
+    /// <summary>The last scan found the game's tutorial running, and held every task back for it.</summary>
+    private static bool _tutorialHold;
+
     /// <summary>
     ///     Stops the bot when the task it is running has stopped advancing, and reports a scan that never came
     ///     back.
@@ -202,7 +205,7 @@ public static class BotManager
                     // fire, and it would never resume while the lock lasts.
                     // DueTime, not NextRunTime: a bubble task waiting on its bubble has a next run time in the past,
                     // which read as "a task is about to run" forever and kept auto-upgrade paused (0.7.6 bug).
-                    if (task.IsEnabled && !task.IsLevelLocked && task.DueTime < nextEnabledTaskRun)
+                    if (task.IsEnabled && !task.IsLocked && task.DueTime < nextEnabledTaskRun)
                     {
                         nextEnabledTaskRun = task.DueTime;
                         nearestTask = task;
@@ -250,9 +253,30 @@ public static class BotManager
             }
 
             // The planner is applying a squad: let it finish its clicks before the next job starts.
-            if (Planner.SquadApplier.Busy || Planner.JewelSpender.Busy) readyTask = null;
+            var plannerBusy = Planner.SquadApplier.Busy || Planner.JewelSpender.Busy;
+            if (plannerBusy) readyTask = null;
 
-            if (readyTask == null && retainedHub && !Planner.SquadApplier.Busy && !Planner.JewelSpender.Busy)
+            // A new account's tutorial step waits for the player to press one highlighted thing. A task opening
+            // its own menu on top of that either clicks nothing or knocks the step out of order, so nothing runs
+            // until the step is done. Read here, outside the scan's try: the read guards itself.
+            _tutorialHold = GameTutorial.ShouldHold;
+            if (_tutorialHold) readyTask = null;
+
+            // Story dialogue, "New hero!" and the chapter reward sit on top of everything and have no close button
+            // for the sweep. Cleared between tasks too, but a new account can go a long time with no task due.
+            if (!plannerBusy && Watchdog.StoryPopupOpen && !GameTutorial.IsForced)
+            {
+                IsTaskExecuting = true;
+                _lastStepAt = DateTime.Now;
+                try { yield return RunSafe(Watchdog.DismissStory(), "Story popups"); }
+                finally { IsTaskExecuting = false; }
+
+                // The click that closed the story is often the one that starts the next tutorial step.
+                _tutorialHold = GameTutorial.ShouldHold;
+                if (_tutorialHold) readyTask = null;
+            }
+
+            if (readyTask == null && retainedHub && !_tutorialHold && !plannerBusy)
             {
                 var pauseForNearTask = _shouldPauseAutoUpgrade;
                 _shouldPauseAutoUpgrade = true;
@@ -489,16 +513,22 @@ public static class BotManager
     }
 
     /// <summary>
-    ///     Whether the task has a next run worth showing. Disabled is the user's choice and a level lock is the
-    ///     game's; in neither case can the task run now, so neither has a next run or a time left.
+    ///     Whether the task has a next run worth showing. Disabled is the user's choice and a lock is the game's;
+    ///     in neither case can the task run now, so neither has a next run or a time left.
     /// </summary>
-    private static bool HasPendingRun(BotTask t) => t.IsEnabled && !t.IsLevelLocked;
+    private static bool HasPendingRun(BotTask t) => t.IsEnabled && !t.IsLocked;
 
     private static string GetTaskStatus(BotTask t)
     {
         if (!t.IsEnabled) return TaskStatusRow.Disabled;
         if (t.IsLevelLocked) return TaskStatusRow.Locked(t.MinimumLevel);
-        if (t.IsNotificationVisible()) return TaskStatusRow.Popup;
-        return t.IsReady() ? TaskStatusRow.Ready : TaskStatusRow.Waiting;
+        if (t.IsFeatureLocked) return TaskStatusRow.Locked(GameUnlocks.ShortName(t.RequiredFeature));
+
+        var status = t.IsNotificationVisible() ? TaskStatusRow.Popup
+            : t.IsReady() ? TaskStatusRow.Ready
+            : TaskStatusRow.Waiting;
+
+        // Would run, but the tutorial has the screen. Waiting stays Waiting: nothing is being held back yet.
+        return IsRunning && _tutorialHold && status != TaskStatusRow.Waiting ? TaskStatusRow.Tutorial : status;
     }
 }

@@ -15,6 +15,8 @@ namespace Firebot.Behaviors.Extra;
 /// </summary>
 public class TemplePrestigeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.TempleOfEternals;
+
     protected override string NotificationPath => P.Notifications + "/TemplePrestige";
     protected override bool UseScheduledTime => true;
     internal override int SchedulerPriority => 1;

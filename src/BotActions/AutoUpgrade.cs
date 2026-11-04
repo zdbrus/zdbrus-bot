@@ -275,7 +275,11 @@ public static class AutoUpgrade
         // collector always see the battle screen.
         while (_isRunning)
         {
-            if (!BotManager.ShouldPauseAutoUpgrade())
+            var hold = HoldReason();
+            ReportHold(hold);
+
+            if (hold != null) _pausedSince = null;
+            else if (!BotManager.ShouldPauseAutoUpgrade())
             {
                 _pausedSince = null;
                 yield return UpgradeCycle();
@@ -283,7 +287,9 @@ public static class AutoUpgrade
             }
             else ReportLongPause();
 
-            if (Upgrades.IsVisible) yield return Upgrades.Close;
+            // Not during a hold: the tutorial's own upgrade step is done in this menu, and closing it under the
+            // player breaks the step.
+            if (hold == null && Upgrades.IsVisible) yield return Upgrades.Close;
 
             var wait = Math.Max(10, _everySeconds?.Value ?? 60);
             var until = Time.unscaledTime + wait;
@@ -404,6 +410,29 @@ public static class AutoUpgrade
     private static DateTime? _pausedSince;
     private static DateTime _lastPauseWarning = DateTime.MinValue;
     private static DateTime _lastCycleWarning = DateTime.MinValue;
+    private static string _holdReason;
+
+    /// <summary>
+    ///     Why the game itself says not to buy right now, or null. Separate from the task pause: that one is the
+    ///     bot making room for its own tasks, this one is a new account that is not ready for it.
+    /// </summary>
+    private static string HoldReason()
+    {
+        if (GameTutorial.ShouldHold) return "the game's tutorial is running";
+        if (GameUnlocks.Check(GameFeature.Upgrades) == false) return "the game has not unlocked upgrades yet";
+        return null;
+    }
+
+    /// <summary>Once per change, so a long tutorial step is one line in the log rather than one per minute.</summary>
+    private static void ReportHold(string reason)
+    {
+        if (reason == _holdReason) return;
+
+        var was = _holdReason;
+        _holdReason = reason;
+        if (reason != null) Logger.Info($"[AutoUpgrade] Waiting: {reason}.");
+        else if (was != null) Logger.Info("[AutoUpgrade] Back to buying upgrades.");
+    }
 
     /// <summary>A pause that never ends looks exactly like "auto upgrade does nothing"; say which task holds it.</summary>
     private static void ReportLongPause()

@@ -14,6 +14,7 @@ public abstract class BotTask
     private MelonPreferences_Category _category;
     private MelonPreferences_Entry<bool> _enabledEntry;
     private GameElement _notificationElement;
+    private bool _featureLockLogged;
     private bool _levelLockLogged;
     private bool _levelWaitLogged;
     private bool _unscheduledRunReported;
@@ -32,6 +33,12 @@ public abstract class BotTask
     ///     default — means the feature is available from the start, and costs no game lookup.
     /// </summary>
     public virtual int MinimumLevel => LevelRequirements.None;
+
+    /// <summary>
+    ///     The game's own unlock flag for the feature behind this task. On a new account the menus behind a
+    ///     locked feature are not there, and a level alone does not say when they appear — the story does.
+    /// </summary>
+    public virtual GameFeature RequiredFeature => GameFeature.None;
 
     public DateTime? LastRunTime { get; set; }
 
@@ -104,7 +111,7 @@ public abstract class BotTask
         _enabledEntry = _category.CreateEntry("enabled", EnabledByDefault, $"Enable {SectionTitle}",
             $"Enables or disables the {SectionTitle} automation task." +
             $"\nWhen disabled, this task will be ignored during the execution loop." +
-            LevelRequirementNote);
+            RequirementNote);
 
         if (BotSettings.EnableAllOnLaunch) _enabledEntry.Value = true;
         OnConfigure(_category);
@@ -170,20 +177,54 @@ public abstract class BotTask
     ///     requirement sits exactly where the user turns the task on — and it must stay inside the three lines
     ///     that box holds.
     /// </summary>
-    private string LevelRequirementNote => MinimumLevel <= LevelRequirements.None
-        ? string.Empty
-        : $"\nHeld back until the character is level {MinimumLevel}.";
+    private string RequirementNote => MinimumLevel > LevelRequirements.None
+        ? $"\nHeld back until the character is level {MinimumLevel}."
+        : RequiredFeature != GameFeature.None
+            ? $"\nHeld back until the game unlocks {GameUnlocks.DisplayName(RequiredFeature)}."
+            : string.Empty;
+
+    /// <summary>
+    ///     True while the game has not unlocked <see cref="RequiredFeature" />, or cannot say yet. Like the level
+    ///     lock, a runtime condition only: the user's "enabled" is left alone, and the lock lifts itself the scan
+    ///     the game flips its flag.
+    /// </summary>
+    public bool IsFeatureLocked
+    {
+        get
+        {
+            if (RequiredFeature == GameFeature.None) return false;
+
+            var unlocked = GameUnlocks.Check(RequiredFeature);
+            if (unlocked == true)
+            {
+                _featureLockLogged = false;
+                return false;
+            }
+
+            if (unlocked == false && !_featureLockLogged)
+            {
+                _featureLockLogged = true;
+                Logger.Debug($"[{SectionTitle}] Locked until the game unlocks " +
+                             $"{GameUnlocks.DisplayName(RequiredFeature)}.");
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Either lock. The level is checked first: it is the cheaper read and the clearer status.</summary>
+    public bool IsLocked => IsLevelLocked || IsFeatureLocked;
 
     /// <summary>
     ///     Bubble tasks normally wait for a notification, with a six-hour safety check. Tasks that need a
     ///     precise timer can opt in to running at their scheduled time as well.
     /// </summary>
     public bool IsReady()
-        => !IsLevelLocked && (IsNotificationVisibleCore() || (IsEnabled && DateTime.Now >= DueTime));
+        => !IsLocked && (IsNotificationVisibleCore() || (IsEnabled && DateTime.Now >= DueTime));
 
     /// <summary>Checks readiness when the caller has already checked notification visibility.</summary>
     public bool IsReady(bool notificationVisible)
-        => !IsLevelLocked && (notificationVisible || (IsEnabled && DateTime.Now >= DueTime));
+        => !IsLocked && (notificationVisible || (IsEnabled && DateTime.Now >= DueTime));
 
     /// <summary>When the timer next runs this task, independent of an earlier notification.</summary>
     public DateTime DueTime => DueAt(NextRunTime);
@@ -198,10 +239,10 @@ public abstract class BotTask
 
     /// <summary>
     ///     The check the scheduler makes before it even looks at readiness: a popup can be clicked from here,
-    ///     so the level guard has to be in front of it too.
+    ///     so the lock guard has to be in front of it too.
     /// </summary>
     public bool IsNotificationVisible()
-        => !IsLevelLocked && IsNotificationVisibleCore();
+        => !IsLocked && IsNotificationVisibleCore();
 
     /// <summary>The level is looked up once per call through the guards above, not once per branch.</summary>
     protected virtual bool IsNotificationVisibleCore()

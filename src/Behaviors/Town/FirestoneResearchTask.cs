@@ -13,6 +13,8 @@ namespace Firebot.Behaviors.Town;
 
 public class FirestoneResearchTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Library;
+
     private enum Attempt { Unavailable, Started, Blocked }
     private MelonPreferences_Entry<string> _researchPriority;
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.FirestoneResearchBtn;

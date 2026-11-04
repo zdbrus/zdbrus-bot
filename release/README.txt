@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.54 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.55 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -67,7 +67,7 @@ checks each machine's own screws, cogs and metal. Hover over planner numbers (or
 The planner's tier list ranks every war machine S to C for long-term investment and marks a goal squad.
 
 WAR MACHINE TIPS
-Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.54/WAR-MACHINES.md
+Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.55/WAR-MACHINES.md
 - Only jewel chests (Wooden, Iron, Golden, Diamond and up) give war machine parts and the conduits that
   unlock new machines. Gear chests (Common to Mythic) don't.
 - You can't pick which machine unlocks next. Machines 1-2 are single-target attackers, 3 is a tank,

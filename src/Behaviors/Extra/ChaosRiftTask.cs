@@ -10,6 +10,8 @@ namespace Firebot.Behaviors.Extra;
 
 public class ChaosRiftTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ChaosRift;
+
     private const string R = P.Menus + "/ChaosRift";
     private const string UI = R + "/UIElements";
     private const string Hit = UI + "/godParent/hitButton";

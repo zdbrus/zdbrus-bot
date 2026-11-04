@@ -29,6 +29,7 @@
     <Compile Include="..\..\src\Core\PurchaseObservation.cs" Link="PurchaseObservation.cs" />
     <Compile Include="..\..\src\Core\ScheduleStore.cs" Link="ScheduleStore.cs" />
     <Compile Include="..\..\src\Core\Tasks\BotTask.cs" Link="BotTask.cs" />
+    <Compile Include="..\..\src\Core\GameUnlocks.cs" Link="GameUnlocks.cs" />
     <Compile Include="..\..\src\UI\Config\ConfigEntry.cs" Link="ConfigEntry.cs" />
     <Compile Include="..\..\src\GameModel\Primitives\CachedGameButton.cs" Link="CachedGameButton.cs" />
     <Compile Include="..\..\src\BotActions\AutoUpgrade.cs" Link="AutoUpgrade.cs" />

@@ -14,6 +14,8 @@ namespace Firebot.Behaviors.Town;
 
 public class DailyRewardsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Store;
+
     private const float MenuOpenDelay = 2f;
     private const string OracleGiftButton =
         P.Menus + "/OracleStore/bg/submenus/extremeValueBundles/items/oraclesGift/Graphics/purchaseButton";
