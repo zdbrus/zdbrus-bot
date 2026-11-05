@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 0.7.58 (2026-11-04)
+- **Void Crystal advisor fixed.** It could list no gear at all even when you had crystals, because of an unverified enchant-cap check and how the game numbers your hero's gear tier. Tier 1 gear is always included now, and each rarity's cap is read the way the guides describe it (+2 enchants per rarity step). When nothing qualifies, F4 and the log (`[Crystals] Gear scan`) say why: how many pieces are capped, in a locked tier or empty.
+- **Guide-backed priority orders for everyone.** Talents, Oracle, Personal Tree, Forbidden Knowledge, Meteorite Research, Firestone Research, Exotic Merchant and Event Exchange now ship in the order the community guides recommend (Aurora's Steam Complete Guide, the Steam War Machine guide, the Firestone Fandom wiki and firestone-idle-rpg.de). Talents lead with **Battle cry** and **Fate**; the Oracle leads with Fate, then Guardian Power. Locked upgrades are skipped until you unlock them, so nothing stalls.
+- On this update each of those lists is switched to the guide order **once**. After that your own edits are kept.
+- Every ordered list in F1 has two new buttons: **Clear** empties the list and **Recommended** puts the guide order back.
+
 ## 0.7.57 (2026-11-03)
 - Meteorite Research now protects **Meteorites To Keep** using the game's actual balance and cost, not rounded screen numbers. It buys at x1 and checks the latest reserve again at the purchase click, so changes to the setting take effect before the next purchase.
 - Research waits for both the level increase and the exact meteorite debit before buying again. Changed selections, prices or unreadable values stop spending; an unaffordable higher priority still blocks cheaper lower priorities.

@@ -1680,7 +1680,8 @@ function renderCrystals() {
     el('td', {}, r.level + ' → ' + (r.level + 1)), el('td', { class: index === 0 ? 'best' : '' }, n0(r.cost)),
     el('td', {}, plain(r.current)), el('td', {}, plain(r.next))))
     : [el('tr', {}, el('td', { colspan: '7' }, c?.available
-      ? 'No unlocked, non-maxed gear matches this goal. On a new account, choose an individual hero for tier 1 gear.'
+      ? 'No unlocked, non-maxed gear matches this goal. On a new account, choose an individual hero for tier 1 gear.' +
+        (c.scan ? ' Gear check: ' + c.scan + '.' : '')
       : 'Live gear data is needed before recommendations can be shown.'))])));
 }
 function prepareCrystals() {

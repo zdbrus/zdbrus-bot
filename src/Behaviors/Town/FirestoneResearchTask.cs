@@ -153,7 +153,7 @@ public class FirestoneResearchTask : BotTask
 
         _researchPriority = category.CreateEntry(
             "research_priority",
-            "",
+            RecommendedOrders.FirestoneResearch,
             "Research Priority",
             $"FIRESTONE RESEARCH TALENT TREE PRIORITY CONFIGURATION. " +
             $"\nThis setting controls which talents are researched first based on their tree position. " +
@@ -170,8 +170,9 @@ public class FirestoneResearchTask : BotTask
             $"\n'7,8,9' = Research Raining gold first, then Critical loot Bonus, then Critical loot Chance. " +
             $"\n'13' = Only research Firestone Finder, fallback to any available if completed. " +
             $"\n'5,12,1,16,3,8,10,2,14,7,4,15,6,13,9,11' = Example using all 16 IDs in a random order, each ID only once. " +
-            $"\nDefault: empty (no priority, bot selects any available talent)"
+            $"\nDefault: guide order (Firestone Finder, Raining gold, attributes first). Empty = bot selects any available talent."
         );
+        RecommendedOrders.Adopt(category, _researchPriority);
     }
 
     private string[] GetResearchPriority()

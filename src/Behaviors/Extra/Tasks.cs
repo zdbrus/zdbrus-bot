@@ -187,12 +187,9 @@ public class ExoticMerchantTask : BotTask
             "0 = sell nothing, 1 = scrolls only, 2 = everything except gold items, 3 = everything.");
         _buyUpgrades = c.CreateEntry("buy_upgrades", true, "Buy Exotic Upgrades",
             "Spends exotic coins in priority order, filling an available tier before the next.");
-        _priority = c.CreateEntry("priority",
-            "Prestigious,Firestone Finder,Raining gold,Heroes' damage,Team bonus,All main attributes,Firestone effect," +
-            "Damage specialization,Leadership,Guardian power,Energy Heroes,Mana Heroes,Rage Heroes," +
-            "Fist fight,Magic spells,Precision,Skip stage,Skip wave,Healer specialization," +
-            "Tank specialization,Attribute health,Attribute armor",
+        _priority = c.CreateEntry("priority", RecommendedOrders.ExoticMerchant,
             "Priority", "Exotic upgrades to fill in order. Level-locked upgrades are skipped until unlocked.");
+        RecommendedOrders.Adopt(c, _priority);
         _buyChests = c.CreateEntry("buy_emblem_chests", true, "Buy Emblem Chests",
             "Spends emblems on gear chests, best chest first.");
     }
@@ -940,10 +937,9 @@ public class OracleBlessingsTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority",
-            "Fate,Prestigious,Raining gold,Damage Specialization,Guardian Power,Mana Heroes,Energy Heroes," +
-            "Rage Heroes,Melee Heroes,Ranged Heroes,Spellcaster Heroes,Tank Specialization,Healer Specialization",
+        _priority = c.CreateEntry("priority", RecommendedOrders.Oracle,
             "Priority", "Blessings to fill in order. Change the list to suit your party; unlisted blessings follow.");
+        RecommendedOrders.Adopt(c, _priority);
     }
 
     public override IEnumerator Execute()
@@ -1074,10 +1070,9 @@ public class PersonalTreeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority", "Raining gold,Battle cry,Prestigious,All main attributes,Attribute damage," +
-                                              "Firestone effect,Hero level up cost,Attribute health,Attribute armor,Guardian," +
-                                              "Precision,Fist fight,Magic spells", "Priority",
+        _priority = c.CreateEntry("priority", RecommendedOrders.PersonalTree, "Priority",
             "Upgrade names in the order to buy, comma-separated. Upgrades not listed are bought last.");
+        RecommendedOrders.Adopt(c, _priority);
         _keepTokens = c.CreateEntry("keep_tokens", 0, "Tokens To Keep",
             "Expedition tokens to leave unspent (war machine levels use them too).");
     }

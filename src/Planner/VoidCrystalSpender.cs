@@ -36,6 +36,7 @@ public static class VoidCrystalSpender
             if (hero != null && hero.IsUnlocked().GetDecrypted()) owned.Add(hero.HeroCode);
         if (owned.Count == 0) throw new InvalidOperationException("No unlocked hero data is available yet.");
         var result = new List<VoidCrystalOption>();
+        int empty = 0, locked = 0, capped = 0;
         foreach (var pair in heroes.heroesDict)
         {
             var hero = pair.Value;
@@ -44,8 +45,12 @@ public static class VoidCrystalSpender
             foreach (var entry in hero.gearsDict)
             {
                 var item = entry.Value;
-                if (item == null || (int)item.itemRarity <= 0 || (int)item.gearTier > hero.gearTier ||
-                    item.IsMaxEnchantLvl().GetDecrypted() || item.MaxEnchantLvlPerRarity().GetDecrypted()) continue;
+                if (item == null || (int)item.itemRarity <= 0) { empty++; continue; }
+                // Tier 1 is always open; new accounts can report 0 here before any tier unlock.
+                if ((int)item.gearTier > Math.Max(1, hero.gearTier)) { locked++; continue; }
+                // Guides: each rarity allows two enchants (Common 2, Uncommon 4, ...). Use that documented cap
+                // rather than the game's per-rarity flag, whose live meaning was never confirmed.
+                if (item.IsMaxEnchantLvl().GetDecrypted() || item.EnchantLevel >= 2 * (int)item.itemRarity) { capped++; continue; }
                 var cost = item.enchantCost.GetDecrypted();
                 if (!VoidCrystalPolicy.WholeAmount(cost) || cost <= 0)
                     throw new InvalidOperationException("An enchant price could not be read safely.");
@@ -57,8 +62,12 @@ public static class VoidCrystalSpender
                 });
             }
         }
+        Skipped = $"{result.Count} upgradable, {capped} at their rarity's enchant cap, {locked} in a locked tier, {empty} empty slots";
         return result;
     }
+
+    internal static string Skipped { get; private set; } = "";
+    private static string _loggedSkipped;
 
     private static double Balance()
     {
@@ -76,7 +85,11 @@ public static class VoidCrystalSpender
         List<VoidCrystalOption> items = null;
         var error = "";
         double balance = 0;
-        try { items = ReadOptions(); balance = Balance(); _readError = null; }
+        try
+        {
+            items = ReadOptions(); balance = Balance(); _readError = null;
+            if (_loggedSkipped != Skipped) { _loggedSkipped = Skipped; Logger.Info("[Crystals] Gear scan: " + Skipped + "."); }
+        }
         catch (Exception e)
         {
             error = e.Message;
@@ -91,6 +104,7 @@ public static class VoidCrystalSpender
         writer.WriteBoolean("ok", Ok);
         writer.WriteString("status", Status);
         writer.WriteNumber("balance", balance);
+        writer.WriteString("scan", error.Length == 0 ? Skipped : "");
         writer.WriteStartArray("items");
         if (error.Length == 0 && items != null)
             foreach (var item in items)

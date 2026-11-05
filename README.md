@@ -68,6 +68,8 @@ enable it once in F1 or press its hotkey to retry. An empty skill combo cannot s
 
 Every feature can be switched on or off in the F1 panel.
 
+Priority lists (talents, Oracle, Personal Tree, Forbidden Knowledge, research, Exotic Merchant, event exchange) ship in the order the community guides recommend: Aurora's Steam Complete Guide, the Steam War Machine guide, the Firestone Fandom wiki and firestone-idle-rpg.de. Talents start with Battle cry and Fate. Locked upgrades are skipped until you unlock them. Each ordered list in F1 has **Clear** and **Recommended** buttons, so you can start from scratch or go back to the guide order.
+
 | Area | Automated |
 |------|-----------|
 | **Daily** | Daily rewards, check-in, free shop items, free Mystery Box, mail rewards, daily and weekly quests, battle pass free rewards (skips empty-track scans), opens eligible chests and free Mystery Boxes (keeps the ones you choose) |

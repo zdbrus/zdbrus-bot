@@ -26,8 +26,9 @@ public class TalentsTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority", "All main attributes,Attribute damage,Attribute health,Attribute armor",
+        _priority = c.CreateEntry("priority", RecommendedOrders.Talents,
             "Priority", "Talent names to fill first, comma-separated. Others are filled after, in tree order.");
+        RecommendedOrders.Adopt(c, _priority);
     }
 
     private static double Free()

@@ -29,9 +29,9 @@ public class MeteoriteResearchTask : BotTask
     {
         _keep = c.CreateEntry("keep_meteorites", 0, "Meteorites To Keep",
             "Minimum meteorites left after each research purchase. Checked again before every purchase.");
-        _priority = c.CreateEntry("priority",
-            "Attribute damage,All main attributes,Raining gold,Hero level up cost,Attribute health,Attribute armor,Firestone finder,Powerless boss,Powerless enemy",
+        _priority = c.CreateEntry("priority", RecommendedOrders.MeteoriteResearch,
             "Priority", "Meteorite research upgrades are filled in this order; lower tiers wait until higher tiers are maxed.");
+        RecommendedOrders.Adopt(c, _priority);
     }
 
     private static MeteoriteResearchPreviewPopup Popup =>

@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.57 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.58 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -53,6 +53,7 @@ With Balance selected, it uses gaps between tasks even when the next check is le
 then finishes its short pass before handing over. Ready and running tasks still take priority;
 Focus still pauses as soon as a task is approaching.
 Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
+Clear empties a list; Recommended puts back the guide order (Battle cry and Fate first for talents).
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
 Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,
 then remembered between launches. Prices and completion state are not persisted.
@@ -77,7 +78,7 @@ may still finish. Each request stops after 40 enchants or an uncertain result. I
 unlocks tiers or spends other currencies. Void Crystals improve heroes, not war machines.
 
 WAR MACHINE TIPS
-Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.57/WAR-MACHINES.md
+Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.58/WAR-MACHINES.md
 - Only jewel chests (Wooden, Iron, Golden, Diamond and up) give war machine parts and the conduits that
   unlock new machines. Gear chests (Common to Mythic) don't.
 - You can't pick which machine unlocks next. Machines 1-2 are single-target attackers, 3 is a tank,

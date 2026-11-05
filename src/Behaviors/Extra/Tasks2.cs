@@ -280,8 +280,9 @@ public class ForbiddenKnowledgeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority", "Firestone Finder,All main attributes,Attribute damage,Raining gold",
+        _priority = c.CreateEntry("priority", RecommendedOrders.ForbiddenKnowledge,
             "Priority", "Forbidden knowledge upgrades in buy order. Unlisted ones are bought after, cheapest first.");
+        RecommendedOrders.Adopt(c, _priority);
     }
 
     private static double Tomes()
@@ -719,9 +720,9 @@ public class EventExchangeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority",
-            "Pickaxe,Legendary chest,Meteorite,Golden key,Strange dust,Twilight hourglass,Soul ember,Exotic coin",
+        _priority = c.CreateEntry("priority", RecommendedOrders.EventExchange,
             "Items To Buy", "Event exchange items to buy, in order (comma-separated). Items not listed are never bought.");
+        RecommendedOrders.Adopt(c, _priority);
         _keep = c.CreateEntry("keep_currency", 0, "Event Currency To Keep", "Event currency to leave unspent.");
     }
 

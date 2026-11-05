@@ -487,44 +487,44 @@ internal static class ConfigRegistry
             "No resource marked disables the task.",
 
         ["firestone_research/research_priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
-            "Names describe Tree I; positions also apply to other trees.\n" +
-            "An empty list picks any available research.",
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
+            "Guide order: Firestone Finder and Raining gold first.\n" +
+            "Names describe Tree I; positions also apply to other trees.",
 
         ["personal_tree/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
         ["forbidden_knowledge/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
         ["meteorite_research/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
         ["talents/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
-            "Fill each available listed talent before the next.",
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
+            "Guide order puts Battle cry and Fate first; locked talents are skipped.",
 
         ["oracle_blessings/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
-            "Prioritize the blessings that suit your party.",
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
+            "Guide order: Fate once unlocked, then Guardian power; locked ones are skipped.",
 
         ["exotic_merchant/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Level-locked upgrades wait until you can unlock them.",
 
         ["war_machine_upgrade/war_machine"] =
-            "Numbers show machine order. Tap to remove, then tap to add last.\n" +
+            "Numbers show machine order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Active squad expands to the machines in your current squad.",
 
         ["war_machine_upgrade/blueprint_priority"] =
             "When Blueprints is set to All, buy these types in numbered order.\n" +
-            "Tap to remove, then tap to add last; an empty list buys none.",
+            "Tap to toggle; Recommended resets, Clear empties; an empty list buys none.",
 
         ["chaos_rift/holy_guardians"] =
-            "Numbers show guardian priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show guardian priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "The holy upgrade strategy decides whether lower priorities can spend.",
 
         ["chaos_rift/holy_priority_mode"] =
@@ -532,7 +532,7 @@ internal static class ConfigRegistry
             "Focus first saves orbs for the first unlocked guardian, even when it cannot afford an upgrade.",
 
         ["event_exchange/priority"] =
-            "Numbers show buying order. Tap to remove, then tap to add last.\n" +
+            "Numbers show buying order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Unlisted items are not bought.",
 
         ["free_pickaxes/pickaxe_claim_threshold"] =
@@ -545,7 +545,7 @@ internal static class ConfigRegistry
             "An empty sequence plays nothing.",
 
         ["auto_upgrade/upgrade_target_slots"] =
-            "Numbers show upgrade order. Tap to remove, then tap to add last.\n" +
+            "Numbers show upgrade order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "An empty list uses all slots in screen order.",
 
         ["auto_upgrade/priority_mode"] =

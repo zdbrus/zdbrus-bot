@@ -197,6 +197,18 @@ internal static class VoidCrystalTests
         GameInitialize.HandlerLoader.heroServerHandler.heroesDict[HeroCode.Talia].gearTier = 1;
         Check(!VoidCrystalPolicy.Rank(VoidCrystalSpender.ReadOptions(), "damage", -1).Any(),
             "Maxed gear or a locked tier remained eligible.");
+
+        game = Setup();
+        foreach (var server in GameInitialize.HandlerLoader.heroServerHandler.heroesDict.Values)
+        {
+            server.gearTier = 0;
+            foreach (var gear in server.gearsDict.Values) gear.MaxLevel = 0;
+        }
+        var fresh = VoidCrystalSpender.ReadOptions();
+        Check(fresh.Count == 2 && fresh.All(o => o.Slot == (int)GearSlot.Weapon),
+            "A new account's tier 1 gear was hidden by a zero tier count or the game's per-rarity flag.");
+        Check(VoidCrystalSpender.Skipped.StartsWith("2 upgradable") && VoidCrystalSpender.Skipped.Contains("2 in a locked tier"),
+            "The gear scan summary did not explain skipped items.");
     }
 
     public static void SpendingFailures()
