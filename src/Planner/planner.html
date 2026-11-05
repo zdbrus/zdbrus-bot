@@ -466,16 +466,17 @@ table.ledger.adv{min-width:700px}
         <label class="field"><span class="label">Goal</span><select id="crystal-goal" aria-label="Crystal upgrade goal">
           <option value="damage">Hero damage</option><option value="health">Hero health</option>
           <option value="armor">Hero armor</option><option value="gold">Gold earnings</option>
+          <option value="power">Gear power (unlocks)</option>
         </select></label>
-        <label class="field"><span class="label">For</span><select id="crystal-target" aria-label="Hero to improve"><option value="-1">All heroes</option></select></label>
+        <label class="field"><span class="label">For (optional)</span><select id="crystal-target" aria-label="Hero to improve"><option value="-1">Auto: whole roster</option></select></label>
         <label class="field"><span class="label">Budget</span><input id="crystal-budget" type="number" min="0" step="1" value="0" aria-label="Maximum Void Crystals to spend"></label>
         <button class="btn primary" id="crystal-spend" type="button" disabled>Spend for me</button>
         <button class="btn" id="crystal-stop" type="button" hidden>Stop spending</button>
       </div>
-      <p class="note">Hero gear, not war machines. Cheapest matching enchant first, across your whole roster. Global gear counts even on benched heroes. Choose one hero to include their personal weapon, chest and boots.</p>
+      <p class="note">Automatically compares your current gear across the whole roster. Party members' personal gear and everyone's global gear are considered; choose one hero only if you want to focus on them.</p>
       <p id="crystal-status" role="status" aria-live="polite"></p>
       <div class="ledger-wrap"><table class="ledger" id="crystals"></table></div>
-      <p class="note">Prices, current effects and next effects come from the game. Each enchant doubles that slot's effect; this is not a prediction of total party damage. At the same price, relics win ties because they help all three stats. Spending re-reads and re-ranks after every enchant, stays within your budget and stops after 40 enchants or any unconfirmed result. It never buys crystals, unlocks tiers or spends other currencies. Enchants stay on the slot when you get better gear.</p>
+      <p class="note">Value compares the next boost per 100 crystals, using your live gear and party stats. Damage, health and armor are estimates, not a combat simulation. Gear power is a separate goal for unlocking gear tiers and missions. Spending rechecks the best affordable upgrade before every enchant, stays within your budget and stops after 40 enchants or any unconfirmed result. It never buys crystals, unlocks tiers or spends other currencies. Enchants stay on the slot when you get better gear.</p>
     </div>
   </section>
 
@@ -1247,8 +1248,8 @@ function rarityTip(wm) {
 }
 
 const TIPS = {
-  crystals: { title: 'Void Crystals: hero gear', body: 'Choose damage, health, armor or gold. The advisor uses real enchant prices and ranks the cheapest matching effect first across every unlocked hero, including the bench. A relic wins equal-price ties because it also helps the other hero stats.',
-    foot: 'All heroes excludes personal tier 1 gear. Choose a hero to include it. Spend for me requires a budget and confirmation; it never spends automatically in the background.' },
+  crystals: { title: 'Void Crystals: hero gear', body: 'The advisor reads your gear, next enchant and price. For party damage it estimates each active hero’s share using their current DPS; health and armor use their current stats. Global gear helps the whole party even when its owner is on the bench. Gold and gear power are ranked separately.',
+    foot: 'Auto compares everyone without choosing a hero. Gear power helps unlock gear tiers and missions; it is not the same as combat strength. Spend for me requires a budget and confirmation and never spends automatically in the background.' },
   source: () => ({ title: 'Where these numbers come from', body: ({
     live: 'Live from your game. While the bot runs, this page re-reads your machines, heroes, jewels, parts and currencies every few seconds.',
     connecting: 'Looking for Zdbrus Bot on this computer…',
@@ -1624,21 +1625,25 @@ const CRYSTAL_SLOTS = ['Weapon', 'Chest', 'Boots', 'Wrist', 'Shoulder', 'Belt', 
 let crystalSending = false, crystalPending = null, crystalNotice = '', crystalEpoch = '', crystalHeroKey = '';
 const wholeCrystals = n => Number.isSafeInteger(n) && n >= 0;
 function crystalOptions(items, goal, target) {
-  if (!['damage', 'health', 'armor', 'gold'].includes(goal) || !Number.isInteger(target) || target < -1) return [];
-  const slots = { damage: [0, 3, 7], health: [1, 4, 7], armor: [2, 5, 7], gold: [6] }[goal];
-  return (items || []).filter(i => Number.isInteger(i.hero) && i.hero >= 0 && Number.isInteger(i.slot) &&
+  if (!['damage', 'health', 'armor', 'gold', 'power'].includes(goal) || !Number.isInteger(target) || target < -1) return [];
+  return (items || []).map(i => {
+    const applicable = target === -1 || ((goal !== 'power' && i.slot >= 3) || i.hero === target);
+    const score = applicable ? i.values?.[goal]?.[target === -1 ? 'all' : 'hero'] : 0;
+    return { ...i, score };
+  }).filter(i => Number.isInteger(i.hero) && i.hero >= 0 && Number.isInteger(i.slot) &&
     Number.isInteger(i.level) && i.level >= 0 && wholeCrystals(i.cost) && i.cost > 0 &&
-    slots.includes(i.slot) && (i.slot >= 3 || i.hero === target))
-    .sort((a, b) => a.cost - b.cost || Number(b.slot === 7) - Number(a.slot === 7) ||
-      Number(b.slot >= 3) - Number(a.slot >= 3) || a.hero - b.hero || a.slot - b.slot);
+    fin(i.score) && i.score > 0 && fin(i.powerGain) && i.powerGain > 0)
+    .sort((a, b) => b.score - a.score || b.powerGain - a.powerGain || a.cost - b.cost ||
+      a.hero - b.hero || a.slot - b.slot);
 }
+const crystalReady = (c, goal, target) => target !== -1 || !['damage', 'health', 'armor'].includes(goal) || !!c?.party?.[goal];
 const crystalLive = () => LIVE && G?.crystals?.available && liveState === 'live' && Date.now() - liveAt < 10000;
 const crystalGoal = () => $('#crystal-goal').value;
 const crystalTarget = () => Number($('#crystal-target').value);
 function crystalCanSpend() {
   const budget = Number($('#crystal-budget').value), c = G?.crystals;
   return crystalLive() && !crystalSending && !c.busy && !G?.apply?.busy && !G?.spend?.busy && !applying && !spending &&
-    wholeCrystals(budget) && budget > 0 && budget <= c.balance &&
+    crystalReady(c, crystalGoal(), crystalTarget()) && wholeCrystals(budget) && budget > 0 && budget <= c.balance &&
     crystalOptions(c.items, crystalGoal(), crystalTarget()).some(i => i.cost <= budget);
 }
 function renderCrystals() {
@@ -1652,7 +1657,7 @@ function renderCrystals() {
   if (key !== crystalHeroKey) {
     crystalHeroKey = key;
     const select = $('#crystal-target'), previous = select.value;
-    select.replaceChildren(el('option', { value: '-1' }, 'All heroes'),
+    select.replaceChildren(el('option', { value: '-1' }, 'Auto: whole roster'),
       ...heroes.map(h => el('option', { value: String(h.id) }, h.code)));
     select.value = heroes.some(h => String(h.id) === previous) ? previous : '-1';
   }
@@ -1668,19 +1673,23 @@ function renderCrystals() {
     : !c ? 'Waiting for gear data. If this stays empty, restart the game to load the latest bot.'
     : !c.available ? c.error || 'Gear is not loaded yet.'
     : liveState !== 'live' ? 'Disconnected. Spending is disabled until the game reconnects.'
+    : !crystalReady(c, crystalGoal(), crystalTarget()) ? 'Current party stats are not ready. Return to the main battle and try again.'
     : 'Choose a goal and a budget. Nothing is spent until you confirm.');
   const rows = crystalOptions(c?.available ? c.items : [], crystalGoal(), crystalTarget());
   const plain = text => String(text || '').replace(/<[^>]*>/g, '');
   const table = $('#crystals');
   table.replaceChildren(el('thead', {}, el('tr', {},
-    ...['Hero', 'Gear', 'Helps', 'Level', 'Crystals', 'Current effect', 'Next effect'].map(t => el('th', {}, t)))));
+    ...['Hero', 'Gear', 'Helps', 'Level', 'Crystals', 'Current effect', 'Next effect', 'Gear power', 'Value / 100'].map(t => el('th', {}, t)))));
   table.append(el('tbody', {}, ...(rows.length ? rows.map((r, index) => el('tr', {},
     el('td', {}, r.name), el('td', {}, CRYSTAL_SLOTS[r.slot]),
     el('td', {}, r.slot === 6 ? 'Gold earnings' : r.slot >= 3 ? 'All heroes' : r.name + ' only'),
-    el('td', {}, r.level + ' → ' + (r.level + 1)), el('td', { class: index === 0 ? 'best' : '' }, n0(r.cost)),
-    el('td', {}, plain(r.current)), el('td', {}, plain(r.next))))
-    : [el('tr', {}, el('td', { colspan: '7' }, c?.available
-      ? 'No unlocked, non-maxed gear matches this goal. On a new account, choose an individual hero for tier 1 gear.' +
+    el('td', {}, r.level + ' → ' + (r.level + 1)), el('td', {}, n0(r.cost)),
+    el('td', {}, plain(r.current)), el('td', {}, plain(r.next)), el('td', {}, '+' + fmt(r.powerGain)),
+    el('td', { class: index === 0 ? 'best' : '' }, '+' + (crystalGoal() === 'power' ? fmt(r.score * 100) : pct(r.score * 100)))))
+    : [el('tr', {}, el('td', { colspan: '9' }, c?.available
+      ? (!crystalReady(c, crystalGoal(), crystalTarget()) ? 'Waiting for current party stats.' :
+        c.ownedGear === 0 ? 'No hero gear is owned yet. Open gear chests to find pieces you can enchant.' :
+        'No unlocked, non-maxed gear matches this goal.') +
         (c.scan ? ' Gear check: ' + c.scan + '.' : '')
       : 'Live gear data is needed before recommendations can be shown.'))])));
 }
@@ -1689,7 +1698,8 @@ function prepareCrystals() {
   crystalPending = { action: 'start', epoch: G.crystals.epoch, requestId: crypto.randomUUID(),
     goal: crystalGoal(), target: crystalTarget(), budget: Number($('#crystal-budget').value) };
   const target = $('#crystal-target').selectedOptions[0].textContent;
-  $('#crystal-confirm-text').textContent = `Spend up to ${n0(crystalPending.budget)} Void Crystals on ${crystalGoal() === 'gold' ? 'gold earnings' : crystalGoal() + ' for ' + target}? The bot chooses the cheapest matching enchant, checks the result, then re-ranks. Maximum 40 enchants.`;
+  const goal = $('#crystal-goal').selectedOptions[0].textContent;
+  $('#crystal-confirm-text').textContent = `Spend up to ${n0(crystalPending.budget)} Void Crystals on ${goal.toLowerCase()} (${target})? The bot chooses the best affordable next upgrade, checks the result and re-ranks. Maximum 40 enchants.`;
   $('#crystal-confirm').showModal();
 }
 async function sendCrystals(request) {

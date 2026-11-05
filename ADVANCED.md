@@ -44,14 +44,24 @@ resource_type = "0,1"   # comma-separated ids; empty = the task's default
 
 ## Void Crystal advisor
 
-In F4, select a goal (hero damage, health, armor or gold) and either all heroes or one hero.
-Global gear is read from the whole unlocked roster, not just the party or machine crews.
-Personal tier 1 gear only participates when its owner is selected. The ranking compares the
-current price of a matching enchant; it is not a combat simulation or a total-DPS prediction.
-At equal prices, relics are preferred, then global gear. No price curve is extrapolated.
+In F4, choose damage, health, armor, gold or gear power. The default automatically compares the
+whole unlocked roster; selecting one hero is optional. For damage, health and armor, personal
+gear is considered for the current battle party and global gear is considered even when its
+owner is benched. The party comparison estimates each next enchant's relative multiplier gain
+times its affected hero's share of the party's current DPS, maximum health or armor, divided
+by the live price. Global gear uses the whole-party multiplier change. Selecting a hero instead
+compares that hero's personal gear with the roster's global gear. Gold compares rings separately.
+Gear power compares the power gain per crystal for all slots, including benched personal gear;
+when a hero is selected, it only compares that hero's pieces.
+
+The game supplies the current gear, prices, effects, power and enchant-level multipliers. Gear
+power normally doubles per enchant; effect multipliers do not always double. Rankings are
+estimates for the next affordable enchant, not combat simulations or globally optimal plans
+for an entire budget. Gear power helps unlock gear tiers and missions; it is not hero DPS or
+war-machine power. Equal values favor the higher gear-power gain, then the lower cost.
 
 The crystal budget starts at zero and is not persisted. Spending requires an explicit confirmation,
-reads the current price before every click, and requires a one-level increase plus the exact
+re-reads and re-ranks the live gear and party before every click, and requires a one-level increase plus the exact
 crystal debit before continuing. A mismatch or timeout stops the run without retrying that purchase.
 The bot re-ranks after each confirmed enchant and stops at 40 enchants per request. A stopped or
 cancelled request may still have one in-flight purchase; refresh the game state before starting again.

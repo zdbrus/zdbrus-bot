@@ -13,6 +13,18 @@ public sealed class VoidCrystalOption
     public double Cost;
     public string CurrentEffect;
     public string NextEffect;
+    public int Rarity;
+    public double NativeEffect;
+    public double EffectGain;
+    public double MultiplierGain;
+    public double PowerGain;
+    public bool Active;
+    public bool DamageReady;
+    public bool HealthReady;
+    public bool ArmorReady;
+    public double DamageShare;
+    public double HealthShare;
+    public double ArmorShare;
 }
 
 public static class VoidCrystalPolicy
@@ -23,14 +35,24 @@ public static class VoidCrystalPolicy
     public static bool WholeAmount(double value) =>
         double.IsFinite(value) && value >= 0 && value <= MaxInteger && value == Math.Truncate(value);
 
-    public static bool ValidGoal(string goal) => goal is "damage" or "health" or "armor" or "gold";
+    public static bool ValidGoal(string goal) => goal is "damage" or "health" or "armor" or "gold" or "power";
 
     public static bool Matches(VoidCrystalOption item, string goal, int target)
     {
         if (item == null || !ValidGoal(goal) || target < -1 || item.Hero < 0 ||
-            item.Slot is < 0 or > 7 || item.Level < 0 || !WholeAmount(item.Cost) || item.Cost <= 0)
+            item.Slot is < 0 or > 7 || item.Level < 0 || !WholeAmount(item.Cost) || item.Cost <= 0 ||
+            !double.IsFinite(item.MultiplierGain) || item.MultiplierGain <= 0 ||
+            !double.IsFinite(item.PowerGain) || item.PowerGain <= 0)
             return false;
-        if (item.Slot < 3 && item.Hero != target) return false;
+        if (goal == "power") return target == -1 || item.Hero == target;
+        if (target == -1 && (goal switch
+            {
+                "damage" => !item.DamageReady,
+                "health" => !item.HealthReady,
+                "armor" => !item.ArmorReady,
+                _ => false,
+            })) return false;
+        if (item.Slot < 3 && (target == -1 ? !item.Active : item.Hero != target)) return false;
         return goal switch
         {
             "damage" => item.Slot is 0 or 3 or 7,
@@ -41,10 +63,24 @@ public static class VoidCrystalPolicy
         };
     }
 
-    // Each enchant doubles this slot's effect. Rank comparable effects by real price, not gear power.
+    public static double Score(VoidCrystalOption item, string goal, int target)
+    {
+        if (!Matches(item, goal, target)) return 0;
+        if (goal == "power") return item.PowerGain / item.Cost;
+        var share = target == -1 && item.Slot < 3 ? goal switch
+        {
+            "damage" => item.DamageShare,
+            "health" => item.HealthShare,
+            "armor" => item.ArmorShare,
+            _ => 1,
+        } : 1;
+        return double.IsFinite(share) && share > 0 && share <= 1
+            ? item.MultiplierGain * share / item.Cost : 0;
+    }
+
     public static IEnumerable<VoidCrystalOption> Rank(IEnumerable<VoidCrystalOption> items, string goal, int target) =>
-        items.Where(item => Matches(item, goal, target)).OrderBy(item => item.Cost)
-            .ThenByDescending(item => item.Slot == 7).ThenByDescending(item => item.Slot >= 3)
+        items.Where(item => Score(item, goal, target) > 0).OrderByDescending(item => Score(item, goal, target))
+            .ThenByDescending(item => item.PowerGain).ThenBy(item => item.Cost)
             .ThenBy(item => item.Hero).ThenBy(item => item.Slot);
 
     public static bool CanSpend(VoidCrystalOption expected, VoidCrystalOption current,
@@ -54,6 +90,8 @@ public static class VoidCrystalPolicy
         WholeAmount(current.Cost) && current.Cost > 0 &&
         expected.Hero == current.Hero && expected.Slot == current.Slot &&
         expected.Level == current.Level && expected.Cost == current.Cost &&
+        expected.Rarity == current.Rarity && expected.NativeEffect == current.NativeEffect &&
+        expected.MultiplierGain == current.MultiplierGain && expected.PowerGain == current.PowerGain &&
         current.Cost <= budget - spent && current.Cost <= balance;
 
     public static bool Confirmed(int beforeLevel, int afterLevel, double beforeBalance, double afterBalance, double cost) =>

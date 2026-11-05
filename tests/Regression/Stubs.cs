@@ -816,6 +816,7 @@ namespace Il2Cpp
         public static bool Loaded = true;
         public static HandlerLoader HandlerLoader = new();
         public static MenuLoader MenuLoader = new();
+        public static BattleCharactersHolder battleCharactersHolder = new();
         public static bool HasGameLoaded() => Loaded;
     }
 
@@ -869,6 +870,8 @@ namespace Il2Cpp
     {
         public int Stage = 100;
         public bool ThrowOnRead;
+        public HashSet<int> Fighting = new();
+        public bool IsHeroFighting(int id) => Fighting.Contains(id);
         public int CurrentStageNumber => ThrowOnRead
             ? throw new InvalidOperationException("stage read failed") : Stage;
     }

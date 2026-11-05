@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 0.7.59 (2026-11-04)
+- **Gear detection fixed:** the game can expose empty placeholder entries in one gear list even when you own gear. The Crystal advisor now reads the populated gear list, including on new accounts.
+- **Void Crystal optimization:** F4 now automatically compares current gear across your roster without requiring a hero choice. Damage, health and armor use the current party's stats to estimate the benefit of personal gear, alongside global gear from the whole roster. Gold and gear power are separate goals; gear power helps unlock tiers and missions, not war-machine power.
+- The advisor compares each next enchant's actual level multiplier and cost, shows its current and next effect and gear-power gain, and sorts by estimated benefit per crystal rather than price alone. These are next-upgrade estimates, not a combat simulation or a guarantee of the best complete budget plan.
+- **Spend for me** re-reads and re-ranks the best affordable upgrade immediately before each click, checks for changed gear, and retains the budget, confirmation, exact-receipt and 40-enchant safeguards. It can also use the gear screen on new accounts that do not yet show the gear-category button.
+
 ## 0.7.58 (2026-11-04)
 - **Void Crystal advisor fixed.** It could list no gear at all even when you had crystals, because of an unverified enchant-cap check and how the game numbers your hero's gear tier. Tier 1 gear is always included now, and each rarity's cap is read the way the guides describe it (+2 enchants per rarity step). When nothing qualifies, F4 and the log (`[Crystals] Gear scan`) say why: how many pieces are capped, in a locked tier or empty.
 - **Guide-backed priority orders for everyone.** Talents, Oracle, Personal Tree, Forbidden Knowledge, Meteorite Research, Firestone Research, Exotic Merchant and Event Exchange now ship in the order the community guides recommend (Aurora's Steam Complete Guide, the Steam War Machine guide, the Firestone Fandom wiki and firestone-idle-rpg.de). Talents lead with **Battle cry** and **Fate**; the Oracle leads with Fate, then Guardian Power. Locked upgrades are skipped until you unlock them, so nothing stalls.
