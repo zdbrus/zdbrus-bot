@@ -49,7 +49,8 @@ public static class JewelSpender
         Busy = true;
         Ok = false;
         Status = "Waiting for the bot to finish its current job…";
-        MelonCoroutines.Start(Run(steps));
+        MelonCoroutines.Start(CoroutineGuard.Run(Run(steps), "Ethereal shard spending",
+            () => Finish(false, "Stopped after an error. Refresh before trying again; a pending enchant may still finish.")));
         return "Spending";
     }
 
@@ -77,18 +78,18 @@ public static class JewelSpender
         int? currentHero = null;
         foreach (var step in steps)
         {
-            if (currentHero != step.Hero)
+            var prepareTab = currentHero != step.Hero || mech.heroServerSelected?.code != step.Hero;
+            var selected = false;
+            yield return HeroSelection.Select(mech, step.Hero,
+                () => !GameTutorial.ShouldHold, value => selected = value);
+            if (!selected)
             {
-                if (!SelectHero(mech, step.Hero))
-                {
-                    // The hero list only builds tiles as it scrolls; step through heroes with the arrows instead.
-                    for (var n = 0; n < 80 && Selected(mech) != step.Hero; n++)
-                    {
-                        try { mech.GoForthHero(); } catch { break; }
-                        yield return new WaitForSeconds(0.15f);
-                    }
-                    if (Selected(mech) != step.Hero) { Logger.Info($"[Shards] Could not find hero {step.Hero}; skipped."); continue; }
-                }
+                Finish(false, $"Stopped: could not confirm unlocked hero {step.Hero}. Earlier confirmed enchants: {done}.");
+                yield return Watchdog.ForceClearAll("after spending ethereal shards");
+                yield break;
+            }
+            if (prepareTab)
+            {
                 currentHero = step.Hero;
                 yield return new WaitForSeconds(1.2f);
                 yield return Ui.Click(EnchantTab, 1f);
@@ -103,6 +104,12 @@ public static class JewelSpender
             var costText = "";
             try { costText = item?.enchantJewelItemCostText?.text ?? ""; } catch { }
             var name = Enum.GetName(typeof(HeroCode), step.Hero) ?? step.Hero.ToString();
+            if (!GameInitialize.HasGameLoaded() || GameTutorial.ShouldHold ||
+                mech.heroSelectionLoading || mech.heroServerSelected?.code != step.Hero || !Ui.Visible(Hoh))
+            {
+                Finish(false, $"Stopped: the hero selection or game state changed before enchanting {name}. Earlier confirmed enchants: {done}.");
+                yield break;
+            }
             if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
             {
                 // Out of shards or at max level: stop here instead of skipping ahead, so the order stays the plan's.
@@ -128,28 +135,6 @@ public static class JewelSpender
 
         yield return Watchdog.ForceClearAll("after spending ethereal shards");
         Finish(done > 0, done > 0 ? $"Done: {done} jewel enchant(s)." : "No enchant went through. No shards were spent.");
-    }
-
-    private static bool SelectHero(HallOfHeroesMech mech, int hero)
-    {
-        try
-        {
-            var list = mech.heroInteractions;
-            for (var i = 0; list != null && i < list.Count; i++)
-                if (list[i]?.hero != null && list[i].hero.code == hero)
-                {
-                    mech.SelectHero(i, true);
-                    return true;
-                }
-        }
-        catch (Exception e) { Logger.Debug($"[Shards] select: {e.Message}"); }
-        return false;
-    }
-
-    private static int Selected(HallOfHeroesMech mech)
-    {
-        try { return mech.heroServerSelected?.code ?? -1; }
-        catch { return -1; }
     }
 
     private static EnchantJewelItemInteraction FindItem(JewelSlot slot)

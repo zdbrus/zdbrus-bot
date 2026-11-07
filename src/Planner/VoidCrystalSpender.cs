@@ -404,20 +404,9 @@ public static class VoidCrystalSpender
                 var choice = VoidCrystalPolicy.Rank(scan.Items, goal, target).FirstOrDefault(o => o.Cost <= budget - spent && o.Cost <= balance);
                 if (choice == null) break;
                 Status = $"Finding {choice.Name}'s {(GearSlot)choice.Slot}...";
-                if (mech.heroServerSelected?.code != choice.Hero)
-                {
-                    var found = false;
-                    var tiles = mech.heroInteractions;
-                    for (var i = 0; tiles != null && i < tiles.Count; i++)
-                        if (tiles[i]?.hero?.code == choice.Hero) { mech.SelectHero(i, true); found = true; break; }
-                    if (found) yield return new WaitForSeconds(1f);
-                    for (var n = 0; n < 80 && Safe(epoch) && mech.heroServerSelected?.code != choice.Hero; n++)
-                    {
-                        if (!mech.heroSelectionLoading) mech.GoForthHero();
-                        yield return new WaitForSeconds(0.25f);
-                    }
-                }
-                if (!Safe(epoch) || mech.heroSelectionLoading || mech.heroServerSelected?.code != choice.Hero)
+                var selected = false;
+                yield return HeroSelection.Select(mech, choice.Hero, () => Safe(epoch), value => selected = value);
+                if (!selected || !Safe(epoch) || mech.heroSelectionLoading || mech.heroServerSelected?.code != choice.Hero)
                 { Finish(false, $"Stopped: could not confirm {choice.Name}. Confirmed spending: {spent:N0} crystals."); yield break; }
                 yield return Ui.Click(Hall + "/submenus/submenuButtons/enchanting", 0.7f);
                 var view = UnityEngine.Object.FindObjectOfType<HOHEnchantSubmenuViewController>();
@@ -495,4 +484,5 @@ public static class VoidCrystalSpender
         Busy = false;
         Logger.Info("[Crystals] " + message);
     }
+
 }

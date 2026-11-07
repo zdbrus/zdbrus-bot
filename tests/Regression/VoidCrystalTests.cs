@@ -157,7 +157,11 @@ internal static class VoidCrystalTests
         Button("menus/HallOfHeroes/submenus/submenuButtons/enchanting");
         UnityEngine.Object.TestInstance = game.View;
         var mech = GameInitialize.MenuLoader.HallOfHeroesMech;
-        mech.heroInteractions = loader.heroDeck.heroes.Select(h => new HeroInteractionSquare { hero = h }).ToList();
+        mech.heroInteractions = loader.heroDeck.heroes.Select(h => new HeroInteractionSquare
+        {
+            hero = loader.heroServerHandler.heroesDict[(HeroCode)h.code],
+            actionOnClick = () => mech.SelectHero(h.code, false),
+        }).ToList();
         mech.OnSelect = id =>
         {
             mech.heroServerSelected = loader.heroServerHandler.heroesDict[(HeroCode)id];
@@ -344,6 +348,110 @@ internal static class VoidCrystalTests
         Check(VoidCrystalSpender.Request(Packet()) == "Spending", "Cancel scenario could not start.");
         Pump(() => { if (VoidCrystalSpender.Busy) VoidCrystalSpender.Cancel(); });
         Check(cancelled.Clicked.Count == 0 && !VoidCrystalSpender.Busy, "Cancellation still allowed a purchase.");
+    }
+
+    public static void HeroSelectionSafety()
+    {
+        Game SparseRoster()
+        {
+            var game = Setup();
+            var loader = GameInitialize.HandlerLoader;
+            loader.heroDeck.heroes[1].code = 21;
+            loader.MainBattle.Fighting.Remove(1);
+            loader.MainBattle.Fighting.Add(21);
+            var server = loader.heroServerHandler.heroesDict[HeroCode.Burt];
+            loader.heroServerHandler.heroesDict.Remove(HeroCode.Burt);
+            server.code = 21;
+            foreach (var gear in server.heroGears) gear.heroId = (HeroCode)21;
+            loader.heroServerHandler.heroesDict[(HeroCode)21] = server;
+            var mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+            var tiles = mech.heroInteractions;
+            mech.heroInteractions = new() { tiles[2], tiles[1], tiles[0] };
+            return game;
+        }
+
+        var game = SparseRoster();
+        var mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Sparse-roster request rejected.");
+        Pump();
+        Check(VoidCrystalSpender.Ok && game.Clicked.Count == 1 && (int)game.Clicked[0].heroId == 21 &&
+              mech.SelectedCodes.SequenceEqual(new[] { 21 }) && mech.ArrowCalls == 0,
+            "Reordered tiles must select their bound unlocked hero ID, never the tile index or a locked hero.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        var delayedTile = mech.heroInteractions.Single(t => t.hero.code == 21);
+        mech.heroInteractions.Remove(delayedTile);
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Delayed-tile request rejected.");
+        Pump(() =>
+        {
+            if (Time.unscaledTime >= 1 && !mech.heroInteractions.Contains(delayedTile))
+                mech.heroInteractions.Add(delayedTile);
+        });
+        Check(VoidCrystalSpender.Ok && game.Clicked.Count == 1 && mech.SelectedCodes.Count == 1,
+            "Hero selection must wait for lazy-loaded tiles and invoke the correct action only once.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        mech.heroInteractions.RemoveAll(t => t.hero.code == 21);
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Missing-tile request rejected.");
+        Pump();
+        Check(!VoidCrystalSpender.Ok && !VoidCrystalSpender.Busy && game.Clicked.Count == 0 &&
+              mech.SelectedCodes.Count == 0 && mech.ArrowCalls == 0 && mech.heroServerSelected.code == 0,
+            "Missing hero tiles must stop safely without scanning into locked heroes.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        mech.heroSelectionLoading = true;
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Loading-hero request rejected.");
+        Pump(() =>
+        {
+            GameInitialize.HandlerLoader.heroDeck.heroes[1].Unlocked = false;
+            mech.heroSelectionLoading = false;
+        });
+        Check(!VoidCrystalSpender.Ok && game.Clicked.Count == 0 && mech.SelectedCodes.Count == 0,
+            "A hero that becomes locked before selection must never be selected or enchanted.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        mech.heroInteractions.Single(t => t.hero.code == 21).actionOnClick = () => { };
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Unconfirmed-selection request rejected.");
+        Pump();
+        Check(!VoidCrystalSpender.Ok && game.Clicked.Count == 0 && mech.ArrowCalls == 0,
+            "An unconfirmed hero action must not fall back to unsafe arrow navigation or spend crystals.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        var tile = mech.heroInteractions.Single(t => t.hero.code == 21);
+        var select = tile.actionOnClick;
+        var loadingTicks = 0;
+        tile.actionOnClick = () =>
+        {
+            select();
+            mech.heroSelectionLoading = true;
+            loadingTicks = 4;
+        };
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Asynchronous selection rejected.");
+        Pump(() => { if (loadingTicks > 0 && --loadingTicks == 0) mech.heroSelectionLoading = false; });
+        Check(VoidCrystalSpender.Ok && game.Clicked.Count == 1 && mech.SelectedCodes.Count == 1,
+            "Hero loading must finish before an enchant, without duplicate hero actions.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        mech.heroInteractions.Single(t => t.hero.code == 21).actionOnClick = () =>
+            mech.heroServerSelected = GameInitialize.HandlerLoader.heroServerHandler.heroesDict[HeroCode.Boris];
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Stale-binding selection rejected.");
+        Pump();
+        Check(!VoidCrystalSpender.Ok && game.Clicked.Count == 0 && mech.ArrowCalls == 0,
+            "A tile action that selects the wrong hero must never allow spending.");
+
+        game = SparseRoster();
+        mech = GameInitialize.MenuLoader.HallOfHeroesMech;
+        mech.heroSelectionLoading = true;
+        Check(VoidCrystalSpender.Request(Packet(30, target: 21)) == "Spending", "Scene-change selection rejected.");
+        Pump(() => GameInitialize.Loaded = false);
+        Check(!VoidCrystalSpender.Ok && game.Clicked.Count == 0 && mech.SelectedCodes.Count == 0,
+            "A scene change during hero loading must stop before selecting or spending.");
     }
 
     public static void RequestSafety()

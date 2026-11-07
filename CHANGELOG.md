@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.60 (2026-11-07)
+- **Void Crystal black-screen fix:** spending now chooses an unlocked hero through that hero's own button. It no longer mistakes the hero's position in the list for their ID, which could select a locked hero such as Muriel or Blaze and break the Hall of Heroes.
+- The same fix applies to ethereal shard spending. Both wait for hero selection to finish and stop if the requested unlocked hero cannot be confirmed, instead of cycling through unverified heroes.
+- Crystal rankings, spending budgets and exact purchase checks are unchanged.
+
 ## 0.7.59 (2026-11-04)
 - **Gear detection fixed:** the game can expose empty placeholder entries in one gear list even when you own gear. The Crystal advisor now reads the populated gear list, including on new accounts.
 - **Void Crystal optimization:** F4 now automatically compares current gear across your roster without requiring a hero choice. Damage, health and armor use the current party's stats to estimate the benefit of personal gear, alongside global gear from the whole roster. Gold and gear power are separate goals; gear power helps unlock tiers and missions, not war-machine power.

@@ -104,6 +104,7 @@ internal static class Program
             Test("Void Crystal receipts require one level and the exact currency debit", VoidCrystalTests.Receipts);
             Test("Void Crystal spending re-ranks real gear and enforces caps and budgets", VoidCrystalTests.Spending);
             Test("Void Crystal spending stops after stale prices, failed receipts, timeouts and cancellation", VoidCrystalTests.SpendingFailures);
+            Test("spending selects bound unlocked heroes in reordered and sparse rosters without unsafe arrows", VoidCrystalTests.HeroSelectionSafety);
         Test("Guide priority orders match every panel chip exactly", RecommendedOrderTests.MatchRegistry);
         Test("Clear and Recommended chips empty or restore an ordered list", RecommendedOrderTests.Chips);
             Test("Void Crystal requests reject replays, changed sessions, tutorials and overlapping actions", VoidCrystalTests.RequestSafety);

@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.59 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.60 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -79,9 +79,11 @@ or a promise of the best entire budget plan. Enter a budget and confirm Spend fo
 affordable next upgrade, re-checking before each enchant. Stop spending cancels further buys; a pending
 enchant may still finish. Each request stops after 40 enchants or an uncertain result. It never buys
 crystals, unlocks tiers or spends other currencies. Void Crystals improve heroes, not war machines.
+Crystal and shard spending now use the correct unlocked hero's button, fixing the black screen and
+locked-hero selections. They wait for the hero to load and stop if the selection cannot be confirmed.
 
 WAR MACHINE TIPS
-Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.59/WAR-MACHINES.md
+Full guide: https://github.com/zdbrus/zdbrus-bot/blob/v0.7.60/WAR-MACHINES.md
 - Only jewel chests (Wooden, Iron, Golden, Diamond and up) give war machine parts and the conduits that
   unlock new machines. Gear chests (Common to Mythic) don't.
 - You can't pick which machine unlocks next. Machines 1-2 are single-target attackers, 3 is a tank,

@@ -30,6 +30,7 @@
     <Compile Include="..\..\src\Core\VoidCrystalPolicy.cs" Link="VoidCrystalPolicy.cs" />
     <Compile Include="..\..\src\Core\RecommendedOrders.cs" Link="RecommendedOrders.cs" />
     <Compile Include="..\..\src\Planner\VoidCrystalSpender.cs" Link="VoidCrystalSpender.cs" />
+    <Compile Include="..\..\src\Planner\HeroSelection.cs" Link="HeroSelection.cs" />
     <Compile Include="..\..\src\Core\ScheduleStore.cs" Link="ScheduleStore.cs" />
     <Compile Include="..\..\src\Core\Tasks\BotTask.cs" Link="BotTask.cs" />
     <Compile Include="..\..\src\Core\GameUnlocks.cs" Link="GameUnlocks.cs" />

@@ -191,6 +191,10 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - **Void Crystal advisor** automatically compares your hero gear across the whole roster; selecting one hero is optional. Choose damage, health, armor, gold or gear power. It compares each next enchant's boost and price, using the current party's DPS, health or armor to estimate personal-gear value; global gear counts even on benched heroes. Gear power is a separate goal for gear-tier and mission unlocks. Estimates are not combat simulations or a guarantee of the best complete budget plan. **Spend for me** requires a budget and confirmation, re-ranks the best affordable upgrade before each click and verifies the exact crystal debit and level change. **Stop spending** cancels further purchases; each request is limited to 40 enchants. It never buys crystals, unlocks gear tiers or spends another currency. These are hero upgrades, not war-machine upgrades.
 - **War machine tier list** ranks every machine S to C for long-term investment (from community guides), marks a goal squad to work toward, and puts a tier badge on each machine across the planner. Hover a badge for why it's ranked there and what to spend on it. Auto-build still picks by today's numbers.
 
+Crystal and shard spending select only unlocked heroes through their own hero buttons. They wait for
+the requested hero to finish loading and stop if the selection cannot be confirmed, rather than
+cycling into locked heroes. This fixes the Hall of Heroes black screen caused by reordered hero lists.
+
 New to war machines? The [War Machine Guide](WAR-MACHINES.md) explains jewel chests, unlocks, the tier list and where to spend, in plain language.
 
 <img src="assets/planner.jpg" alt="War Machine Planner in the browser" width="100%">

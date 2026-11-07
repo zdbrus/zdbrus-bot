@@ -122,13 +122,31 @@ public class HOHEnchantSubmenuViewController
     public UnityEngine.GameObject CategoryGearObj;
     public EnchantGearItemInteraction[] GearItems = Array.Empty<EnchantGearItemInteraction>();
 }
-public class HeroInteractionSquare { public Hero hero; }
+public class HeroInteractionSquare
+{
+    public HeroServer hero;
+    public Action actionOnClick;
+    public bool IsEmpty() => hero == null;
+    public void InvokeAction() => actionOnClick?.Invoke();
+}
 public class HallOfHeroesMech
 {
     public HeroServer heroServerSelected;
     public bool heroSelectionLoading;
     public List<HeroInteractionSquare> heroInteractions = new();
+    public readonly List<int> SelectedCodes = new();
+    public int ArrowCalls;
     public Action<int> OnSelect;
-    public void SelectHero(int index, bool onOpen) => OnSelect?.Invoke(heroInteractions[index].hero.code);
-    public void GoForthHero() => OnSelect?.Invoke((heroServerSelected.code + 1) % heroInteractions.Count);
+    public void SelectHero(int HeroCode, bool onOpen)
+    {
+        if (!GameInitialize.HandlerLoader.heroDeck.heroes.Any(h => h.code == HeroCode && h.Unlocked))
+            throw new ArgumentOutOfRangeException(nameof(HeroCode), "Cannot select a locked or missing hero.");
+        SelectedCodes.Add(HeroCode);
+        OnSelect?.Invoke(HeroCode);
+    }
+    public void GoForthHero()
+    {
+        ArrowCalls++;
+        throw new InvalidOperationException("Unverified arrow navigation must not be used for spending.");
+    }
 }
