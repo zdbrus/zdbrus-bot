@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Town.MagicQuarters;
 using Firebot.GameModel.Primitives;
@@ -10,6 +11,8 @@ namespace Firebot.Behaviors.Town;
 
 public class MagicQuartersTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.GuardianStrengthen;
+
     private MelonPreferences_Entry<int> _guardianIndex;
     private MelonPreferences_Entry<bool> _useStrangeDust;
 

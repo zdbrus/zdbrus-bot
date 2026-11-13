@@ -1,4 +1,5 @@
 using System;
+using Firebot.Core.Tasks;
 
 namespace Firebot.Core;
 
@@ -12,14 +13,17 @@ namespace Firebot.Core;
 /// </summary>
 internal readonly struct TaskStatusRow
 {
-    public TaskStatusRow(string name, string status, string timeLeft, DateTime? nextRun, DateTime? lastRun)
+    public TaskStatusRow(BotTask task, string status, string timeLeft, DateTime? nextRun, DateTime? lastRun)
     {
-        Name = name;
+        Task = task;
+        Name = task.SectionTitle;
         Status = status;
         TimeLeft = timeLeft;
         NextRun = nextRun;
         LastRun = lastRun;
     }
+
+    public BotTask Task { get; }
 
     public string Name { get; }
 
@@ -43,6 +47,18 @@ internal readonly struct TaskStatusRow
     public static string Locked(int level) => $"Locked ({level})";
 
     /// <summary>
+    ///     The game has not unlocked the feature yet — on a new account the story unlocks it, not a level. The
+    ///     short feature name, for the same reason the level is there: it says what to wait for.
+    /// </summary>
+    public static string Locked(string feature) => $"Locked ({feature})";
+
+    /// <summary>
+    ///     The task would run, but the game's tutorial is on screen and the bot is keeping its hands off until
+    ///     the step is done.
+    /// </summary>
+    public const string Tutorial = "Tutorial";
+
+    /// <summary>
     ///     The task has something waiting to be clicked in the game. The internal name for it is
     ///     "notification", which says nothing to someone reading the table.
     /// </summary>
@@ -52,7 +68,7 @@ internal readonly struct TaskStatusRow
 
     public const string Waiting = "Waiting";
 
-    /// <summary>Disabled, Locked, Popup, Ready or Waiting — precedence defined in BotManager.</summary>
+    /// <summary>Disabled, Locked, Tutorial, Popup, Ready or Waiting — precedence defined in BotManager.</summary>
     public string Status { get; }
 
     /// <summary>

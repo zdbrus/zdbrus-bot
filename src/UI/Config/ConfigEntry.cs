@@ -174,6 +174,9 @@ internal sealed class ConfigEntry
 
     public string ReadText() => ReadRaw() as string ?? string.Empty;
 
+    /// <summary>The shipped default from code; for priority lists this is the guide-backed order.</summary>
+    public string DefaultText() => Entry.GetType().GetProperty("DefaultValue")?.GetValue(Entry) as string ?? string.Empty;
+
     /// <summary>
     ///     Ids marked in the current value. Ordered priority lists also retain custom names not present
     ///     in the panel, so editing a known choice does not discard the player's other priorities.

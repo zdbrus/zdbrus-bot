@@ -96,13 +96,7 @@ internal static class NodeBuyer
             result, name, 1.2f);
     }
 
-    internal static bool IsMaxed(string level)
-    {
-        var match = Regex.Match(level ?? "", @"(\d+)\s*/\s*(\d+)");
-        return (level ?? "").IndexOf("max", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               (match.Success && int.TryParse(match.Groups[1].Value, out var current) &&
-                int.TryParse(match.Groups[2].Value, out var maximum) && current >= maximum);
-    }
+    internal static bool IsMaxed(string level) => PurchaseObservation.IsMaxed(level);
 
     public static IEnumerator Run(List<Transform> nodes, Layout l, Func<double> currency, string priority,
         double keep = 0, int maxPerNode = 10, string scope = "", Action retrySoon = null)
@@ -274,62 +268,10 @@ internal static class Cooldown
     }
 }
 
-public class MeteoriteResearchTask : BotTask
-{
-    protected override string NotificationPath => P.Notifications + "/MeteoriteResearch";
-    protected override bool UseScheduledTime => true;
-
-    private const string L = P.Menus + "/Library";
-    private const string M = L + "/submenus/meteoriteResearch";
-    private const string Meteorites = L + "/counters/currencyInteraction (Meteorite)/quantity";
-    private MelonPreferences_Entry<int> _keep;
-    private MelonPreferences_Entry<string> _priority;
-
-    protected override void OnConfigure(MelonPreferences_Category c)
-    {
-        _keep = c.CreateEntry("keep_meteorites", 0, "Meteorites To Keep", "Meteorites to leave unspent.");
-        _priority = c.CreateEntry("priority",
-            "Attribute damage,All main attributes,Raining gold,Hero level up cost,Attribute health,Attribute armor,Firestone finder,Powerless boss,Powerless enemy",
-            "Priority", "Meteorite research upgrades are filled in this order; lower tiers wait until higher tiers are maxed.");
-    }
-
-    public override IEnumerator Execute()
-    {
-        BubbleQuietUntil = DateTime.Now.AddMinutes(20);
-        NextRunTime = DateTime.Now.AddHours(4);
-        yield return Ui.OpenTownBuilding("library");
-        yield return Ui.WaitFor(L);
-        yield return Ui.Click(L + "/submenuButtons/meteoriteResearch", 1.5f);
-        if (!Ui.Visible(M)) yield break;
-
-        var tree = Ui.VisibleChildren(M + "/submenus").FirstOrDefault();
-        if (tree == null) yield break;
-        var nodes = new List<Transform>();
-        for (var i = 0; i < tree.childCount; i++)
-        {
-            var c = tree.GetChild(i);
-            if (c.name.StartsWith("research") && !c.name.StartsWith("researchPath") && c.gameObject.activeInHierarchy)
-                nodes.Add(c);
-        }
-
-        yield return NodeBuyer.Run(nodes, new NodeBuyer.Layout
-        {
-            Preview = P.Popups + "/MeteoriteResearchPreview/bg",
-            Name = "researchName", Level = "level", Buy = "unlocked/researchButton",
-            Cost = "unlocked/researchButton/cost", Close = "closeButton"
-        }, () => Ui.NumberAt(Meteorites), _priority.Value, _keep.Value, scope: "meteorite/" + tree.name,
-            retrySoon: () =>
-            {
-                NextRunTime = DateTime.Now.AddMinutes(2);
-                BubbleQuietUntil = NextRunTime;
-            });
-
-        yield return Ui.Click(L + "/closeButton");
-    }
-}
-
 public class ForbiddenKnowledgeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     protected override string NotificationPath => P.Notifications + "/ForbiddenKnowledge";
     protected override bool UseScheduledTime => true;
 
@@ -338,8 +280,9 @@ public class ForbiddenKnowledgeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority", "Firestone Finder,All main attributes,Attribute damage,Raining gold",
+        _priority = c.CreateEntry("priority", RecommendedOrders.ForbiddenKnowledge,
             "Priority", "Forbidden knowledge upgrades in buy order. Unlisted ones are bought after, cheapest first.");
+        RecommendedOrders.Adopt(c, _priority);
     }
 
     private static double Tomes()
@@ -393,22 +336,33 @@ public class ForbiddenKnowledgeTask : BotTask
 
 public class ScarabGameTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ScarabGame;
+
     protected override string NotificationPath => P.Notifications + "/ScarabGame";
+    protected override bool UseScheduledTime => true;
 
     private const string S = P.Menus + "/ScarabGame";
     private const string H = S + "/helpCanvas";
-    private const string Nobles = H + "/counters/currencyInteraction (NoblesToken)/quantity";
-    private const string Play = H + "/playButton";
     private const string V = P.Menus + "/PharaohsVault";
     private const string Coins = V + "/counters/currencyInteraction (AncientCoin)/quantity";
     private MelonPreferences_Entry<bool> _play;
+    private MelonPreferences_Entry<bool> _allowPharaoh;
     private MelonPreferences_Entry<bool> _vault;
+    private ScarabAutoPlay _autoPlay;
+
+    internal override void OnStopped()
+    {
+        _autoPlay?.Dispose();
+        _autoPlay = null;
+    }
 
     public override int MinimumLevel => LevelRequirements.ScarabGameShop;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _play = c.CreateEntry("play", true, "Play Scarab's Game", "Spins with Noble's tokens (never Pharaoh's tokens or gems).");
+        _play = c.CreateEntry("play", true, "Play Scarab's Game", "Spins with Noble's tokens, or Pharaoh's tokens when explicitly enabled. Never buys tokens or spends gems.");
+        _allowPharaoh = c.CreateEntry("allow_pharaoh_tokens", false, "Use Pharaoh's Tokens",
+            "Also spend available Pharaoh's tokens on Scarab spins. Off by default; never buys more tokens.");
         _vault = c.CreateEntry("open_vault", true, "Open Pharaoh's Vault", "Opens the vault whenever you have enough ancient coins.");
     }
 
@@ -422,24 +376,14 @@ public class ScarabGameTask : BotTask
 
         if (_play.Value)
         {
-            // Keep it on manual and single spins so every spin is counted.
-            if (!Ui.Text(H + "/bottomRightUI/autoPlayToggle/text").Equals("Manual", StringComparison.OrdinalIgnoreCase))
-                yield return Ui.Click(H + "/bottomRightUI/autoPlayToggle", 0.8f);
-
-            for (var n = 0; n < 60; n++)
+            _autoPlay = new ScarabAutoPlay(() => IsEnabled && _play.Value, () => _allowPharaoh.Value);
+            yield return _autoPlay.Execute();
+            if (_autoPlay.ResumeSoon)
             {
-                var have = Ui.NumberAt(Nobles);
-                var cost = Ui.NumberAt(Play + "/layout/costText1");
-                if (have <= 0 || cost <= 0 || have < cost || !Ui.Clickable(Play)) break;
-                yield return Ui.Click(Play, 3.5f, "scarab spin");
-                yield return Ui.CloseRewards();
-                if (Ui.MissingCurrency) break;
-                // Stop if the spin did not use a Noble's token (the button changed currency).
-                for (var w = 0; w < 12 && Ui.NumberAt(Nobles) >= have; w++) yield return new WaitForSeconds(0.5f);
-                if (Ui.NumberAt(Nobles) >= have) { Logger.Info("[Scarab] Spin did not use a Noble's token; stopping."); break; }
-                // Wait for the reels to stop before the next spin.
-                for (var w = 0; w < 16 && !Ui.Clickable(Play); w++) yield return new WaitForSeconds(0.5f);
+                NextRunTime = DateTime.Now.AddMinutes(1);
+                BubbleQuietUntil = NextRunTime;
             }
+            OnStopped();
         }
 
         var dedicatedVaultTaskEnabled = BotManager.AllTasks
@@ -454,10 +398,13 @@ public class ScarabGameTask : BotTask
 
         if (Ui.Visible(S)) yield return Ui.Click(S + "/closeButton");
     }
+
 }
 
 public class ScarabMilestonesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ScarabGame;
+
     protected override string NotificationPath => P.Notifications + "/ScarabGameMilestones";
 
     private const string S = P.Menus + "/ScarabGame";
@@ -699,6 +646,8 @@ public class BubbleRewardsTask : BotTask
 
 public class PharaohsVaultTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ScarabGame;
+
     protected override string NotificationPath => P.Notifications + "/PharaohsVault";
 
     private const string S = P.Menus + "/ScarabGame";
@@ -764,14 +713,16 @@ public class PharaohsVaultTask : BotTask
 /// </summary>
 public class EventExchangeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.EventManager;
+
     private MelonPreferences_Entry<string> _priority;
     private MelonPreferences_Entry<int> _keep;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority",
-            "Pickaxe,Legendary chest,Meteorite,Golden key,Strange dust,Twilight hourglass,Soul ember,Exotic coin",
+        _priority = c.CreateEntry("priority", RecommendedOrders.EventExchange,
             "Items To Buy", "Event exchange items to buy, in order (comma-separated). Items not listed are never bought.");
+        RecommendedOrders.Adopt(c, _priority);
         _keep = c.CreateEntry("keep_currency", 0, "Event Currency To Keep", "Event currency to leave unspent.");
     }
 
@@ -876,6 +827,8 @@ public class EventExchangeTask : BotTask
 /// <summary>Battle pass (Path of Glory): claims every free-track reward that is ready. Never touches the golden pass.</summary>
 public class BattlePassTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.BattlePass;
+
     private const string B = P.Popups + "/BattlePass/bg";
     private const string Scroll = B + "/submenus/rewards/bg/scrollView";
 
@@ -885,6 +838,15 @@ public class BattlePassTask : BotTask
         yield return Ui.Click(P.Battle + "/bottomSideUIDesktop/pathOfGloryButton", 2f);
         if (!Ui.Visible(B)) yield break;
         yield return Ui.Click(B + "/submenuButtons/rewards", 1.5f);
+
+        var rewardNotification = B + "/submenuButtons/rewards/notification";
+        var notificationFound = Ui.Find(rewardNotification) != null;
+        if (!BattlePassPolicy.ShouldScanRewards(notificationFound, Ui.Visible(rewardNotification)))
+        {
+            Logger.Info("[BattlePass] No free rewards are ready; skipped scrolling the reward track.");
+            yield return Ui.Click(B + "/closeButton");
+            yield break;
+        }
 
         var rect = Ui.Find(Scroll)?.GetComponent<UnityEngine.UI.ScrollRect>();
         var content = Ui.Find(Scroll + "/viewport/content/layout");
@@ -927,6 +889,8 @@ public class BattlePassTask : BotTask
 /// </summary>
 public class OpenChestsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.InventoryBag;
+
     private const string Bag = P.Battle + "/bottomSideUIDesktop/menuButtons/inventoryButtonUI";
     private const string Inv = P.Menus + "/Inventory";
     private const string InventoryTitle = Inv + "/titleText";
@@ -934,6 +898,8 @@ public class OpenChestsTask : BotTask
     private const string Preview = P.Popups + "/ChestOpenPreview/bg";
     private const string Opening = P.Menus + "/ChestOpening";
     private const string NewItems = P.Popups + "/NewItem";
+    private const string MysteryBoxId = MysteryBoxOpener.ItemId;
+    private MelonPreferences_Entry<bool> _openMysteryBoxes;
     private static readonly HashSet<string> SupportedChests = new(StringComparer.OrdinalIgnoreCase)
         { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" };
     private readonly Dictionary<string, MelonPreferences_Entry<bool>> _open = new(StringComparer.OrdinalIgnoreCase);
@@ -945,6 +911,8 @@ public class OpenChestsTask : BotTask
         foreach (var id in new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" })
             _open[id] = c.CreateEntry("open_" + id.ToLowerInvariant(), true, "Open " + id + " Chests",
                 "Tick to let the bot open this chest type (game id: " + id + "). Untick to keep them.");
+        _openMysteryBoxes = c.CreateEntry("open_mysterybox", true, "Open Mystery Boxes",
+            "Tick to let the bot open the free Mystery Boxes in your Bag. Untick to keep them.");
     }
 
     public override IEnumerator Execute()
@@ -1100,188 +1068,23 @@ public class OpenChestsTask : BotTask
             Logger.Info("[Chests] Verified no eligible supported chests remain.");
         if (kept.Count > 0)
             Logger.Info($"[Chests] Kept chests: {string.Join(", ", kept.Select(kv => $"{kv.Key} ({kv.Value})"))}.");
-        var configuredSkips = owned.Where(t => skip.Contains(t.name.ToLowerInvariant()) && !kept.ContainsKey(t.name))
+        var configuredSkips = owned.Where(t =>
+                (skip.Contains(t.name.ToLowerInvariant()) && !kept.ContainsKey(t.name)) ||
+                (_openMysteryBoxes?.Value == false && t.name == MysteryBoxId))
             .Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}").ToList();
         if (configuredSkips.Count > 0)
             Logger.Info($"[Chests] Left unopened by configured keep list: {string.Join(", ", configuredSkips)}.");
-        var unsupported = owned.Where(t => !SupportedChests.Contains(t.name))
+        var unsupported = owned.Where(t => !SupportedChests.Contains(t.name) && t.name != MysteryBoxId)
             .Select(t => $"{t.name} x{Ui.NumberOf(t.Find("quantity"))}").ToList();
         if (unsupported.Count > 0)
             Logger.Info($"[Chests] Left unopened because the chest type is unsupported: {string.Join(", ", unsupported)}.");
 
+        if (_openMysteryBoxes?.Value == true && Ui.Visible(Content)) yield return MysteryBoxOpener.Open(Content);
+
         if (Ui.Visible(Inv)) yield return Ui.Click(Inv + "/closeButton");
         Logger.Info($"[Chests] Confirmed {opened} chest opening(s).");
     }
-}
 
-/// <summary>
-///     Spends free talent points (earned by character level) in the Character > Talents tree. Talents you list are
-///     filled first, then the rest in tree order. It stops as soon as no point is left. Only talent points are spent.
-/// </summary>
-public class TalentsTask : BotTask
-{
-    protected override string NotificationPath => P.Notifications + "/TalentAvailable";
-    protected override bool EnabledByDefault => true;
-    protected override bool UseScheduledTime => true;
-
-    private const string C = P.Popups + "/Character/bg";
-    private const string Tree = C + "/submenus/talents/bg/talentTreeScroll/Viewport/content/talentTree";
-    private const string Points = C + "/submenus/talents/bg/talentPoints/container/pointInfo/talentsTextBg/talentsText";
-    private const string Preview = P.Popups + "/TalentPreview/bg";
-    private MelonPreferences_Entry<string> _priority;
-
-    protected override void OnConfigure(MelonPreferences_Category c)
-    {
-        _priority = c.CreateEntry("priority", "All main attributes,Attribute damage,Attribute health,Attribute armor",
-            "Priority", "Talent names to fill first, comma-separated. Others are filled after, in tree order.");
-    }
-
-    // Talent points are shown as "free/total"; -1 means the count could not be read.
-    private static double Free()
-    {
-        var t = Ui.Text(Points) ?? "";
-        return t.Contains('/') ? Ui.Parse(t.Split('/')[0]) : -1;
-    }
-
-    public override IEnumerator Execute()
-    {
-        BubbleQuietUntil = DateTime.Now.AddMinutes(30);
-        NextRunTime = DateTime.Now.AddHours(6);
-        if (!Ui.Visible(C)) yield return Ui.Click(P.Battle + "/topLeftSideUI/playerAvatar", 1.5f);
-        if (!Ui.Visible(C)) yield break;
-        yield return Ui.Click(C + "/submenuButtons/talents", 1.5f);
-
-        var spent = 0;
-        var free = Free();
-        if (Ui.Visible(Tree) && free < 0)
-            Logger.Warning("[Talents] Available points are unreadable; points were left unspent.");
-        if (Ui.Visible(Tree) && free > 0)
-        {
-            var order = (_priority.Value ?? "").Split(',').Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).ToList();
-            var nodes = Ui.VisibleChildren(Tree).Where(t => t.name.StartsWith("talentInteraction") && Ui.Clickable(t)).ToList();
-            var discovered = new List<(Transform node, string name)>();
-            var discoveryFailed = false;
-            const string scope = "talents";
-            foreach (var n in nodes)
-            {
-                if (UpgradeNames.TryGet(n, scope, out var remembered))
-                {
-                    discovered.Add((n, remembered));
-                    continue;
-                }
-
-                if (Ui.Visible(Preview))
-                {
-                    Logger.Warning("[Talents] A previous preview is still open; points were left unspent.");
-                    discoveryFailed = true;
-                    break;
-                }
-                yield return Ui.Click(n, 0.6f);
-                if (!Ui.Visible(Preview))
-                {
-                    Logger.Warning("[Talents] An unknown talent preview did not open; points were left unspent.");
-                    discoveryFailed = true;
-                    break;
-                }
-                var name = (Ui.Text(Preview + "/talentName") ?? "").Trim();
-                if (string.IsNullOrEmpty(name))
-                {
-                    Logger.Warning("[Talents] A talent name was unreadable; points were left unspent.");
-                    discoveryFailed = true;
-                    yield return Ui.Click(Preview + "/closeButton", 0.3f);
-                    break;
-                }
-                UpgradeNames.Remember(n, scope, name);
-                discovered.Add((n, name));
-                yield return Ui.Click(Preview + "/closeButton", 0.3f);
-            }
-            UpgradeNames.Flush();
-
-            foreach (var match in discovered.OrderBy(x => PriorityTier.Rank(order, x.name)))
-            {
-                if (discoveryFailed || Free() <= 0) break;
-                if (Ui.Visible(Preview))
-                {
-                    Logger.Warning("[Talents] A previous preview is still open; lower tiers were left untouched.");
-                    break;
-                }
-                yield return Ui.Click(match.node, 0.6f);
-                if (!Ui.Visible(Preview))
-                {
-                    Logger.Warning($"[Talents] {match.name}: preview did not open; lower tiers were left untouched.");
-                    break;
-                }
-                var actualName = Ui.Text(Preview + "/talentName");
-                if (!UpgradeNames.Matches(match.node, scope, match.name, actualName))
-                {
-                    UpgradeNames.Flush();
-                    Logger.Warning($"[Talents] Expected {match.name}, found '{actualName}'; reordering before buying.");
-                    if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
-                    NextRunTime = DateTime.Now.AddMinutes(2);
-                    BubbleQuietUntil = NextRunTime;
-                    break;
-                }
-
-                var action = PriorityTierAction.Advance;
-                yield return Upgrade(match.name, () => spent++, value => action = value);
-                if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.3f);
-                if (action == PriorityTierAction.Advance) continue;
-                if (action == PriorityTierAction.RetrySoon)
-                {
-                    NextRunTime = DateTime.Now.AddMinutes(2);
-                    BubbleQuietUntil = NextRunTime;
-                }
-                Logger.Info($"[Talents] Holding at {match.name}; lower tiers stay untouched.");
-                break;
-            }
-        }
-
-        Logger.Info($"[Talents] spent {spent} point(s), {Ui.Text(Points)} left");
-        if (Ui.Visible(C)) yield return Ui.Click(C + "/closeButton", 1f);
-        // Talent changes only stick once saved: the game asks when the window closes.
-        const string unsaved = P.Popups + "/UnsavedChanges/bg";
-        if (Ui.Visible(unsaved))
-        {
-            yield return Ui.Click(unsaved + "/saveChangesButton", 1f, "save talents");
-            if (Ui.Visible(C)) yield return Ui.Click(C + "/closeButton", 1f);
-        }
-    }
-
-    private static IEnumerator Upgrade(string name, Action add, Action<PriorityTierAction> result)
-    {
-        for (var i = 0; i < 60 && Free() > 0; i++)
-        {
-            var up = Ui.Find(Preview + "/talentUpgrades/upgradeTalentButton");
-            var before = Ui.Text(Preview + "/talentLevelText");
-            if (string.IsNullOrWhiteSpace(before) || up == null)
-            {
-                Logger.Warning($"[Talents] {name}: level or upgrade control unreadable; no purchase attempted.");
-                result(PriorityTierAction.Wait);
-                yield break;
-            }
-            if (NodeBuyer.IsMaxed(before) || !Ui.Clickable(up))
-            {
-                result(PriorityTierAction.Advance);
-                yield break;
-            }
-            var changed = false;
-            yield return Ui.ClickUntil(up,
-                () => PurchaseObservation.LevelIncreased(before, Ui.Text(Preview + "/talentLevelText")),
-                value => changed = value, $"talent {name}", 0.4f, 2f);
-            if (Ui.MissingCurrency || !changed)
-            {
-                result(PriorityTierAction.Wait);
-                yield break;
-            }
-            add();
-        }
-
-        var free = Free();
-        if (free < 0) Logger.Warning("[Talents] Available points became unreadable; lower tiers were left untouched.");
-        result(free < 0 ? PriorityTierAction.Wait
-            : free > 0 && Ui.Clickable(Preview + "/talentUpgrades/upgradeTalentButton")
-                ? PriorityTierAction.RetrySoon : PriorityTierAction.Advance);
-    }
 }
 
 /// <summary>
@@ -1296,13 +1099,21 @@ public class BossRetryTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _minutes = c.CreateEntry("every_minutes", 4, "Minutes Between Tries", "How long to farm before trying the boss again.");
+        _minutes = c.CreateEntry("every_minutes", 1, "Minutes Between Tries", "How long to farm before trying the boss again.");
     }
 
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddMinutes(Math.Max(1, _minutes.Value));
         if (!Ui.Clickable(Fight)) yield break;
-        yield return Ui.Click(Fight, 1f, $"fight boss at stage {Ui.Text(P.Battle + "/topSideUI/stageProgression/currentStage/stageNum")}");
+        var stageKnown = PlayerStats.TryGetCurrentStage(out var stage);
+        if (!stageKnown)
+            Logger.Warning("[Boss Retry] Stage data unavailable; this retry will not count toward prestige.");
+        yield return Ui.Click(Fight, 1f, stageKnown ? $"fight boss at stage {stage}" : "fight boss (stage unavailable)");
+        if (stageKnown)
+        {
+            var attempts = BossAttemptTracker.RecordAttempt(stage);
+            Logger.Info($"[Boss Retry] Attempt {attempts} at stage {stage}.");
+        }
     }
 }

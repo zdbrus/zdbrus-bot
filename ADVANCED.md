@@ -38,8 +38,40 @@ resource_type = "0,1"   # comma-separated ids; empty = the task's default
 - **A missing entry is added on the next launch**, which is how an older file keeps working after an update. There is no need to delete the file to get the new options.
 - **An invalid value is never fatal.** The option is dropped and the task falls back to its default; the task that needs a value to know what to do, such as the alchemist resources, disables itself rather than guessing.
 - **A task can be enabled and still not run.** Features the game only offers later are held back until then — Engineer tools and Free Pickaxes at level 50, Warfront Campaign at level 50, Alchemist at 120, Oracle at 200 — and everything else is available from level 1. This is a runtime condition and not a setting: the bot never rewrites your `enabled`, the task's own row on the status screen shows the level it is waiting for (`Locked (level)`), and it resumes by itself when the level arrives.
+- **New accounts also wait on the game's own unlocks.** Below character level 200 each task checks the game's unlock flag for its feature (Tavern, Guild, Oracle, World Map, Arena and so on), and the row shows `Locked (Guild)` until the story hands it out; the log says `[Unlocks] The game just unlocked …` when it does. While the guided tutorial has a step on screen the bot keeps its hands off: tasks show `Tutorial`, and AutoUpgrade and AutoSkill pause (the upgrades menu is left open for the tutorial's own upgrade step). Story dialogue, Aurelia's tips, "New hero!" screens and finished storyline chapter rewards are clicked through between tasks, but never while the tutorial highlight is forcing a click.
 
 ---
+
+## Void Crystal advisor
+
+In F4, choose damage, health, armor, gold or gear power. The default automatically compares the
+whole unlocked roster; selecting one hero is optional. For damage, health and armor, personal
+gear is considered for the current battle party and global gear is considered even when its
+owner is benched. The party comparison estimates each next enchant's relative multiplier gain
+times its affected hero's share of the party's current DPS, maximum health or armor, divided
+by the live price. Global gear uses the whole-party multiplier change. Selecting a hero instead
+compares that hero's personal gear with the roster's global gear. Gold compares rings separately.
+Gear power compares the power gain per crystal for all slots, including benched personal gear;
+when a hero is selected, it only compares that hero's pieces.
+
+The game supplies the current gear, prices, effects, power and enchant-level multipliers. Gear
+power normally doubles per enchant; effect multipliers do not always double. Rankings are
+estimates for the next affordable enchant, not combat simulations or globally optimal plans
+for an entire budget. Gear power helps unlock gear tiers and missions; it is not hero DPS or
+war-machine power. Equal values favor the higher gear-power gain, then the lower cost.
+
+The crystal budget starts at zero and is not persisted. Spending requires an explicit confirmation,
+re-reads and re-ranks the live gear and party before every click, and requires a one-level increase plus the exact
+crystal debit before continuing. A mismatch or timeout stops the run without retrying that purchase.
+The bot re-ranks after each confirmed enchant and stops at 40 enchants per request. A stopped or
+cancelled request may still have one in-flight purchase; refresh the game state before starting again.
+No other currencies, gear-tier unlocks or crystal purchases are allowed.
+
+The planner receives the read-only `crystals` snapshot through `/roster.json`. Crystal actions use
+a bounded JSON `POST /crystals`, a same-origin check, a custom request header and a game-session
+epoch. Repeated request IDs are rejected. Scene changes invalidate the epoch and stop the worker.
+The worker waits for the current bot task, pauses AutoUpgrade and rejects overlapping planner
+actions. It leaves the Hall of Heroes open so you can inspect the result.
 
 ## Arena matchup recording
 

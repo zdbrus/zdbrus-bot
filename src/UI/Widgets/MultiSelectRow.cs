@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Firebot.Core;
 using Firebot.UI.Config;
 using UnityEngine;
 
@@ -26,20 +27,33 @@ internal sealed class MultiSelectRow : ChipRow
         Build();
     }
 
-    protected override bool IsOn(string id) => _selected.Contains(id);
+    internal const string ClearId = "__clear";
+    internal const string RecommendedId = "__recommended";
+
+    private static readonly ConfigChoice[] OrderedActions =
+    {
+        new(ClearId, "Clear"),
+        new(RecommendedId, "Recommended")
+    };
+
+    protected override ConfigChoice[] ActionChoices => _ordered ? OrderedActions : base.ActionChoices;
+
+    private static bool IsAction(string id) => id is ClearId or RecommendedId;
+
+    protected override bool IsOn(string id) => !IsAction(id) && _selected.Contains(id);
 
     protected override string DisplayName(string id, string name)
     {
-        var index = _ordered ? _selected.IndexOf(id) : -1;
+        var index = _ordered && !IsAction(id) ? _selected.IndexOf(id) : -1;
         return index >= 0 ? $"{index + 1}. {name}" : name;
     }
 
-    protected override string MeasuredName(string id, string name) => _ordered ? "999. " + name : name;
+    protected override string MeasuredName(string id, string name) =>
+        _ordered && !IsAction(id) ? "999. " + name : name;
 
     protected override void ApplySelection(string id)
     {
-        if (!_selected.Remove(id)) _selected.Add(id);
-
+        RecommendedOrders.ApplyChip(_selected, id, ClearId, RecommendedId, Config.DefaultText());
         Config.Write(Config.EncodeSelection(_selected));
     }
 }

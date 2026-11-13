@@ -12,6 +12,8 @@ namespace Firebot.Behaviors.Map;
 
 public class WarfrontCampaignLootTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.WorldMap;
+
     public override int MinimumLevel => LevelRequirements.WarfrontCampaign;
     internal override IEnumerable<string> HandledNotificationNames => new[] { "WarfrontCampaign" };
 

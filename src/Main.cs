@@ -31,6 +31,7 @@ public class Main : MelonMod
     public override void OnInitializeMelon()
     {
         BotSettings.Initialize();
+        NativeAutoPlay.Initialize(HarmonyInstance);
         BotManager.Initialize();
         AutoSkill.Initialize();
         AutoUpgrade.Initialize();
@@ -76,6 +77,7 @@ public class Main : MelonMod
 
     private void SuspendAutomation()
     {
+        Planner.VoidCrystalSpender.Cancel();
         if (_isGameReady) _resumeBotAfterScene = BotManager.IsRunning;
         _isGameReady = false;
         BotManager.Stop();

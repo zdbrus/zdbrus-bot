@@ -14,6 +14,14 @@ internal enum PrestigeRateState
     Trigger
 }
 
+internal enum PrestigeTrigger
+{
+    None,
+    Efficiency,
+    BossRetries,
+    StallTimer
+}
+
 internal readonly struct PrestigeRateResult
 {
     public PrestigeRateResult(PrestigeRateState state, int streak, bool saveSample, double rate = 0, double limit = 0)
@@ -41,9 +49,19 @@ internal static class PrestigePolicy
     private static readonly Regex RunTimePattern = new(
         @"^(?:(?<days>\d+)\s*d\s*)?(?<hours>\d+):(?<minutes>[0-5]\d):(?<seconds>[0-5]\d)$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex ShortRunTimePattern = new(
+        @"^(?<minutes>\d+):(?<seconds>[0-5]\d)$",
+        RegexOptions.CultureInvariant);
     private static readonly Regex RunTimeUnitsPattern = new(
         @"^(?<days>\d+)\s*d\s+(?<hours>\d{1,2})\s*h\s+(?<minutes>[0-5]\d)\s*m\s+(?<seconds>[0-5]\d)\s*s$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static PrestigeTrigger SelectTrigger(bool efficiencyTriggered, bool bossRetriesReached, bool stallTimerReached)
+    {
+        if (efficiencyTriggered) return PrestigeTrigger.Efficiency;
+        if (bossRetriesReached) return PrestigeTrigger.BossRetries;
+        return stallTimerReached ? PrestigeTrigger.StallTimer : PrestigeTrigger.None;
+    }
 
     public static bool TryParseGain(string text, out double gain)
     {
@@ -62,14 +80,28 @@ internal static class PrestigePolicy
             _ => 1
         };
         gain = value * multiplier;
-        return double.IsFinite(gain) && gain > 0;
+        return double.IsFinite(gain) && gain >= 0;
     }
 
     public static bool TryParseRunHours(string text, out double hours)
     {
         hours = 0;
-        var match = RunTimePattern.Match((text ?? string.Empty).Trim());
-        if (!match.Success) match = RunTimeUnitsPattern.Match((text ?? string.Empty).Trim());
+        var value = (text ?? string.Empty).Trim();
+        var match = RunTimePattern.Match(value);
+        if (!match.Success) match = RunTimeUnitsPattern.Match(value);
+        if (!match.Success)
+        {
+            var shortMatch = ShortRunTimePattern.Match(value);
+            if (shortMatch.Success &&
+                double.TryParse(shortMatch.Groups["minutes"].Value, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var shortMinutes) &&
+                int.TryParse(shortMatch.Groups["seconds"].Value, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var shortSeconds))
+            {
+                hours = shortMinutes / 60d + shortSeconds / 3600d;
+                return double.IsFinite(hours);
+            }
+        }
         if (!match.Success ||
             !double.TryParse(match.Groups["hours"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var h) ||
             !int.TryParse(match.Groups["minutes"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var m) ||

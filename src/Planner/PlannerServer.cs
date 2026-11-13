@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Collections.Generic;
+using System.Text.Json;
 using UnityEngine;
 
 namespace Firebot.Planner;
@@ -125,6 +126,25 @@ public static class PlannerServer
         var q = path.IndexOf('?');
         if (q >= 0) path = path[..q];
 
+        if (path == "/crystals")
+        {
+            if (parts[0] != "POST") { Send(stream, 405, "text/plain", Encoding.ASCII.GetBytes("POST only")); return true; }
+            var host = Header(text, "Host");
+            var origin = Header(text, "Origin");
+            if ((host != $"localhost:{Port}" && host != $"127.0.0.1:{Port}") ||
+                (origin.Length > 0 && origin != "http://" + host) ||
+                Header(text, "X-Zdbrus-Action") != "crystals" ||
+                !Header(text, "Content-Type").StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+            { Send(stream, 403, "text/plain", Encoding.ASCII.GetBytes("Use the local planner's crystal controls.")); return true; }
+            if (!int.TryParse(Header(text, "Content-Length"), out var length) || length <= 0 || length > 4096)
+            { Send(stream, 400, "text/plain", Encoding.ASCII.GetBytes("Invalid request size.")); return true; }
+            var bodyStart = text.IndexOf("\r\n\r\n", StringComparison.Ordinal) + 4;
+            if (p.Head.Length < bodyStart + length) return false;
+            var request = Encoding.UTF8.GetString(p.Head.GetBuffer(), bodyStart, length);
+            var result = VoidCrystalSpender.Request(request);
+            Send(stream, 200, "application/json; charset=utf-8", JsonSerializer.SerializeToUtf8Bytes(new { result }));
+            return true;
+        }
         if (parts[0] != "GET") { Send(stream, 405, "text/plain", Encoding.ASCII.GetBytes("GET only")); return true; }
         switch (path)
         {
@@ -162,6 +182,14 @@ public static class PlannerServer
         return true;
     }
 
+    private static string Header(string request, string key)
+    {
+        var end = request.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+        foreach (var line in request.Substring(0, end).Split("\r\n"))
+            if (line.StartsWith(key + ":", StringComparison.OrdinalIgnoreCase)) return line[(key.Length + 1)..].Trim();
+        return "";
+    }
+
     /// <summary>One value from the request line's query string, URL-decoded.</summary>
     private static string Query(string request, string key)
     {
@@ -180,7 +208,7 @@ public static class PlannerServer
 
     private static void Send(Stream s, int code, string type, byte[] body)
     {
-        var status = code switch { 200 => "OK", 404 => "Not Found", 405 => "Method Not Allowed", _ => "Service Unavailable" };
+        var status = code switch { 200 => "OK", 400 => "Bad Request", 403 => "Forbidden", 404 => "Not Found", 405 => "Method Not Allowed", _ => "Service Unavailable" };
         var head = $"HTTP/1.1 {code} {status}\r\nContent-Type: {type}\r\nContent-Length: {body.Length}\r\n" +
                    "Cache-Control: no-store\r\nConnection: close\r\n\r\n";
         var h = Encoding.ASCII.GetBytes(head);

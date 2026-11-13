@@ -15,6 +15,8 @@ namespace Firebot.Behaviors.Town;
 
 public class AlchemistTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Alchemist;
+
     private MelonPreferences_Entry<string> _resourceType;
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.ExperimentsBtn;
     protected override bool UseScheduledTime => true;

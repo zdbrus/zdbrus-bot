@@ -82,6 +82,20 @@ internal static class AutomationTests
         Check(nextLaunch.IsEnabled, "The next launch did not restore an enabled task.");
     }
 
+    public static void StatusTaskToggle()
+    {
+        Boot(false);
+        var task = new LaunchTask();
+        task.InitializeConfig("test.cfg");
+
+        Check(task.SetEnabledFromStatus(true) && task.IsEnabled &&
+              Entry<bool>("launch", "enabled").Value,
+            "The status switch did not update the task's shared enabled setting.");
+        Check(task.SetEnabledFromStatus(false) && !task.IsEnabled &&
+              !Entry<bool>("launch", "enabled").Value,
+            "Turning the status switch off did not update the F1 enabled setting.");
+    }
+
     public static void SceneLifecycle()
     {
         Boot(true);
@@ -170,6 +184,50 @@ internal static class AutomationTests
         AutoSkill.OnSceneChanged(false);
     }
 
+    public static void UpgradeTaskWindows()
+    {
+        Boot(true);
+        const string list = Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.UpgradesList;
+        GameObject.CreatePath(list + "/hero/lvlUpButton").AddComponent<Button>();
+        Entry<string>("auto_upgrade", "upgrade_target_slots").Value = "";
+        Firebot.GameModel.Features.MainScene.Upgrades.IsVisible = true;
+        BotManager.TaskApproaching = true;
+
+        try
+        {
+            void CheckWindow(string strategy, bool ready, bool executing, bool shouldBuy)
+            {
+                AutoUpgrade.OnSceneChanged(false);
+                Entry<string>("auto_upgrade", "priority_mode").Value = strategy;
+                BotManager.PauseAutoUpgrade = ready;
+                BotManager.IsTaskExecuting = executing;
+                ExecuteEvents.Events.Clear();
+                AutoUpgrade.OnSceneChanged(true);
+                var worker = MelonCoroutines.Active[Handle(typeof(AutoUpgrade), "_autoUpgradeRoutineHandle")];
+                Check(worker.MoveNext(), "The upgrade worker ended instead of waiting or buying.");
+                Check(ExecuteEvents.Events.Contains("down") == shouldBuy,
+                    $"{strategy}: wrong upgrade decision with ready={ready}, executing={executing}.");
+            }
+
+            CheckWindow("balanced", false, false, true);
+            CheckWindow("balanced", false, false, true);
+            CheckWindow("balanced", true, false, false);
+            CheckWindow("balanced", false, true, false);
+            CheckWindow("focus", false, false, false);
+            CheckWindow("invalid", false, false, false);
+            BotManager.TaskApproaching = false;
+            CheckWindow("focus", false, false, true);
+        }
+        finally
+        {
+            AutoUpgrade.OnSceneChanged(false);
+            BotManager.PauseAutoUpgrade = false;
+            BotManager.TaskApproaching = false;
+            BotManager.IsTaskExecuting = false;
+            ExecuteEvents.OnDown = null;
+        }
+    }
+
     public static void NestedGuard()
     {
         var failures = 0;
@@ -233,6 +291,76 @@ internal static class AutomationTests
         GameObject.BeforeFind = null;
         AutoUpgrade.OnSceneChanged(false);
         AutoSkill.OnSceneChanged(false);
+    }
+
+    public static void TutorialHold()
+    {
+        Boot(true);
+        const string list = Paths.MenusLoc.CanvasLoc.MainSceneLoc.UpgradesLoc.UpgradesList;
+        GameObject.CreatePath(list + "/hero/lvlUpButton").AddComponent<Button>();
+        Entry<string>("auto_upgrade", "upgrade_target_slots").Value = "";
+        Entry<string>("auto_upgrade", "priority_mode").Value = "balanced";
+        Firebot.GameModel.Features.MainScene.Upgrades.IsVisible = true;
+        BotManager.PauseAutoUpgrade = false;
+        BotManager.TaskApproaching = false;
+        BotManager.IsTaskExecuting = false;
+        Il2Cpp.GameInitialize.Loaded = true;
+        Il2Cpp.GameInitialize.HandlerLoader = new();
+        Il2Cpp.GameInitialize.HandlerLoader.CharacterLevel.Level = 5;
+        Il2Cpp.GameInitialize.MenuLoader = new();
+        var guide = Il2Cpp.GameInitialize.MenuLoader.TutorialGuidance;
+        guide.isTutorialFinished = false;
+        guide.isCurrentTutorialPartInProgress = true;
+        Logger.Messages.Clear();
+
+        try
+        {
+            bool Bought()
+            {
+                AutoUpgrade.OnSceneChanged(false);
+                ExecuteEvents.Events.Clear();
+                Firebot.GameModel.Features.MainScene.Upgrades.Closes = 0;
+                AutoUpgrade.OnSceneChanged(true);
+                var worker = MelonCoroutines.Active[Handle(typeof(AutoUpgrade), "_autoUpgradeRoutineHandle")];
+                Check(worker.MoveNext(), "The upgrade worker ended instead of waiting or buying.");
+                return ExecuteEvents.Events.Contains("down");
+            }
+
+            Check(!Bought() && Firebot.GameModel.Features.MainScene.Upgrades.Closes == 0 &&
+                  Logger.Messages.Contains("[AutoUpgrade] Waiting: the game's tutorial is running."),
+                "AutoUpgrade bought, or closed the menu, during a tutorial step.");
+
+            guide.isCurrentTutorialPartInProgress = false;
+            Il2Cpp.GameInitialize.HandlerLoader.UnlockMechanismsData.UpgradesUnlocked.Value = false;
+            Check(!Bought() && Firebot.GameModel.Features.MainScene.Upgrades.Closes == 0 &&
+                  Logger.Messages.Contains("[AutoUpgrade] Waiting: the game has not unlocked upgrades yet."),
+                "AutoUpgrade ran before the game unlocked upgrades.");
+
+            Il2Cpp.GameInitialize.HandlerLoader.UnlockMechanismsData.UpgradesUnlocked.Value = true;
+            Check(Bought() && Logger.Messages.Contains("[AutoUpgrade] Back to buying upgrades."),
+                "AutoUpgrade did not resume once the game was ready.");
+            AutoUpgrade.OnSceneChanged(false);
+
+            guide.isCurrentTutorialPartInProgress = true;
+            AutoSkill.OnSceneChanged(true);
+            var skill = MelonCoroutines.Active[Handle(typeof(AutoSkill), "_autoSkillRoutineHandle")];
+            GameObject.BeforeFind = () => throw new InvalidOperationException("combo pressed during the tutorial");
+            Check(skill.MoveNext() && skill.MoveNext() && AutoSkill.IsActive,
+                "AutoSkill pressed its combo during a tutorial step.");
+            guide.isCurrentTutorialPartInProgress = false;
+            Check(!skill.MoveNext() && !AutoSkill.IsActive,
+                "AutoSkill did not go back to its combo after the tutorial step.");
+        }
+        finally
+        {
+            GameObject.BeforeFind = null;
+            AutoUpgrade.OnSceneChanged(false);
+            AutoSkill.OnSceneChanged(false);
+            Il2Cpp.GameInitialize.HandlerLoader = new();
+            Il2Cpp.GameInitialize.MenuLoader = new();
+            _ = GameTutorial.IsActive;
+            _ = PlayerStats.CharacterLevel;
+        }
     }
 
     private sealed class LaunchTask : BotTask

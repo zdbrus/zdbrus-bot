@@ -389,7 +389,17 @@ internal static class ArenaTests
         f.IntSetting("arena_squad").Value = 2;
         SquadApplier.Populated.Remove(2);
         Run(f.Task.Execute());
-        Check(SquadApplier.Requests.Count == 0 && f.PreviewClicks == 0, "An empty squad was allowed to fight.");
+        Check(SquadApplier.Requests.Count == 0 && SquadApplier.Active == 1 && f.PreviewClicks > 0 &&
+              Logger.Messages.Any(s => s.Contains("has no war machines")),
+            "An empty Arena squad did not fall back to the current squad with a warning.");
+
+        f = Setup();
+        f.IntSetting("arena_squad").Value = 2;
+        SquadApplier.Unreadable.Add(2);
+        Run(f.Task.Execute());
+        Check(SquadApplier.Requests.Count == 0 && f.PreviewClicks == 0 &&
+              Logger.Messages.Any(s => s.Contains("could not be read")),
+            "An unreadable Arena squad was treated as empty and allowed to fight.");
 
         f = Setup();
         f.IntSetting("arena_squad").Value = 2;

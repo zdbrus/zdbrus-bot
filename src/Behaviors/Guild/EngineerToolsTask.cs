@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Guild.Expeditions;
 using Firebot.GameModel.Shared;
@@ -8,6 +9,8 @@ namespace Firebot.Behaviors.Guild;
 
 public class ExpeditionTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.ExpeditionsBtn;
 
     public override IEnumerator Execute()

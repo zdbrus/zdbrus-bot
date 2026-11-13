@@ -6,7 +6,7 @@ using Firebot.Core.Tasks;
 
 namespace Firebot.Core;
 
-/// <summary>Remembers when each task is next due, so restarting the game does not redo every task at once.</summary>
+/// <summary>Remembers task schedules and notification retry delays across game restarts.</summary>
 public static class ScheduleStore
 {
     private static string FilePath => Path.Combine("UserData", "ZdbrusBotSchedule.txt");
@@ -18,13 +18,21 @@ public static class ScheduleStore
             var lines = new List<string>();
             var now = DateTime.Now;
             foreach (var t in tasks)
+            {
+                var name = t.GetType().Name;
                 if (t.NextRunTime != DateTime.MinValue && t.DueTime > now)
-                    lines.Add($"{t.GetType().Name}={t.NextRunTime.ToString("o", CultureInfo.InvariantCulture)}");
+                    lines.Add($"{name}={t.NextRunTime.ToString("o", CultureInfo.InvariantCulture)}");
+                if (t.BubbleQuietUntil > now)
+                    lines.Add($"{name}.BubbleQuietUntil={t.BubbleQuietUntil.ToString("o", CultureInfo.InvariantCulture)}");
+                foreach (var deadline in t.RetryDeadlines)
+                    if (deadline.Value != DateTime.MinValue)
+                        lines.Add($"{name}.{deadline.Key}={deadline.Value.ToString("o", CultureInfo.InvariantCulture)}");
+            }
             File.WriteAllLines(FilePath, lines);
         }
-        catch (Exception e)
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
         {
-            Logger.Debug($"[Schedule] Save failed: {e.Message}");
+            Logger.Warning($"[Schedule] Save failed: {e.Message}");
         }
     }
 
@@ -42,13 +50,24 @@ public static class ScheduleStore
                     map[line[..i]] = when;
             }
 
+            var now = DateTime.Now;
             foreach (var t in tasks)
-                if (map.TryGetValue(t.GetType().Name, out var when) && t.DueAt(when) > DateTime.Now)
+            {
+                var name = t.GetType().Name;
+                if (map.TryGetValue(name, out var when) && t.DueAt(when) > now)
                     t.RestoreNextRun(when);
+                var prefix = name + ".";
+                if (map.TryGetValue(prefix + "BubbleQuietUntil", out var quietUntil) && quietUntil > now)
+                    t.BubbleQuietUntil = quietUntil;
+                foreach (var item in map)
+                    if (item.Key.StartsWith(prefix, StringComparison.Ordinal) &&
+                        item.Key != prefix + "BubbleQuietUntil")
+                        t.RestoreRetryDeadline(item.Key[prefix.Length..], item.Value);
+            }
         }
-        catch (Exception e)
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
         {
-            Logger.Debug($"[Schedule] Restore failed: {e.Message}");
+            Logger.Warning($"[Schedule] Restore failed: {e.Message}");
         }
     }
 }

@@ -16,6 +16,8 @@ namespace Firebot.Behaviors.Map;
 
 public class MapMissionsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.WorldMap;
+
     private MelonPreferences_Entry<string> _timeOrder;
 
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.MapMissionsBtn;

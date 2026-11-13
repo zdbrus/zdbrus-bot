@@ -45,12 +45,17 @@ public static class Upgrades
         var current = LvlUpNumTxt;
         if (Matches(current)) { _cachedLevel = current; yield break; }
 
+        // No label: the game has not given this account the mode button yet. Clicking it eight times a burst
+        // only filled the log with "Upgrade modes seen:  >  > ..." and bought nothing extra; x1 is all there is.
+        if (string.IsNullOrWhiteSpace(current)) yield break;
+
         string fallback = null;
         var seen = new System.Collections.Generic.List<string> { current };
         for (var n = 0; n < 8; n++)
         {
             yield return ChangeLevelUpModeBtn;
             current = LvlUpNumTxt;
+            if (string.IsNullOrWhiteSpace(current)) yield break;
             seen.Add(current);
             if (n == 7) Firebot.Core.Logger.Info($"[AutoUpgrade] Upgrade modes seen: {string.Join(" > ", seen)}");
             if (Matches(current))

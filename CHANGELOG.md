@@ -1,5 +1,118 @@
 ﻿# Changelog
 
+## 0.7.61 (2026-11-12)
+- **Healer-aware squads:** Campaign and Arena auto-builds now include a healer whenever you own one, while keeping a tank whenever available. This applies to both the Auto-build button and scheduled auto-apply.
+- The planner still compares machines and crews together using the selected mode's power. Machine replacements cannot drop the last required healer or tank; remaining places stay power-based.
+- Added focused planner regression coverage for role guarantees, missing roles, small rosters, mode-specific power and crew assignments. Live combat results are not a win guarantee.
+
+## 0.7.60 (2026-11-07)
+- **Void Crystal black-screen fix:** spending now chooses an unlocked hero through that hero's own button. It no longer mistakes the hero's position in the list for their ID, which could select a locked hero such as Muriel or Blaze and break the Hall of Heroes.
+- The same fix applies to ethereal shard spending. Both wait for hero selection to finish and stop if the requested unlocked hero cannot be confirmed, instead of cycling through unverified heroes.
+- Crystal rankings, spending budgets and exact purchase checks are unchanged.
+
+## 0.7.59 (2026-11-04)
+- **Gear detection fixed:** the game can expose empty placeholder entries in one gear list even when you own gear. The Crystal advisor now reads the populated gear list, including on new accounts.
+- **Void Crystal optimization:** F4 now automatically compares current gear across your roster without requiring a hero choice. Damage, health and armor use the current party's stats to estimate the benefit of personal gear, alongside global gear from the whole roster. Gold and gear power are separate goals; gear power helps unlock tiers and missions, not war-machine power.
+- The advisor compares each next enchant's actual level multiplier and cost, shows its current and next effect and gear-power gain, and sorts by estimated benefit per crystal rather than price alone. These are next-upgrade estimates, not a combat simulation or a guarantee of the best complete budget plan.
+- **Spend for me** re-reads and re-ranks the best affordable upgrade immediately before each click, checks for changed gear, and retains the budget, confirmation, exact-receipt and 40-enchant safeguards. It can also use the gear screen on new accounts that do not yet show the gear-category button.
+
+## 0.7.58 (2026-11-04)
+- **Void Crystal advisor fixed.** It could list no gear at all even when you had crystals, because of an unverified enchant-cap check and how the game numbers your hero's gear tier. Tier 1 gear is always included now, and each rarity's cap is read the way the guides describe it (+2 enchants per rarity step). When nothing qualifies, F4 and the log (`[Crystals] Gear scan`) say why: how many pieces are capped, in a locked tier or empty.
+- **Guide-backed priority orders for everyone.** Talents, Oracle, Personal Tree, Forbidden Knowledge, Meteorite Research, Firestone Research, Exotic Merchant and Event Exchange now ship in the order the community guides recommend (Aurora's Steam Complete Guide, the Steam War Machine guide, the Firestone Fandom wiki and firestone-idle-rpg.de). Talents lead with **Battle cry** and **Fate**; the Oracle leads with Fate, then Guardian Power. Locked upgrades are skipped until you unlock them, so nothing stalls.
+- On this update each of those lists is switched to the guide order **once**. After that your own edits are kept.
+- Every ordered list in F1 has two new buttons: **Clear** empties the list and **Recommended** puts the guide order back.
+
+## 0.7.57 (2026-11-03)
+- Meteorite Research now protects **Meteorites To Keep** using the game's actual balance and cost, not rounded screen numbers. It buys at x1 and checks the latest reserve again at the purchase click, so changes to the setting take effect before the next purchase.
+- Research waits for both the level increase and the exact meteorite debit before buying again. Changed selections, prices or unreadable values stop spending; an unaffordable higher priority still blocks cheaper lower priorities.
+- Meteorite Research reads names and unlocks directly from the live tree instead of relying on remembered previews. Your existing reserve and priority settings are kept. A purchase already sent to the game can still finish if you raise the reserve afterward.
+
+## 0.7.56 (2026-11-03)
+- New **Void Crystal advisor** in F4: choose hero damage, health, armor or gold, then see the cheapest matching gear enchants across your whole roster. Global gear counts even on benched heroes. Pick one hero to include their personal weapon, chest and boots. These upgrades help heroes, not war machines.
+- Prices, current effects and next effects are read from the game. Locked tiers, missing gear and maxed enchants are excluded. Equal-price ties favor relics because they help all three hero stats.
+- **Spend for me** starts only after you enter a crystal budget and confirm. It re-reads prices and re-ranks after every enchant, verifies both the level and exact crystal debit, and stops on changed data or an unconfirmed result. There is a Stop spending button and a 40-enchant limit per request. No crystal purchases, tier unlocks or other currencies are used.
+- Crystal spending waits for the bot's current job, pauses AutoUpgrade, blocks overlapping planner actions and cancels on game scene changes. New accounts can load the hero advisor before their war machines are available.
+
+## 0.7.55 (2026-11-03)
+- New accounts: the bot now waits while the game's guided tutorial has a step on screen, instead of clicking over the highlighted button. AutoUpgrade and AutoSkill pause too, and the upgrades menu stays open for the tutorial's own upgrade step. Tasks show **Tutorial** on F2 while this happens.
+- Tasks for features the game hasn't given you yet (Tavern, Guild, Oracle, Arena, World Map and the rest) are held back until the game unlocks them. F2 shows what each one is waiting on, like **Locked (Guild)**, and the log says when the game unlocks it. Accounts at level 200 and up work exactly as before.
+- Story pop-ups are clicked through between tasks: story dialogue, Aurelia's tips and "New hero!" screens. Finished storyline chapter rewards are claimed. Nothing is clicked while the tutorial is forcing you to press something.
+- AutoUpgrade no longer clicks the upgrade-mode button over and over on accounts that don't have it yet.
+
+## 0.7.54 (2026-11-03)
+- War Machine Planner: **Mission needs** now comes straight from the game. Firestone patch 9.1.4 raised the recommended power on war machine campaign missions, and the planner's old estimate ran low, so it could say you were ready when you weren't. The ring, the verdict, "Power covers up to" and the power curve all use the game's numbers once the planner is linked. Until then it shows the old estimate with a note saying so.
+- The mission box and the curve follow however many campaign missions the game has, instead of assuming 90.
+- Checked the bot against patch 9.1.4: it builds against the updated game and loads cleanly. Campaign fighting doesn't use recommended power, so it's unaffected.
+
+## 0.7.53 (2026-11-03)
+- War Machine Planner: dragging a hero from the bench into a machine works again with live game data. Hero IDs from the game are numbers, and the drop compared them as text, so heroes could be moved to the bench but not back. Saved crews with mixed IDs are repaired on load, and the live refresh waits while you're dragging.
+- New **War machine tier list** panel ranks every machine S to C for long-term investment, grouped by damage, tank and healer, with a goal squad (Cloudfist, Talos, Thunderclap, Goliath, Hunter) to work toward. Each role says the best machine you have and what to hope for. Tiers come from a Japanese player wiki (Sept 2025), with 2024 arena simulations from a Steam guide as a second opinion in each tooltip.
+- Tier badges now appear on every machine in the bays, the garage, the advisor picks and the level and blueprint tables. Hover one for why it's ranked there and what to spend on it. The advisor adds a caution when its pick is tier C. Auto-build still picks by today's numbers.
+- Planner text now says **jewel chests** (Wooden, Iron, Golden and up) give war machine parts and conduits, not gear chests.
+- New [War Machine Guide](WAR-MACHINES.md): jewel vs gear chests, how unlocks work, the tier list, where to spend, expedition token tips and the chest timing trick, including which bot chest settings to untick for it.
+
+## 0.7.52 (2026-11-03)
+- War Machine Planner: the upgrade advisor was rebuilt. It used to charge a whole machine level as a single workshop upgrade, so levels looked up to about 20 times cheaper than they are, and it listed each level four times and compared machines by parts they cannot share.
+- The advisor now opens with two picks, the best machine to level and the best blueprint to buy, followed by a level table and a blueprint table. Levels count the real number of workshop upgrades from the machine's current XP (each upgrade costs 500 expedition tokens, 20 screws, 12 cogs and 1 metal and gives 100 XP). Blueprints show the stat, the cost and the level cap.
+- The advisor checks each machine's own screws, cogs and metal and your expedition tokens and blueprints. When the best-value machine is short on parts, it suggests the best machine you can level now.
+- Hover tooltips (or tap the **?**) explain the planner's numbers: parts needed for a machine and where to get more, level and blueprint costs, overdrive, Game check, power, crew gains, shards and the advisor's columns.
+- The planner now reads each machine's XP and parts and your expedition tokens, blueprints and ethereal shards from the game.
+
+## 0.7.51 (2026-11-02)
+- War Machine Planner: Auto-build now picks machines and crews together. A machine that is weak on its own but gains a lot from the heroes available to it can now make the squad. Arena mode places crews by arena power.
+
+## 0.7.50 (2026-11-02)
+- Notification quiet periods and the separate Chaos Rift and Mystery Box retries now survive game restarts. Scheduled task checks are not blocked by a quiet notification.
+- Saved task schedules and retry delays are shared across accounts on the same installation, so switching accounts can carry over a wait.
+
+## 0.7.49 (2026-11-02)
+- Free Pickaxes now waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim while the game stays open, even if its notification remains lit.
+- After a confirmed prestige, the bot waits briefly for the completion screen and its Start now button instead of missing a screen that appears after the stage resets.
+
+## 0.7.48 (2026-11-02)
+- Arena falls back to the current squad only when the chosen squad is confirmed empty. Unreadable squad data stops the fight instead of being mistaken for an empty squad.
+- Free Pickaxes confirms claims only from a readable quantity decrease or a newly visible claimed marker; uncertain claims are retried.
+- Mystery Box claims require a claimed marker or rewards screen, and an unconfirmed claim is retried without postponing other daily rewards. Opening boxes requires a readable amount and a free control with no visible price marker.
+- Chaos Rift's six-hour retry no longer mutes Guardian Holy Upgrade notifications.
+- Temple's delayed previews preserve the next hourly growth sample, including when a boss or stall trigger checks a zero boost.
+- These changes passed simulated regression checks, but the Arena empty-squad representation and the Mystery Box store tab have not yet been verified in the live game.
+
+## 0.7.47 (2026-11-02)
+- Balanced AutoUpgrade uses idle gaps even when a scheduled task is less than 30 seconds away. Frequent Temple and boss checks no longer keep it paused between tasks; ready and running tasks still take priority, and Focus keeps its early pause.
+- Free Pickaxes no longer reports a successful claim as failed. The game counts down unclaimed pickaxes after a claim, and the bot now checks for that.
+- Arena: if the chosen Arena squad has no war machines, the bot warns once and fights with your current squad, instead of skipping Arena forever.
+- Chaos Rift: when the game shows a message instead of opening the Rift, the bot logs the message text, closes it, and waits 6 hours before trying again.
+- Open Chests also opens Mystery Boxes from the Bag (F1 setting **Open Mystery Boxes**, on by default).
+- The free Mystery Box claim switches to the store's value-bundle tab when the store opens on another tab. An already-claimed box is logged as information, not as a warning.
+- Temple: when a trigger fires but the minimum boost or run age is not reached yet, the bot waits a few minutes before the next check instead of reopening the preview every minute. All reset safeguards are unchanged.
+
+## 0.7.46 (2026-10-31)
+- Temple Prestige now recognizes a displayed `+0%` as a real zero boost instead of an unreadable value, while still refusing to empower until the preview shows a positive boost.
+- A zero-boost growth sample is remembered, so ordinary one-minute checks no longer reopen the Temple for that same first sample. Hourly growth reads and qualifying boss/stall checks remain active.
+
+## 0.7.45 (2026-10-30)
+- Temple Prestige now reads the game's minutes-and-seconds run clock (for example, 35:47) as a fraction of an hour, instead of treating minutes as hours. Invalid seconds still fail closed.
+- The F2 task list now has an ON/OFF switch beside each task, connected to the same saved enabled setting used in F1.
+
+## 0.7.44 (2026-10-30)
+- AutoUpgrade now finishes its short balanced pass across selected slots before handing the game back to the main bot tasks. A task no longer interrupts the pass after only the first few upgrades.
+
+## 0.7.43 (2026-10-30)
+- Fixed Temple prestige cancelling itself when opening the Temple hides the battle HUD. Stage checks and boss retry tracking now read live game data, including the final safety check and reset confirmation; missing or changed data still prevents a reset.
+- Prestige cancellation logs now include the before/after stage, boost and run-age readings.
+- Free prestige handles the extra confirmation only after opening it from the verified free control. Existing, unrelated, priced, or changed confirmations are left untouched.
+- Remembered upgrade names no longer change when menus move in the UI hierarchy. Existing Oracle name mappings are reused instead of opening every preview again.
+- Scarab uses the game's Auto mode, with currency checks guarding each native spin. Pharaoh's tokens still require the separate opt-in, off by default; gems and token purchases remain excluded.
+- Awakening uses Auto with an x1, x2, x5, x10 or x20 amount selector. It spends every affordable selected batch instead of stopping after ten clicks, without falling back to another amount or buying crystals.
+- Both Auto activities confirm currency use and turn Auto off when finished, stopped, or interrupted. A task time limit can split a large balance across visits.
+- Talents read names, levels and unlock state from the live tree and open only eligible priority previews, rather than discovering every name through a popup.
+- Compatible town and guild tasks reuse their hub instead of returning to battle between each task. Popup cleanup remains; battle tasks and idle upgrade windows still return to the battle screen.
+
+## 0.7.42 (2026-10-30)
+- Temple prestige prioritizes the growth-efficiency trigger, then repeated boss attempts at the same stage, with a selectable 30-minute or 1-hour no-progress fallback. The free preview is used only when a trigger and the minimum run age and boost are verified.
+- Liberation Missions can target Easy (1 star), Normal (2 stars) or both, and verifies difficulty changes before starting fights.
+- Battle Pass skips scrolling the reward track when its rewards marker is present but hidden; it retains the conservative scan if the marker is missing.
+
 ## 0.7.41 (2026-10-30)
 - Added opt-in local Arena matchup recording for confirmed bot-started wins and losses. It saves preview formations, available game-reported stats, displayed powers and outcomes as append-only JSON lines without player names, account IDs or changes to fight decisions. Missing values remain null.
 - Recording is off by default, including with Enable All On Launch. Write failures are logged. The per-machine preview stats have not been validated against combat and are not a win predictor. No live Arena fights were performed for this release.

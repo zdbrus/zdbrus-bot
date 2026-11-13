@@ -4,7 +4,9 @@ using Firebot.GameModel.Base;
 using Firebot.GameModel.Primitives;
 using Firebot.Infrastructure;
 using UnityEngine;
+using P = Firebot.Behaviors.Extra.P;
 using Stopwatch = System.Diagnostics.Stopwatch;
+using Ui = Firebot.Behaviors.Extra.Ui;
 
 namespace Firebot.Core;
 
@@ -196,13 +198,26 @@ public static class Watchdog
     ///     Closes whatever the game left open. <paramref name="phase" /> only labels the measurement line, so a
     ///     slow sweep can be told apart from a fast one in the log.
     /// </summary>
-    public static IEnumerator ForceClearAll(string phase = null)
+    public static IEnumerator ForceClearAll(string phase = null) => Clear(phase, TaskHub.None);
+
+    internal static IEnumerator Clear(string phase, TaskHub keepHub)
     {
+        if (StoryPopupOpen) yield return DismissStory();
+
+        // Closing a story screen is often what starts the next tutorial step. Sweeping close buttons now would
+        // shut the menu that step just opened.
+        if (GameTutorial.ShouldHold)
+        {
+            Logger.Debug($"[Watchdog] Skipping the {phase ?? "cleanup"} sweep: a tutorial step is on screen.");
+            yield break;
+        }
+
         var meter = new SweepMeter(phase ?? "cleanup");
 
         for (var pass = 0; pass < Passes; pass++)
             foreach (var path in EnumerateNuisancePaths(meter))
             {
+                if (TaskNavigation.KeepOpen(path, keepHub)) continue;
                 var started = Stopwatch.GetTimestamp();
                 var gameButton = new GameButton(path);
                 var visible = gameButton.IsVisible();
@@ -219,5 +234,116 @@ public static class Watchdog
             }
 
         meter.Report();
+    }
+
+    // ---- Story popups ----
+    // A new account is interrupted all the time: Aurelia explaining a feature, the story dialogue, the "New hero!"
+    // screen, the storyline chapter reward. None of them has a close button for the sweep to find, and each one
+    // swallows every click under it, so the bot clicks through them the way a player would.
+
+    private const string Dialogue = P.Popups + "/Dialogue";
+    private const string DialogueBubble = P.Popups + "/DialogueBubble";
+    private const string HeroUnlockBackground = P.Menus + "/HeroUnlock/background";
+
+    // "Porgress" is the game's spelling.
+    private const string ChapterClaim = P.Popups + "/TutorialQuests/bg/overallPorgressInfoPanel/claimButton";
+
+    /// <summary>A long story conversation is a dozen lines; a popup that never closes must not hold the bot.</summary>
+    private const int MaxStoryClicks = 25;
+
+    private const float StoryClickWait = 0.6f;
+
+    /// <summary>
+    ///     Tries for "Skip" and "finish now" before the plain background click takes over, in case one of them
+    ///     stays lit without moving the conversation on.
+    /// </summary>
+    private const int MaxShortcutClicks = 2;
+
+    /// <summary>A Claim that did nothing (chapter not done yet) is not pressed again on every scan.</summary>
+    private static readonly System.TimeSpan ChapterClaimCooldown = System.TimeSpan.FromMinutes(2);
+
+    private static System.DateTime _lastChapterClaim = System.DateTime.MinValue;
+
+    /// <summary>Something <see cref="DismissStory" /> can get past is on screen.</summary>
+    internal static bool StoryPopupOpen
+        => Ui.Visible(Dialogue) || Ui.Visible(DialogueBubble) || Ui.Clickable(HeroUnlockBackground) ||
+           (Ui.Clickable(ChapterClaim) && System.DateTime.Now - _lastChapterClaim >= ChapterClaimCooldown);
+
+    /// <summary>
+    ///     Clicks through the story popups. Hands off while the tutorial highlight is up: that step waits for
+    ///     one specific click, and the game blocks every other one anyway.
+    /// </summary>
+    internal static IEnumerator DismissStory()
+    {
+        var shortcutClicks = new Dictionary<string, int>();
+        var dialogueClicks = 0;
+
+        for (var clicks = 0; clicks < MaxStoryClicks; clicks++)
+        {
+            if (GameTutorial.IsForced) break;
+
+            var path = NextStoryClick(shortcutClicks, out var kind);
+            if (path == null) break;
+
+            switch (kind)
+            {
+                case StoryKind.Dialogue:
+                    dialogueClicks++;
+                    break;
+                case StoryKind.NewHero:
+                    Logger.Info("[Story] Closing the \"New hero!\" screen.");
+                    break;
+                case StoryKind.Chapter:
+                    _lastChapterClaim = System.DateTime.Now;
+                    Logger.Info("[Story] Claiming the storyline chapter reward.");
+                    break;
+            }
+
+            Logger.Debug($"[Story] Click: {path}");
+            yield return Ui.Click(path, StoryClickWait);
+        }
+
+        if (dialogueClicks > 0)
+            Logger.Info($"[Story] Clicked through the story dialogue ({dialogueClicks} " +
+                        $"click{(dialogueClicks == 1 ? "" : "s")}).");
+    }
+
+    private enum StoryKind
+    {
+        Dialogue,
+        NewHero,
+        Chapter
+    }
+
+    private static string NextStoryClick(Dictionary<string, int> shortcutClicks, out StoryKind kind)
+    {
+        kind = StoryKind.Dialogue;
+        foreach (var root in new[] { DialogueBubble, Dialogue })
+        {
+            if (!Ui.Visible(root)) continue;
+
+            foreach (var shortcut in new[] { root + "/skipButton", root + "/finishDialogueNow" })
+            {
+                if (!Ui.Clickable(shortcut)) continue;
+                shortcutClicks.TryGetValue(shortcut, out var tries);
+                if (tries >= MaxShortcutClicks) continue;
+
+                shortcutClicks[shortcut] = tries + 1;
+                return shortcut;
+            }
+
+            var background = root + "/background";
+            if (Ui.Clickable(background)) return background;
+        }
+
+        // Its background only turns clickable once the reveal animation is over; until then there is nothing to do.
+        kind = StoryKind.NewHero;
+        if (Ui.Clickable(HeroUnlockBackground)) return HeroUnlockBackground;
+
+        kind = StoryKind.Chapter;
+        if (Ui.Clickable(ChapterClaim) && System.DateTime.Now - _lastChapterClaim >= ChapterClaimCooldown)
+            return ChapterClaim;
+
+        return null;
     }
 }

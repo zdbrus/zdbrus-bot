@@ -5,9 +5,9 @@ using Il2Cpp;
 namespace Firebot.Core;
 
 /// <summary>
-///     The character level, read from the game's own data instead of from what the screen shows.
+///     Character level and battle stage, read from the game's data instead of the screen.
 ///     <para>
-///         0 means "not read", never "level zero": the game is asked on every call, and while it cannot
+///         For character levels, 0 means "not read", never "level zero": the game is asked on every call, and while it cannot
 ///         answer — scene still loading, character not created — the last value read is returned, or 0 when
 ///         there has never been one. Callers that gate a feature have to tell those two cases apart, which
 ///         is what <see cref="TryGetCharacterLevel" /> is for: reading 0 as "too low" would lock every
@@ -42,6 +42,29 @@ public static class PlayerStats
     {
         level = CharacterLevel;
         return HasKnownLevel;
+    }
+
+    /// <summary>Reads the live stage even with the battle HUD hidden. Never reuses a cached stage.</summary>
+    public static bool TryGetCurrentStage(out int stage)
+    {
+        stage = 0;
+        try
+        {
+            if (!GameInitialize.HasGameLoaded()) return false;
+            var battle = GameInitialize.HandlerLoader?.MainBattle;
+            if (battle == null) return false;
+
+            int currentStage = battle.CurrentStageNumber;
+            if (currentStage <= 0) return false;
+            stage = currentStage;
+            return true;
+        }
+        catch (Exception e)
+        {
+            FailOnce($"stage|{e.GetType().Name}|{e.Message}",
+                $"Stage read failed: {e.GetType().Name} - {e.Message}");
+            return false;
+        }
     }
 
     /// <summary>0 when the game is not in a state where the level can be read.</summary>

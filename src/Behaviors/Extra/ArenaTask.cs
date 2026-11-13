@@ -16,6 +16,8 @@ namespace Firebot.Behaviors.Extra;
 
 public class ArenaTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ArenaOfKings;
+
     protected override string NotificationPath => P.Notifications + "/ArenaTokens";
 
     private const string Menu = P.Menus + "/ArenaOfKings";
@@ -44,6 +46,7 @@ public class ArenaTask : BotTask
     private MelonPreferences_Entry<int> _arenaSquad;
     private double _deadline;
     private bool _fought;
+    private int _warnedEmptySquad;
 
     public ArenaTask() : this(() => DateTime.Now, MonotonicSeconds) { }
 
@@ -97,15 +100,30 @@ public class ArenaTask : BotTask
             yield break;
         }
 
-        var swap = want != 0 && before != want;
-        if (swap)
+        if (want != 0 && before != want)
         {
-            if (!Planner.SquadApplier.HasMachines(want))
+            if (!Planner.SquadApplier.TryHasMachines(want, out var hasMachines))
             {
-                Retry($"Arena squad {want} is empty or unavailable; no fight was attempted.");
+                Retry($"Arena squad {want} could not be read; no fight was attempted.");
                 yield break;
             }
 
+            if (!hasMachines)
+            {
+                if (_warnedEmptySquad != want)
+                {
+                    Logger.Warning($"[Arena] Arena squad {want} has no war machines in it, so the bot is fighting " +
+                                   $"with your current squad ({before}) instead. Fill squad {want} or set Arena Squad to 0.");
+                    _warnedEmptySquad = want;
+                }
+                want = before;
+            }
+            else _warnedEmptySquad = 0;
+        }
+
+        var swap = want != 0 && before != want;
+        if (swap)
+        {
             yield return OpenArena();
             if (!Ui.Visible(Arena) || !ArenaPowerPolicy.TryParseTokens(Ui.Text(Tokens), out var tokens))
             {

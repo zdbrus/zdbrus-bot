@@ -1,8 +1,12 @@
 using System.Collections;
-using System.Text.RegularExpressions;
 
 namespace UnityEngine
 {
+    public static class Object
+    {
+        public static object TestInstance;
+        public static T FindObjectOfType<T>() where T : class => TestInstance as T;
+    }
     public class Component
     {
         public GameObject gameObject { get; internal set; }
@@ -23,6 +27,12 @@ namespace UnityEngine
 
         public Transform GetChild(int index) => _children[index];
         public int GetSiblingIndex() => parent == null ? 0 : parent._children.IndexOf(this);
+        public void SetAsLastSibling()
+        {
+            if (parent == null) return;
+            parent._children.Remove(this);
+            parent._children.Add(this);
+        }
         public bool TryGetComponent<T>(out T component) where T : Component => gameObject.TryGetComponent(out component);
         public T GetComponent<T>() where T : Component
             => gameObject.TryGetComponent(out T component) ? component : null;
@@ -258,6 +268,7 @@ namespace MelonLoader
             public void Warning(string message) { }
         }
         public Log LoggerInstance = new();
+        public HarmonyLib.Harmony HarmonyInstance = new("regression");
         public virtual void OnInitializeMelon() { }
         public virtual void OnApplicationQuit() { }
         public virtual void OnSceneWasLoaded(int buildIndex, string sceneName) { }
@@ -360,19 +371,26 @@ namespace Firebot.Core
         public static void Error(string message) => Messages.Add(message);
     }
 
-    public static class LevelRequirements { public const int None = 0; }
-    public static class PlayerStats
+    public static class LevelRequirements
     {
-        public static bool TryGetCharacterLevel(out int level) { level = 9999; return true; }
+        public const int None = 0;
+        public const int FreePickaxes = 50;
+        public const int ScarabGameShop = 60;
+        public const int Oracle = 200;
     }
     public static class BotManager
     {
+        public static bool IsBusy => IsRunning && IsTaskExecuting;
         public static bool IsRunning;
+        public static bool IsTaskExecuting;
+        public static bool PauseAutoUpgrade;
+        public static bool TaskApproaching;
         public static void Initialize() { }
         public static void Start() => IsRunning = true;
         public static void Stop() => IsRunning = false;
         public static void WatchForStall() { }
-        public static bool ShouldPauseAutoUpgrade() => false;
+        public static bool ShouldPauseAutoUpgrade() =>
+            Firebot.BotActions.AutoUpgrade.ShouldWaitForTask(PauseAutoUpgrade, TaskApproaching) || IsTaskExecuting;
         public static string AutoUpgradePauseReason => "";
     }
     public static class HotkeyGate
@@ -410,12 +428,19 @@ namespace Firebot.Planner
 {
     public static class SquadApplier
     {
+        public static bool Busy;
         public static int Active = 1;
         public static readonly HashSet<int> Populated = new() { 1, 2, 3 };
+        public static readonly HashSet<int> Unreadable = new();
         public static readonly List<int> Requests = new();
         public static Action<int> OnSet;
         public static int ActiveSlot() => Active;
         public static bool HasMachines(int slot) => Populated.Contains(slot);
+        public static bool TryHasMachines(int slot, out bool hasMachines)
+        {
+            hasMachines = Populated.Contains(slot);
+            return !Unreadable.Contains(slot);
+        }
         public static IEnumerator SetActive(int slot, string why)
         {
             Requests.Add(slot);
@@ -428,6 +453,7 @@ namespace Firebot.Planner
             Active = 1;
             Populated.Clear();
             Populated.UnionWith(new[] { 1, 2, 3 });
+            Unreadable.Clear();
             Requests.Clear();
             OnSet = null;
         }
@@ -439,15 +465,8 @@ namespace Firebot.Planner
         public static void Stop() { }
         public static void Tick() { }
     }
-}
 
-namespace Firebot.Utilities
-{
-    public static class StringUtils
-    {
-        public static string Humanize(string text) =>
-            Regex.Replace(text.Replace("Task", ""), "(?<!^)([A-Z])", " $1");
-    }
+    public static class JewelSpender { public static bool Busy; }
 }
 
 namespace Firebot.UI.Config
@@ -548,6 +567,19 @@ namespace Firebot.Infrastructure
         {
             public static class CanvasLoc
             {
+                public static class GuildLoc
+                {
+                    public static class GuildShopLoc
+                    {
+                        public const string CloseBtn = "menus/GuildShop/closeButton";
+                        public static class FreePickaxeLoc
+                        {
+                            public const string ClaimBtn = "menus/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/purchaseButton";
+                            public const string QuantityTxt = "menus/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/itemBg/itemQuantity";
+                            public const string NextRunTimeTxt = "menus/GuildShop/bg/submenus/supplies/items/freePickaxe/nextFreeObj/progressBarBg/timeLeftText";
+                        }
+                    }
+                }
                 public static class MainSceneLoc
                 {
                     public static class UpgradesLoc
@@ -608,19 +640,29 @@ namespace Firebot.Behaviors.Extra
         public const string Notifications = "notifications";
         public const string Popups = "popups";
         public const string Battle = "battle";
+        public const string RewardsClose = Popups + "/Rewards/bg/closeButton";
     }
 
     internal static class Ui
     {
+        public static bool MissingCurrency;
+        public static double Parse(string text) => double.TryParse(text, System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture, out var number) ? number : -1;
         public static bool OpenMapWorks = true;
         public static bool OpenTownWorks = true;
         public static int OpenMapCalls;
         public static Action<string> BeforeGuardedClick;
         public static Action<string> BeforeFind;
+        public static Action<string> BeforeVisible;
         public static Action<string> BeforeText;
+        public static Action<Transform> OnPointerClick;
         public static readonly Dictionary<string, string> Texts = new();
         public static readonly Dictionary<string, double> Numbers = new();
-        public static bool Visible(string path) => GameObject.Resolve(path)?.activeInHierarchy ?? false;
+        public static bool Visible(string path)
+        {
+            BeforeVisible?.Invoke(path);
+            return GameObject.Resolve(path)?.activeInHierarchy ?? false;
+        }
         public static string Text(string path)
         {
             BeforeText?.Invoke(path);
@@ -629,8 +671,19 @@ namespace Firebot.Behaviors.Extra
         }
         public static string Text(Transform target) =>
             target != null && target.gameObject.activeInHierarchy ? Text(target.FullPath) : "";
-        public static double NumberAt(string path) => path.EndsWith("/squads/quantity") ? MapFixture.Free
-            : Numbers.TryGetValue(path, out var value) ? value : -1;
+        public static double NumberOf(Transform target)
+        {
+            var value = Text(target);
+            if (value.StartsWith("x", StringComparison.OrdinalIgnoreCase)) value = value[1..];
+            return Parse(value);
+        }
+        public static double NumberAt(string path)
+        {
+            var target = GameObject.Resolve(path);
+            if (target != null && !target.activeInHierarchy) return -1;
+            return path.EndsWith("/squads/quantity") ? MapFixture.Free
+                : Numbers.TryGetValue(path, out var value) ? value : -1;
+        }
         public static Transform Find(string path)
         {
             BeforeFind?.Invoke(path);
@@ -646,6 +699,22 @@ namespace Firebot.Behaviors.Extra
         public static bool Clickable(string path) => Clickable(Find(path));
         public static bool Clickable(Transform target) => target != null && target.gameObject.activeInHierarchy &&
             target.TryGetComponent(out UnityEngine.UI.Button button) && button.enabled && button.interactable;
+        public static bool HasPriceMarker(Transform button, bool allowFreePriceHolder = false)
+        {
+            if (button == null) return true;
+            foreach (var child in button.GetComponentsInChildren<Transform>(true))
+            {
+                if (child == null || !child.gameObject.activeInHierarchy || child == button) continue;
+                var name = child.name.ToLowerInvariant();
+                if (name.Contains("cost") || name.Contains("currency") || name.Contains("gem")) return true;
+                if (!name.Contains("price")) continue;
+                var freeText = child.Find("freeText");
+                if (!allowFreePriceHolder || name != "priceholder" || freeText == null ||
+                    !freeText.gameObject.activeInHierarchy) return true;
+            }
+            return false;
+        }
+        public static void PointerClick(Transform target) => OnPointerClick?.Invoke(target);
         public static IEnumerator ClickUntil(Transform target, Func<bool> changed, Action<bool> completed,
             string label, float wait = 1f, float timeout = 2f)
         {
@@ -658,8 +727,9 @@ namespace Firebot.Behaviors.Extra
         public static IEnumerator WaitFor(string path, float timeout = 5f) { yield break; }
         public static IEnumerator WaitUntil(Func<bool> condition, Action<bool> completed, float timeout = 2f)
         {
+            var end = Time.unscaledTime + timeout;
+            while (!condition() && Time.unscaledTime < end) yield return new WaitForSeconds(0.2f);
             completed(condition());
-            yield break;
         }
         public static IEnumerator OpenMapSubmenu(string name)
         {
@@ -676,10 +746,15 @@ namespace Firebot.Behaviors.Extra
         {
             if (OpenTownWorks && building == "templeOfEternals")
                 GameObject.CreatePath("menus/TempleOfEternals").activeSelf = true;
+            if (OpenTownWorks && building == "hallOfHeroes")
+                GameObject.CreatePath("menus/HallOfHeroes").activeSelf = true;
             yield break;
         }
+        public static IEnumerator OpenGuildBuilding(string building) { yield break; }
         public static IEnumerator Click(string path, float wait = -1)
             => Click(Find(path), wait);
+        public static IEnumerator Click(string path, float wait, string label)
+            => Click(Find(path), wait, label);
         public static IEnumerator Click(Transform target, float wait = -1, string label = null)
         {
             if (Clickable(target))
@@ -688,6 +763,10 @@ namespace Firebot.Behaviors.Extra
                 button.onClick.Invoke();
             }
             yield break;
+        }
+        public static IEnumerator CloseRewards()
+        {
+            if (Visible(P.RewardsClose)) yield return Click(P.RewardsClose);
         }
         public static IEnumerator ClickIf(string path, Func<bool> condition, Action<bool> clicked, float wait = -1,
             string label = null)
@@ -730,13 +809,195 @@ namespace Firebot.Behaviors.Extra
     }
 }
 
+namespace Il2Cpp
+{
+    public static class GameInitialize
+    {
+        public static bool Loaded = true;
+        public static HandlerLoader HandlerLoader = new();
+        public static MenuLoader MenuLoader = new();
+        public static BattleCharactersHolder battleCharactersHolder = new();
+        public static bool HasGameLoaded() => Loaded;
+    }
+
+    public class HandlerLoader
+    {
+        public HeroServerHandler heroServerHandler = new();
+        public HeroDeck heroDeck = new();
+        public CurrencyHandler currencyHandler = new();
+        public CharacterLevel CharacterLevel = new();
+        public MainBattle MainBattle = new();
+        public UnlockMechanismsData UnlockMechanismsData = new();
+    }
+
+    /// <summary>Every flag starts unlocked, so tests that do not care about new accounts are unaffected.</summary>
+    public class UnlockMechanismsData
+    {
+        private static ObscuredBool On() => new() { Value = true };
+        public ObscuredBool AlchemistUnlocked = On(), ArenaOfKingsUnlocked = On(), AwakeningUnlocked = On(),
+            BattlePassUnlocked = On(), ChaosRiftUnlocked = On(), CharacterTalentsUnlocked = On(),
+            EventManagerUnlocked = On(), ExoticMerchantUnlocked = On(), GuardianStrengthenUnlocked = On(),
+            GuildsUnlocked = On(), InventoryBagUnlocked = On(), LibraryUnlocked = On(), OracleUnlocked = On(),
+            QuestsUnlocked = On(), ScarabGameUnlocked = On(), StoreUnlocked = On(), TavernUnlocked = On(),
+            TempleOfEternalsUnlocked = On(), UpgradesUnlocked = On(), WorldMapUnlocked = On();
+        public bool LiberationUnlocked = true;
+        public bool ThrowOnRead;
+        public bool IsLiberationUnlocked() =>
+            ThrowOnRead ? throw new InvalidOperationException("unlock read failed") : LiberationUnlocked;
+    }
+
+    public class TutorialGuidance
+    {
+        public bool isTutorialFinished = true;
+        public bool isCurrentTutorialPartInProgress;
+        public int currentTutorial;
+        public bool HasFinishedTutorial() => isTutorialFinished;
+
+        public static class TutorialIsolation
+        {
+            public static bool Forced;
+            public static bool IsForcedTutorialOpen() => Forced;
+        }
+    }
+
+    public class CharacterLevel
+    {
+        public bool hasLoaded = true;
+        public int Level = 9999;
+    }
+
+    public class MainBattle
+    {
+        public int Stage = 100;
+        public bool ThrowOnRead;
+        public HashSet<int> Fighting = new();
+        public bool IsHeroFighting(int id) => Fighting.Contains(id);
+        public int CurrentStageNumber => ThrowOnRead
+            ? throw new InvalidOperationException("stage read failed") : Stage;
+    }
+
+    public class TalentsInteraction : UnityEngine.Component { public Talents talent; }
+    public class Talents
+    {
+        public string name;
+        public double tempLevel;
+        public int levelCap = 25;
+        public bool unlocked = true;
+    }
+    public enum CurrencyCode { NoblesToken, PharaohsToken, Gem, VoidCrystal, Meteorite }
+    public struct PlayTokenSelection
+    {
+        public CurrencyCode SelectedCurrency;
+        public double AvailableTokens;
+        public int TokensNeeded;
+        public bool HasEnoughTokens;
+    }
+    public class MenuLoader
+    {
+        public MeteoriteResearchPreviewPopup MeteoriteResearchPreviewPopup = new();
+        public HallOfHeroesMech HallOfHeroesMech = new();
+        public AwakeningMech AwakeningMech = new();
+        public ScarabGameMech ScarabGameMech = new();
+        public TutorialGuidance TutorialGuidance = new();
+    }
+    public class AwakeningMech
+    {
+        public bool autoAwakenOn;
+        public int awakeningQuantity = 1;
+        public void AutoAwakenToggle() => autoAwakenOn = !autoAwakenOn;
+        public Il2CppSystem.Collections.IEnumerator AwakenHeroAskServer() => null;
+    }
+    public class ScarabGameMech
+    {
+        public bool autoPlayOn;
+        public int currentPlayQuantity = 1;
+        public bool isRolling, askedServerForRoll;
+        public PlayTokenSelection currentPlayTokenSelection;
+        public void SetAutoPlayState(bool enabled) => autoPlayOn = enabled;
+        public Il2CppSystem.Collections.IEnumerator StartRolling() => null;
+        public Il2CppSystem.Collections.IEnumerator BeginRollSequence(PlayTokenSelection selection) => null;
+    }
+}
+
+namespace HarmonyLib
+{
+    public class Harmony
+    {
+        public Harmony(string id) { }
+        public void Patch(System.Reflection.MethodInfo original, HarmonyMethod prefix)
+        {
+            if (original == null) throw new InvalidOperationException("Missing patch target.");
+        }
+    }
+    public class HarmonyMethod { public HarmonyMethod(Type type, string name) { } }
+    public static class AccessTools
+    {
+        public static System.Reflection.MethodInfo Method(Type type, string name) => type.GetMethod(name);
+    }
+}
+
+namespace Il2CppHolydayStudios
+{
+    public static class Translator
+    {
+        public static readonly Dictionary<string, string> Names = new();
+        public static string Translate(string term) => Names.TryGetValue(term, out var name) ? name : term;
+    }
+}
+
+namespace Il2CppSystem.Collections
+{
+    public interface IEnumerator : System.Collections.IEnumerator { }
+    public class ArrayList
+    {
+        private class Empty : IEnumerator
+        {
+            public object Current => null;
+            public bool MoveNext() => false;
+            public void Reset() { }
+        }
+        public IEnumerator GetEnumerator() => new Empty();
+    }
+}
+
 namespace Firebot.GameModel.Shared
 {
     public static class Notifications
     {
         private static IEnumerator Nothing() { yield break; }
+        public static Action OnMysteryBox;
+        public static Action OnCheckIn;
         public static IEnumerator MapMissions => Nothing();
         public static IEnumerator FirestoneResearch => Nothing();
+        public static IEnumerator FreePickaxes => Nothing();
+        public static IEnumerator MysteryBox
+        {
+            get { OnMysteryBox?.Invoke(); return Nothing(); }
+        }
+        public static IEnumerator CheckIn
+        {
+            get { OnCheckIn?.Invoke(); return Nothing(); }
+        }
+        public static IEnumerator ScarabGameShopFreeToken => Nothing();
+        public static IEnumerator OraclesGift => Nothing();
+    }
+
+    public static class Store
+    {
+        public static DateTime MysteryBoxNextRunTime;
+        public static DateTime CheckInNextRunTime;
+        public static DateTime ScarabGameShopFreeTokenNextRunTime;
+        public static IEnumerator Close => Firebot.Behaviors.Extra.Ui.Click("menus/Store/closeButton");
+        public static IEnumerator CloseScarabGameShop { get { yield break; } }
+    }
+}
+
+namespace Firebot.GameModel.Features.Town.Oracle
+{
+    public static class OracleStore
+    {
+        public static DateTime NextRunTime;
+        public static IEnumerator Close { get { yield break; } }
     }
 }
 
@@ -754,7 +1015,8 @@ namespace Firebot.GameModel.Features.MainScene
     public static class Upgrades
     {
         public static bool IsVisible = true;
-        public static IEnumerator Close { get { yield break; } }
+        public static int Closes;
+        public static IEnumerator Close { get { Closes++; yield break; } }
         public static IEnumerator SetUpgradeLevel(string mode) { yield break; }
     }
 }

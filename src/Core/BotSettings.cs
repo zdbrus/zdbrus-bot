@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using MelonLoader;
 using UnityEngine;
 
@@ -161,7 +162,22 @@ public static class BotSettings
         _autoCollect = _category.CreateEntry("auto_collect_drops", true, "Click Miners And Beer",
             "Clicks the coal miners, double beer dragons and event visitors as soon as they appear.");
 
+        _guideOrders = _category.CreateEntry("guide_orders_adopted", "", "Guide Orders Adopted",
+            "Priority lists already moved to the guide order once (kept by the bot).", is_hidden: true);
+
         _category.SaveToFile();
         Logger.Debug($"System Initialized. Configuration: {ConfigPath}");
+    }
+
+    private static MelonPreferences_Entry<string> _guideOrders;
+
+    /// <summary>True the first time a list key is seen, so each list is switched to the guide order only once.</summary>
+    internal static bool TryMarkGuideOrderAdopted(string key)
+    {
+        if (_guideOrders == null) return false;
+        var done = (_guideOrders.Value ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries);
+        if (Array.IndexOf(done, key) >= 0) return false;
+        _guideOrders.Value = string.Join(";", done.Append(key));
+        return true;
     }
 }

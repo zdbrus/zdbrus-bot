@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using Firebot.BotActions;
 using Firebot.Core.Tasks;
 using Firebot.Utilities;
 using MelonLoader;
@@ -39,10 +40,19 @@ public static class BotManager
     public static bool IsRunning { get; private set; }
 
     internal static IReadOnlyList<BotTask> AllTasks => Tasks;
-    private static bool IsTaskExecuting { get; set; }
+    public static bool IsTaskExecuting { get; private set; }
 
     /// <summary>True while a task is in the middle of running (the planner waits for this before it clicks).</summary>
     public static bool IsBusy => IsRunning && IsTaskExecuting;
+
+    internal static bool SetTaskEnabled(BotTask task, bool enabled)
+    {
+        if (task == null || !Tasks.Contains(task) || !task.SetEnabledFromStatus(enabled)) return false;
+
+        MelonPreferences.Save();
+        Logger.Info($"[Bot] {task.SectionTitle} turned {(enabled ? "on" : "off")} from F2.");
+        return true;
+    }
 
     public static bool ShouldPauseAutoUpgrade() => IsRunning && (_shouldPauseAutoUpgrade || IsTaskExecuting);
 
@@ -51,6 +61,9 @@ public static class BotManager
         IsTaskExecuting ? $"{_executingTask?.SectionTitle ?? "a task"} is running" : _autoUpgradePauseReason;
 
     private static string _autoUpgradePauseReason = "";
+
+    /// <summary>The last scan found the game's tutorial running, and held every task back for it.</summary>
+    private static bool _tutorialHold;
 
     /// <summary>
     ///     Stops the bot when the task it is running has stopped advancing, and reports a scan that never came
@@ -154,6 +167,7 @@ public static class BotManager
 
         // Stopping a coroutine does not run its finally, so the task pinned to the top of the table has to be
         // released here too.
+        ReleaseTask(_executingTask);
         _executingTask = null;
         if (_botRoutineHandle != null) MelonCoroutines.Stop(_botRoutineHandle);
         _botRoutineHandle = null;
@@ -163,6 +177,7 @@ public static class BotManager
     private static IEnumerator BotSchedulerLoop()
     {
         if (AutoStart) yield return new WaitForSeconds(StartBotDelay);
+        var retainedHub = false;
 
         while (IsRunning)
         {
@@ -190,7 +205,7 @@ public static class BotManager
                     // fire, and it would never resume while the lock lasts.
                     // DueTime, not NextRunTime: a bubble task waiting on its bubble has a next run time in the past,
                     // which read as "a task is about to run" forever and kept auto-upgrade paused (0.7.6 bug).
-                    if (task.IsEnabled && !task.IsLevelLocked && task.DueTime < nextEnabledTaskRun)
+                    if (task.IsEnabled && !task.IsLocked && task.DueTime < nextEnabledTaskRun)
                     {
                         nextEnabledTaskRun = task.DueTime;
                         nearestTask = task;
@@ -218,11 +233,13 @@ public static class BotManager
                 var hasNearTask = nextEnabledTaskRun != DateTime.MaxValue &&
                                   (nextEnabledTaskRun - DateTime.Now).TotalSeconds <=
                                   AutoUpgradeMinExecutionWindowSeconds;
-                _shouldPauseAutoUpgrade = notificationTask != null || readyTask != null || hasNearTask;
+                _shouldPauseAutoUpgrade = AutoUpgrade.ShouldWaitForTask(
+                    notificationTask != null || readyTask != null, hasNearTask);
                 _autoUpgradePauseReason = readyTask != null && readyTask == notificationTask
                     ? $"{readyTask.SectionTitle} bubble is lit"
                     : readyTask != null ? $"{readyTask.SectionTitle} is ready"
-                    : hasNearTask ? $"{nearestTask?.SectionTitle ?? "a task"} is due at {nextEnabledTaskRun:HH:mm:ss}"
+                    : _shouldPauseAutoUpgrade && hasNearTask
+                        ? $"{nearestTask?.SectionTitle ?? "a task"} is due at {nextEnabledTaskRun:HH:mm:ss}"
                     : "";
             }
             catch (Exception e)
@@ -236,10 +253,51 @@ public static class BotManager
             }
 
             // The planner is applying a squad: let it finish its clicks before the next job starts.
-            if (Planner.SquadApplier.Busy || Planner.JewelSpender.Busy) readyTask = null;
+            var plannerBusy = Planner.SquadApplier.Busy || Planner.JewelSpender.Busy || Planner.VoidCrystalSpender.Busy;
+            if (plannerBusy) readyTask = null;
+
+            // A new account's tutorial step waits for the player to press one highlighted thing. A task opening
+            // its own menu on top of that either clicks nothing or knocks the step out of order, so nothing runs
+            // until the step is done. Read here, outside the scan's try: the read guards itself.
+            _tutorialHold = GameTutorial.ShouldHold;
+            if (_tutorialHold) readyTask = null;
+
+            // Story dialogue, "New hero!" and the chapter reward sit on top of everything and have no close button
+            // for the sweep. Cleared between tasks too, but a new account can go a long time with no task due.
+            if (!plannerBusy && Watchdog.StoryPopupOpen && !GameTutorial.IsForced)
+            {
+                IsTaskExecuting = true;
+                _lastStepAt = DateTime.Now;
+                try { yield return RunSafe(Watchdog.DismissStory(), "Story popups"); }
+                finally { IsTaskExecuting = false; }
+
+                // The click that closed the story is often the one that starts the next tutorial step.
+                _tutorialHold = GameTutorial.ShouldHold;
+                if (_tutorialHold) readyTask = null;
+            }
+
+            if (readyTask == null && retainedHub && !_tutorialHold && !plannerBusy)
+            {
+                var pauseForNearTask = _shouldPauseAutoUpgrade;
+                _shouldPauseAutoUpgrade = true;
+                IsTaskExecuting = true;
+                try { yield return RunSafe(Watchdog.ForceClearAll("idle: return for upgrades"), "Idle cleanup"); }
+                finally
+                {
+                    IsTaskExecuting = false;
+                    _shouldPauseAutoUpgrade = pauseForNearTask;
+                    retainedHub = false;
+                }
+            }
 
             if (readyTask != null)
             {
+                if (AutoUpgrade.IsBalancedCycleActive)
+                {
+                    yield return AutoUpgrade.WaitForBalancedCycle();
+                    continue;
+                }
+
                 IsTaskExecuting = true;
                 _executingTask = readyTask;
                 _lastStepAt = DateTime.Now;
@@ -250,8 +308,10 @@ public static class BotManager
                     if (Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle))
                         Logger.Debug($"[Bot] {readyTask.SectionTitle}: already on its screen, starting from there.");
                     else
-                        yield return RunSafe(Watchdog.ForceClearAll($"before {readyTask.SectionTitle}"),
+                        yield return RunSafe(Watchdog.Clear($"before {readyTask.SectionTitle}",
+                                TaskNavigation.HubFor(readyTask.GetType().Name)),
                             $"Watchdog cleanup before {readyTask.SectionTitle}");
+                    retainedHub = false;
 
                     // Stopwatch, completion line and table are all diagnostics: with debug off none of
                     // them is needed, and the console stays quiet in normal use. The guard is single for
@@ -261,6 +321,7 @@ public static class BotManager
 
                     var fromBubble = readyTask == notificationTask;
                     yield return RunSafe(readyTask.Execute(), $"Task {readyTask.SectionTitle}");
+                    ReleaseTask(readyTask);
                     readyTask.LastRunTime = DateTime.Now;
                     // A bubble that is still lit right after its task ran (nothing it could do) waits a little
                     // before it can trigger again, so other tasks get their turn.
@@ -305,11 +366,14 @@ public static class BotManager
                         }
                     }
 
-                    yield return RunSafe(Watchdog.ForceClearAll($"after {readyTask.SectionTitle}"),
+                    var hub = TaskNavigation.HubFor(readyTask.GetType().Name);
+                    yield return RunSafe(Watchdog.Clear($"after {readyTask.SectionTitle}", hub),
                         $"Watchdog cleanup after {readyTask.SectionTitle}");
+                    retainedHub = hub != TaskHub.None;
                 }
                 finally
                 {
+                    ReleaseTask(readyTask);
                     IsTaskExecuting = false;
                     _executingTask = null;
                 }
@@ -365,6 +429,15 @@ public static class BotManager
             _lastStepAt = DateTime.Now;
 
             yield return current;
+        }
+    }
+
+    private static void ReleaseTask(BotTask task)
+    {
+        try { task?.OnStopped(); }
+        catch (Exception e)
+        {
+            Logger.Error($"[FAILED] Stopping {task?.SectionTitle}: {e.GetType().Name} - {e.Message}");
         }
     }
 
@@ -428,7 +501,7 @@ public static class BotManager
             var due = t.DueTime;
 
             buffer.Add(new TaskStatusRow(
-                t.SectionTitle,
+                t,
                 GetTaskStatus(t),
                 // A task without a next run has no time left either. Without this the subtraction runs anyway
                 // — from DateTime.MinValue for a task that never ran — and the column shows "0s" beside an
@@ -440,16 +513,22 @@ public static class BotManager
     }
 
     /// <summary>
-    ///     Whether the task has a next run worth showing. Disabled is the user's choice and a level lock is the
-    ///     game's; in neither case can the task run now, so neither has a next run or a time left.
+    ///     Whether the task has a next run worth showing. Disabled is the user's choice and a lock is the game's;
+    ///     in neither case can the task run now, so neither has a next run or a time left.
     /// </summary>
-    private static bool HasPendingRun(BotTask t) => t.IsEnabled && !t.IsLevelLocked;
+    private static bool HasPendingRun(BotTask t) => t.IsEnabled && !t.IsLocked;
 
     private static string GetTaskStatus(BotTask t)
     {
         if (!t.IsEnabled) return TaskStatusRow.Disabled;
         if (t.IsLevelLocked) return TaskStatusRow.Locked(t.MinimumLevel);
-        if (t.IsNotificationVisible()) return TaskStatusRow.Popup;
-        return t.IsReady() ? TaskStatusRow.Ready : TaskStatusRow.Waiting;
+        if (t.IsFeatureLocked) return TaskStatusRow.Locked(GameUnlocks.ShortName(t.RequiredFeature));
+
+        var status = t.IsNotificationVisible() ? TaskStatusRow.Popup
+            : t.IsReady() ? TaskStatusRow.Ready
+            : TaskStatusRow.Waiting;
+
+        // Would run, but the tutorial has the screen. Waiting stays Waiting: nothing is being held back yet.
+        return IsRunning && _tutorialHold && status != TaskStatusRow.Waiting ? TaskStatusRow.Tutorial : status;
     }
 }

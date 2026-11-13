@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Firebot.UI.Config;
 using Il2CppTMPro;
 using UnityEngine;
@@ -28,6 +29,9 @@ internal abstract class ChipRow : UiRow
 
     private readonly List<Chip> _chips = new();
     private int _lines = 1;
+
+    /// <summary>Extra chips drawn after the declared choices, such as list actions.</summary>
+    protected virtual ConfigChoice[] ActionChoices => Array.Empty<ConfigChoice>();
 
     /// <summary>Chips that do not fit wrap onto more lines, and the row grows to hold them.</summary>
     public override float Height => UiTheme.RowHeight + (_lines - 1) * (UiTheme.ChipHeight + UiTheme.ChipGap);
@@ -69,7 +73,7 @@ internal abstract class ChipRow : UiRow
         // First line sits where a single line always did (centred in a normal row); more lines go below it.
         var top = (UiTheme.RowHeight - 2f * UiTheme.ControlInsetY - UiTheme.ChipHeight) / 2f;
 
-        foreach (var choice in Config.Choices)
+        foreach (var choice in Config.Choices.Concat(ActionChoices))
         {
             var chip = new Chip { Id = choice.Id, Name = choice.Label };
 

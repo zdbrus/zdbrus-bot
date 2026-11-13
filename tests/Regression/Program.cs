@@ -29,12 +29,28 @@ internal static class Program
         {
             Environment.CurrentDirectory = temp;
             BotSettings.Initialize();
-            Test("prestige gain parsing fails closed", PrestigeGainParsing);
+            Test("prestige gain parsing accepts valid values and rejects malformed input", PrestigeGainParsing);
             Test("prestige run age parsing and reset detection", PrestigeRunAge);
             Test("prestige rate requires consecutive valid samples", PrestigeRate);
+            Test("prestige trigger priority favors growth before fallbacks", PrestigeTriggerPriority);
+            Test("boss attempts are counted only at the same stage", BossAttemptTracking);
+            Test("live stage reads fail closed without reusing old data", LiveStageReading);
             Test("prestige task uses the free control and verifies completion", PrestigeTaskFreeControl);
+            Test("prestige confirms a live stage reset with the battle HUD hidden", PrestigeHiddenStageReset);
+            Test("prestige handles a delayed completion screen", PrestigeDelayedCompletion);
+            Test("prestige rejects missing or changed live stage data", PrestigeLiveStageSafety);
+            Test("prestige confirms only its own verified free prompt", PrestigeConfirmationSafety);
+            Test("prestige does not mistake an unconfirmed prompt for a reset", PrestigeConfirmationOutcome);
+            Test("prestige timer fallback supports the 30-minute option", PrestigeTimerFallback);
             Test("prestige task refuses uncertain or changed game state", PrestigeTaskSafety);
+            Test("boss retry threshold can use an already-open free preview", PrestigeBossRetryTrigger);
             Test("prestige task waits for two slow growth samples", PrestigeTaskGrowth);
+            Test("zero prestige boost waits for hourly sampling without blocking boss checks", PrestigeZeroGainSampling);
+            Test("blocked prestige previews preserve the hourly sample and retry safely", PrestigeBlockedPreview);
+            Test("free pickaxe claims distinguish unreadable data from success", LogIssueTests.FreePickaxeClaims);
+            Test("closed Chaos Rift leaves guardian upgrade notifications active", LogIssueTests.ChaosRiftCooldown);
+            Test("Mystery Box store claims distinguish claimed and unreadable states", LogIssueTests.MysteryBoxClaims);
+            Test("Mystery Box openings require free controls and readable confirmation", LogIssueTests.MysteryBoxOpening);
             Test("arena power, rank and token readings fail closed", ArenaTests.PowerParsing);
             Test("arena selects the weakest valid in-limit opponent", ArenaTests.Selection);
             Test("arena refuses stale, mismatched and changed previews", ArenaTests.PreviewSafety);
@@ -46,6 +62,15 @@ internal static class Program
             Test("arena recording failures do not change fight decisions", ArenaTests.MatchupRecordingFailures);
             Test("arena matchup files append anonymous JSON records", ArenaTests.MatchupStorage);
             Test("priority tiers hold or retry before advancing", PriorityDecisions);
+            Test("battle pass skips scrolling when its reward marker is hidden", BattlePassNoRewardScan);
+            Test("liberation difficulty targets and arrow steps are verified", LiberationDifficultySelection);
+            Test("scarab permits Pharaoh tokens only with opt-in and verifies exact spending", ScarabSpinSafety);
+            Test("talents select live priorities without scanning previews", AutoPlayTests.TalentTargeting);
+            Test("talents reject unreadable and changed selections", AutoPlayTests.TalentSafety);
+            Test("awakening Auto respects every supported batch size", AutoPlayTests.AwakeningBatches);
+            Test("native Auto rejects unconfirmed purchases and releases on cancellation", AutoPlayTests.AutoSafety);
+            Test("Scarab Auto enforces token boundaries before native requests", AutoPlayTests.ScarabBoundaries);
+            Test("navigation keeps only the compatible hub and never a popup", AutoPlayTests.Navigation);
             Test("uncapped spending modes preserve the player's choice", UncappedUpgradeModes);
             Test("war-machine blueprint priorities preserve order and currency decisions", WarMachineBlueprints);
             Test("update notices distinguish available, current, and failed checks", UpdateNotices);
@@ -65,10 +90,29 @@ internal static class Program
             Test("research refuses stale or failed previews", ResearchPreviewFailures);
             Test("research retries a blocked fallback with another slot running", ResearchBlockedFallback);
             Test("launch opt-in enables only automation switches", AutomationTests.LaunchOverrides);
+            Test("F2 task switch shares the F1 enabled setting", AutomationTests.StatusTaskToggle);
             Test("scene changes resume workers without undoing manual off", AutomationTests.SceneLifecycle);
+            Test("balanced upgrades use short task gaps after account changes", AutomationTests.UpgradeTaskWindows);
             Test("F1 and hotkeys share one automation state", AutomationTests.ToggleState);
             Test("nested coroutine failures and cancellation release resources", AutomationTests.NestedGuard);
             Test("worker failures turn off truthfully and can be retried", AutomationTests.WorkerFailures);
+            Test("new accounts hold tasks until the game unlocks their feature", NewAccountTests.FeatureGating);
+            Test("the guided tutorial is detected and logged once per step", NewAccountTests.TutorialState);
+            Test("upgrades and combos wait out tutorial steps without closing the menu", AutomationTests.TutorialHold);
+            Test("Void Crystal goals rank matching gear across the whole roster", VoidCrystalTests.Ranking);
+            Test("Void Crystal budgets reject stale targets, prices and unreadable balances", VoidCrystalTests.Budget);
+            Test("Void Crystal receipts require one level and the exact currency debit", VoidCrystalTests.Receipts);
+            Test("Void Crystal spending re-ranks real gear and enforces caps and budgets", VoidCrystalTests.Spending);
+            Test("Void Crystal spending stops after stale prices, failed receipts, timeouts and cancellation", VoidCrystalTests.SpendingFailures);
+            Test("spending selects bound unlocked heroes in reordered and sparse rosters without unsafe arrows", VoidCrystalTests.HeroSelectionSafety);
+        Test("Guide priority orders match every panel chip exactly", RecommendedOrderTests.MatchRegistry);
+        Test("Clear and Recommended chips empty or restore an ordered list", RecommendedOrderTests.Chips);
+            Test("Void Crystal requests reject replays, changed sessions, tutorials and overlapping actions", VoidCrystalTests.RequestSafety);
+            Test("meteorite research preserves the exact reserve instead of trusting rounded UI values", MeteoriteTests.Boundaries);
+            Test("meteorite research rechecks live reserve, balance, price and selection at the click", MeteoriteTests.LiveGuard);
+            Test("meteorite research waits for both the level and exact debit before buying again", MeteoriteTests.Receipts);
+            Test("meteorite research forces single-level purchases and preserves priorities", MeteoriteTests.QuantityAndPriorities);
+            Test("meteorite research stops on unreadable native state", MeteoriteTests.Unreadable);
         }
         finally
         {
@@ -113,7 +157,9 @@ internal static class Program
         Near(gain, 1500);
         Check(PrestigePolicy.TryParseGain("+2M%", out gain), "M suffix was rejected.");
         Near(gain, 2000000);
-        foreach (var invalid in new[] { "", "1000%", "+15.7cz%", "+1,23%", "+0%", "+NaN%", "+9e99%" })
+        Check(PrestigePolicy.TryParseGain("+0%", out gain), "A zero preview was treated as unreadable.");
+        Near(gain, 0);
+        foreach (var invalid in new[] { "", "1000%", "+15.7cz%", "+1,23%", "+NaN%", "+9e99%" })
             Check(!PrestigePolicy.TryParseGain(invalid, out _), $"Accepted {invalid}.");
     }
 
@@ -127,12 +173,20 @@ internal static class Program
         Near(hours, 25 + 33d / 60 + 24d / 3600);
         Check(PrestigePolicy.TryParseRunHours("32:00:00", out hours), "Long hour count rejected.");
         Near(hours, 32);
+        Check(PrestigePolicy.TryParseRunHours("35:47", out var previousMinute), "Observed minutes-and-seconds run age was rejected.");
+        Near(previousMinute, 35d / 60 + 47d / 3600);
+        Check(PrestigePolicy.TryParseRunHours("102:05", out hours), "Three-digit minute count was rejected.");
+        Near(hours, 102d / 60 + 5d / 3600);
+        Check(PrestigePolicy.TryParseRunHours("36:47", out var nextMinute), "Next minutes-and-seconds sample was rejected.");
+        var sampleAt = new DateTime(2026, 1, 1, 12, 0, 0);
+        Check(!PrestigePolicy.RunAgeDiscontinuous(previousMinute, nextMinute, sampleAt, sampleAt.AddMinutes(1)),
+            "A one-minute run-age increase was treated as a new run.");
         foreach (var invalid in new[] { "", "1:60:00", "1:00:60", "2d 25:00:00",
-                     "1d 24h 00m 00s", "1d 01h 60m 00s", "1d 01h 33m", "unknown" })
+                     "1:60", "35:60", "1d 24h 00m 00s", "1d 01h 60m 00s", "1d 01h 33m", "unknown" })
             Check(!PrestigePolicy.TryParseRunHours(invalid, out _), $"Accepted {invalid}.");
         Check(PrestigePolicy.IsNewRun(8, 1), "New run was not detected.");
         Check(!PrestigePolicy.IsNewRun(8, 8 - 30d / 3600), "Small clock jitter was treated as a reset.");
-        var observedAt = new DateTime(2026, 1, 1, 12, 0, 0);
+        var observedAt = sampleAt;
         Check(PrestigePolicy.RunAgeDiscontinuous(7, 25, observedAt, observedAt.AddHours(1)),
             "A run-age jump consistent with an account switch retained old samples.");
         Check(!PrestigePolicy.RunAgeDiscontinuous(7, 8, observedAt, observedAt.AddHours(1)),
@@ -164,6 +218,69 @@ internal static class Program
         Check(invalid.State == PrestigeRateState.Invalid && invalid.Streak == 0, "Invalid gain kept a streak.");
     }
 
+    private static void PrestigeTriggerPriority()
+    {
+        Check(PrestigePolicy.SelectTrigger(true, true, true) == PrestigeTrigger.Efficiency,
+            "Efficiency did not take priority over both fallbacks.");
+        Check(PrestigePolicy.SelectTrigger(false, true, true) == PrestigeTrigger.BossRetries,
+            "Boss retries did not take priority over the timer fallback.");
+        Check(PrestigePolicy.SelectTrigger(false, false, true) == PrestigeTrigger.StallTimer,
+            "The stall timer did not remain the final fallback.");
+        Check(PrestigePolicy.SelectTrigger(false, false, false) == PrestigeTrigger.None,
+            "A missing trigger caused a reset.");
+    }
+
+    private static void BossAttemptTracking()
+    {
+        BossAttemptTracker.Reset();
+        Check(BossAttemptTracker.RecordAttempt(1054) == 1, "First boss attempt was not counted.");
+        Check(BossAttemptTracker.RecordAttempt(1054) == 2, "Second boss attempt was not counted.");
+        Check(BossAttemptTracker.CountAtStage(1054) == 2, "Attempts were not available to the prestige task.");
+        Check(BossAttemptTracker.CountAtStage(1055) == 0, "Attempts leaked to a different stage.");
+        Check(BossAttemptTracker.RecordAttempt(1055) == 1, "A new stage did not start a fresh attempt count.");
+        BossAttemptTracker.Reset();
+    }
+
+    private static void LiveStageReading()
+    {
+        Il2Cpp.GameInitialize.Loaded = true;
+        Il2Cpp.GameInitialize.HandlerLoader = new();
+        var battle = Il2Cpp.GameInitialize.HandlerLoader.MainBattle;
+        battle.Stage = 1054;
+        try
+        {
+            Check(PlayerStats.TryGetCurrentStage(out var stage) && stage == 1054, "Live stage was not read.");
+            battle.Stage = 1055;
+            Check(PlayerStats.TryGetCurrentStage(out stage) && stage == 1055, "Stage progress was cached.");
+            battle.Stage = 1;
+            Check(PlayerStats.TryGetCurrentStage(out stage) && stage == 1, "A stage reset was not observed.");
+            foreach (var invalid in new[] { 0, -1 })
+            {
+                battle.Stage = invalid;
+                Check(!PlayerStats.TryGetCurrentStage(out stage) && stage == 0, "An invalid stage was accepted.");
+            }
+            battle.Stage = 1054;
+            Il2Cpp.GameInitialize.Loaded = false;
+            Check(!PlayerStats.TryGetCurrentStage(out stage) && stage == 0, "An unloaded game reused a stage.");
+            Il2Cpp.GameInitialize.Loaded = true;
+            Il2Cpp.GameInitialize.HandlerLoader.MainBattle = null;
+            Check(!PlayerStats.TryGetCurrentStage(out stage) && stage == 0, "Missing battle data reused a stage.");
+            Il2Cpp.GameInitialize.HandlerLoader = null;
+            Check(!PlayerStats.TryGetCurrentStage(out stage) && stage == 0, "Missing game data reused a stage.");
+            Il2Cpp.GameInitialize.HandlerLoader = new() { MainBattle = battle };
+            battle.ThrowOnRead = true;
+            var warnings = Logger.Messages.Count;
+            Check(!PlayerStats.TryGetCurrentStage(out stage) && stage == 0, "A failed stage read returned stale data.");
+            Check(Logger.Messages.Skip(warnings).Any(m => m.Contains("Stage read failed")),
+                "A failed stage read was not logged.");
+        }
+        finally
+        {
+            Il2Cpp.GameInitialize.Loaded = true;
+            Il2Cpp.GameInitialize.HandlerLoader = new();
+        }
+    }
+
     private sealed class PrestigeFixture
     {
         public const string Temple = "menus/TempleOfEternals";
@@ -173,15 +290,30 @@ internal static class Program
         public const string FreePath = PopupPath + "/bg/empowerBg/empowerButton";
         public const string Gain = PopupPath + "/bg/empowerBg/empowerRainingGold/value";
         public const string Age = Info + "/adventureTimePlayed";
+        public const string ConfirmationPath = "popups/ActionRequired";
+        public const string ConfirmationText = ConfirmationPath + "/bg/messageText";
+        public const string ConfirmationButton = ConfirmationPath + "/bg/confirmButton";
         public readonly TemplePrestigeTask Task = new();
         public Dictionary<string, MelonPreferences_Entry> Settings;
+        public GameObject TempleScreen;
+        public GameObject BattleHud;
+        public Il2Cpp.MainBattle Battle;
         public GameObject Popup;
+        public GameObject Confirmation;
+        public GameObject Complete;
         public Button FreeButton;
+        public Button StartButton;
         public int FreeClicks;
         public int PaidClicks;
         public int ConfirmClicks;
+        public int PromptClicks;
         public bool NoProgress;
+        public bool ShowCompletionPopup = true;
+        public bool RequireConfirmation = true;
+        public bool ConfirmationNoProgress;
         public Action OnOpen;
+        public Action OnConfirmation;
+        public Action OnReset;
     }
 
     private static PrestigeFixture SetupPrestige(bool stalled = true)
@@ -189,11 +321,18 @@ internal static class Program
         GameObject.Clear();
         Ui.Texts.Clear();
         Ui.Numbers.Clear();
+        Ui.BeforeGuardedClick = null;
+        Ui.BeforeVisible = null;
         Ui.OpenTownWorks = true;
+        BossAttemptTracker.Reset();
+        Il2Cpp.GameInitialize.Loaded = true;
+        Il2Cpp.GameInitialize.HandlerLoader = new();
         var fixture = new PrestigeFixture();
+        fixture.Battle = Il2Cpp.GameInitialize.HandlerLoader.MainBattle;
         fixture.Task.InitializeConfig("test");
         fixture.Settings = MelonPreferences.Categories["temple_prestige"].Entries;
-        ((MelonPreferences_Entry<int>)fixture.Settings["stall_hours"]).Value = 1;
+        ((MelonPreferences_Entry<int>)fixture.Settings["stall_minutes"]).Value = 60;
+        ((MelonPreferences_Entry<int>)fixture.Settings["boss_attempts"]).Value = 3;
         ((MelonPreferences_Entry<int>)fixture.Settings["min_gain_percent"]).Value = 1000;
         ((MelonPreferences_Entry<int>)fixture.Settings["min_hours_played"]).Value = 1;
         ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 0;
@@ -204,30 +343,58 @@ internal static class Program
             25 + 33d / 60 + 24d / 3600;
         ((MelonPreferences_Entry<string>)fixture.Settings["last_observed_run_at"]).Value = DateTime.Now.ToString("o");
         Ui.Numbers[PrestigeFixture.Stage] = 100;
+        GameObject.CreatePath(PrestigeFixture.Stage);
+        fixture.BattleHud = GameObject.Resolve("battle");
         Ui.Texts[PrestigeFixture.Age] = "1d 01h 33m 24s";
         Ui.Texts[PrestigeFixture.Gain] = "+14,159%";
-        var temple = GameObject.CreatePath(PrestigeFixture.Temple);
-        temple.activeSelf = false;
+        fixture.TempleScreen = GameObject.CreatePath(PrestigeFixture.Temple);
+        fixture.TempleScreen.activeSelf = false;
         var open = GameObject.CreatePath(PrestigeFixture.Info + "/openEmpowerButton").AddComponent<Button>();
         GameObject.CreatePath(PrestigeFixture.Temple + "/closeButton").AddComponent<Button>().onClick.Action =
-            () => temple.activeSelf = false;
+            () => fixture.TempleScreen.activeSelf = false;
         fixture.Popup = GameObject.CreatePath(PrestigeFixture.PopupPath);
         fixture.Popup.activeSelf = false;
-        open.onClick.Action = () => { fixture.Popup.activeSelf = true; fixture.OnOpen?.Invoke(); };
+        open.onClick.Action = () =>
+        {
+            fixture.Popup.activeSelf = true;
+            fixture.BattleHud.activeSelf = false;
+            fixture.OnOpen?.Invoke();
+        };
         GameObject.CreatePath(PrestigeFixture.PopupPath + "/bg/closeButton").AddComponent<Button>().onClick.Action =
             () => fixture.Popup.activeSelf = false;
-        var complete = GameObject.CreatePath("popups/TOEPrestigeComplete");
+        var complete = fixture.Complete = GameObject.CreatePath("popups/TOEPrestigeComplete");
         complete.activeSelf = false;
-        GameObject.CreatePath("popups/TOEPrestigeComplete/bg/confirmButton").AddComponent<Button>().onClick.Action =
-            () => { fixture.ConfirmClicks++; complete.activeSelf = false; };
+        fixture.StartButton = GameObject.CreatePath("popups/TOEPrestigeComplete/bg/confirmButton").AddComponent<Button>();
+        fixture.StartButton.onClick.Action = () => { fixture.ConfirmClicks++; complete.activeSelf = false; };
+        fixture.Confirmation = GameObject.CreatePath(PrestigeFixture.ConfirmationPath);
+        fixture.Confirmation.activeSelf = false;
+        Ui.Texts[PrestigeFixture.ConfirmationText] = "Are you sure that you want to empower the temple?";
+        void FinishPrestige()
+        {
+            fixture.Battle.Stage = 1;
+            Ui.Numbers[PrestigeFixture.Stage] = 1;
+            fixture.Popup.activeSelf = false;
+            fixture.Confirmation.activeSelf = false;
+            complete.activeSelf = fixture.ShowCompletionPopup;
+            fixture.OnReset?.Invoke();
+        }
+        GameObject.CreatePath(PrestigeFixture.ConfirmationButton).AddComponent<Button>().onClick.Action = () =>
+        {
+            fixture.PromptClicks++;
+            if (!fixture.ConfirmationNoProgress) FinishPrestige();
+        };
         fixture.FreeButton = GameObject.CreatePath(PrestigeFixture.FreePath).AddComponent<Button>();
         fixture.FreeButton.onClick.Action = () =>
         {
             fixture.FreeClicks++;
             if (fixture.NoProgress) return;
-            Ui.Numbers[PrestigeFixture.Stage] = 1;
-            fixture.Popup.activeSelf = false;
-            complete.activeSelf = true;
+            if (fixture.RequireConfirmation)
+            {
+                fixture.Popup.activeSelf = false;
+                fixture.Confirmation.activeSelf = true;
+                fixture.OnConfirmation?.Invoke();
+            }
+            else FinishPrestige();
         };
         GameObject.CreatePath(PrestigeFixture.PopupPath + "/bg/empowerBg/empower2x/empowerButton")
             .AddComponent<Button>().onClick.Action = () => fixture.PaidClicks++;
@@ -238,15 +405,179 @@ internal static class Program
     {
         var fixture = SetupPrestige();
         Run(fixture.Task.Execute());
-        Check(fixture.FreeClicks == 1 && fixture.PaidClicks == 0 && fixture.ConfirmClicks == 1,
+        Check(fixture.FreeClicks == 1 && fixture.PaidClicks == 0 && fixture.PromptClicks == 1 && fixture.ConfirmClicks == 1,
             "The verified free prestige flow was not followed exactly once.");
         Check(TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
             "A confirmed prestige was not reported.");
     }
 
+    private static void PrestigeHiddenStageReset()
+    {
+        var fixture = SetupPrestige();
+        fixture.ShowCompletionPopup = false;
+        Run(fixture.Task.Execute());
+        Check(Ui.NumberAt(PrestigeFixture.Stage) == -1, "The fixture did not hide the battle HUD.");
+        Check(fixture.FreeClicks == 1 && fixture.PaidClicks == 0 && fixture.ConfirmClicks == 0,
+            "The free stage reset needed a visible HUD or clicked an unrelated control.");
+        Check(TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
+            "The live stage reset was not confirmed.");
+    }
+
+    private static void PrestigeDelayedCompletion()
+    {
+        var fixture = SetupPrestige();
+        fixture.ShowCompletionPopup = false;
+        fixture.StartButton.interactable = false;
+        var showAt = 0f;
+        var shown = false;
+        fixture.OnReset = () => showAt = Time.unscaledTime + 2f;
+        Ui.BeforeVisible = path =>
+        {
+            if (!shown && path == "popups/TOEPrestigeComplete" && showAt > 0 && Time.unscaledTime >= showAt)
+            {
+                shown = true;
+                fixture.Complete.activeSelf = true;
+            }
+            if (shown && Time.unscaledTime >= showAt + 0.6f)
+                fixture.StartButton.interactable = true;
+        };
+        try { Run(fixture.Task.Execute()); }
+        finally { Ui.BeforeVisible = null; }
+        Check(shown && fixture.FreeClicks == 1 && fixture.PaidClicks == 0 &&
+              fixture.ConfirmClicks == 1 && !fixture.Complete.activeSelf,
+            "A completion screen that appeared after the stage reset was left open.");
+
+        fixture = SetupPrestige();
+        fixture.StartButton.interactable = false;
+        Run(fixture.Task.Execute());
+        Check(fixture.Complete.activeSelf && fixture.ConfirmClicks == 0 &&
+              TemplePrestigeTask.LastDecision.Contains("start screen needs attention"),
+            "An unavailable start button was clicked or reported as confirmed.");
+
+        fixture = SetupPrestige();
+        fixture.StartButton.interactable = false;
+        var closeAt = 0f;
+        fixture.OnReset = () => closeAt = Time.unscaledTime + 2f;
+        Ui.BeforeVisible = path =>
+        {
+            if (path == "popups/TOEPrestigeComplete" && closeAt > 0 && Time.unscaledTime >= closeAt)
+                fixture.Complete.activeSelf = false;
+        };
+        try { Run(fixture.Task.Execute()); }
+        finally { Ui.BeforeVisible = null; }
+        Check(!fixture.Complete.activeSelf && fixture.ConfirmClicks == 0 &&
+              TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
+            "A completion screen that closed itself was reported as needing attention.");
+    }
+
+    private static void PrestigeConfirmationSafety()
+    {
+        var fixture = SetupPrestige();
+        fixture.Confirmation.activeSelf = true;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 && fixture.PromptClicks == 0 && fixture.Confirmation.activeSelf,
+            "A pre-existing confirmation was claimed by the task.");
+
+        fixture = SetupPrestige();
+        Ui.Texts[PrestigeFixture.ConfirmationText] = "Spend gems?";
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.PromptClicks == 0 && fixture.PaidClicks == 0,
+            "An unrelated prompt was confirmed.");
+
+        fixture = SetupPrestige();
+        GameObject.CreatePath(PrestigeFixture.ConfirmationButton + "/gemCost");
+        Run(fixture.Task.Execute());
+        Check(fixture.PromptClicks == 0, "A confirmation showing a price was clicked.");
+
+        fixture = SetupPrestige();
+        var battle = fixture.Battle;
+        fixture.OnConfirmation = () => battle.Stage = 101;
+        Run(fixture.Task.Execute());
+        Check(fixture.PromptClicks == 0, "New stage progress did not cancel the pending reset.");
+
+        fixture = SetupPrestige();
+        Ui.BeforeGuardedClick = path =>
+        {
+            if (path == PrestigeFixture.ConfirmationButton)
+                Ui.Texts[PrestigeFixture.ConfirmationText] = "An unrelated confirmation";
+        };
+        try
+        {
+            Run(fixture.Task.Execute());
+            Check(fixture.PromptClicks == 0, "A swapped confirmation was clicked.");
+        }
+        finally { Ui.BeforeGuardedClick = null; }
+    }
+
+    private static void PrestigeConfirmationOutcome()
+    {
+        var fixture = SetupPrestige();
+        fixture.ConfirmationNoProgress = true;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.PromptClicks == 1 && fixture.ConfirmClicks == 0 &&
+              TemplePrestigeTask.LastDecision.Contains("not confirmed"),
+            "A confirmation click without a reset was reported as success or retried.");
+        fixture = SetupPrestige();
+        fixture.RequireConfirmation = false;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.PromptClicks == 0 && fixture.ConfirmClicks == 1,
+            "A direct free reset incorrectly required an extra prompt.");
+    }
+
+    private static void PrestigeLiveStageSafety()
+    {
+        var fixture = SetupPrestige();
+        Il2Cpp.GameInitialize.Loaded = false;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 && TemplePrestigeTask.LastDecision.Contains("Stage unreadable"),
+            "An unloaded game used a stale stage.");
+
+        foreach (var current in new[] { 0, 1, 101 })
+        {
+            fixture = SetupPrestige();
+            var battle = fixture.Battle;
+            fixture.OnOpen = () => battle.Stage = current;
+            Run(fixture.Task.Execute());
+            Check(fixture.FreeClicks == 0 && fixture.PaidClicks == 0,
+                $"A changed or invalid live stage ({current}) allowed prestige.");
+        }
+
+        fixture = SetupPrestige();
+        fixture.OnOpen = () => Il2Cpp.GameInitialize.HandlerLoader.MainBattle = null;
+        var messages = Logger.Messages.Count;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 && fixture.PaidClicks == 0,
+            "Missing live stage data during the preview allowed prestige.");
+        Check(Logger.Messages.Skip(messages).Any(m => m.Contains("Stage 100 -> unavailable")),
+            "The final guard did not identify the missing stage reading.");
+    }
+
+    private static void PrestigeTimerFallback()
+    {
+        var fixture = SetupPrestige(stalled: false);
+        ((MelonPreferences_Entry<int>)fixture.Settings["stall_minutes"]).Value = 30;
+        ((MelonPreferences_Entry<string>)fixture.Settings["best_stage_at"]).Value =
+            DateTime.Now.AddMinutes(-29).ToString("o");
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0, "The 30-minute fallback triggered before its delay elapsed.");
+
+        ((MelonPreferences_Entry<string>)fixture.Settings["best_stage_at"]).Value =
+            DateTime.Now.AddMinutes(-31).ToString("o");
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.ConfirmClicks == 1,
+            "The 30-minute fallback did not trigger after the delay elapsed.");
+    }
+
     private static void PrestigeTaskSafety()
     {
         var fixture = SetupPrestige();
+        Ui.Texts[PrestigeFixture.Gain] = "+0%";
+        ((MelonPreferences_Entry<int>)fixture.Settings["min_gain_percent"]).Value = 0;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 && TemplePrestigeTask.LastDecision.Contains("No gold boost yet"),
+            "A zero-gain preview was treated as unreadable or allowed a prestige.");
+
+        fixture = SetupPrestige();
         Ui.Texts[PrestigeFixture.Gain] = "+15.7cz%";
         Run(fixture.Task.Execute());
         Check(fixture.FreeClicks == 0 && fixture.PaidClicks == 0, "An unsupported boost triggered prestige.");
@@ -256,7 +587,8 @@ internal static class Program
         Run(fixture.Task.Execute());
         Check(fixture.FreeClicks == 0, "An unreadable run age triggered prestige.");
 
-        fixture = SetupPrestige();
+        fixture = SetupPrestige(stalled: false);
+        fixture.TempleScreen.activeSelf = true;
         fixture.Popup.activeSelf = true;
         Run(fixture.Task.Execute());
         Check(fixture.Popup.activeSelf && fixture.FreeClicks == 0, "An existing preview was modified.");
@@ -272,7 +604,11 @@ internal static class Program
         Check(fixture.FreeClicks == 0, "A disabled free control was used.");
 
         fixture = SetupPrestige();
-        fixture.OnOpen = () => Ui.Numbers[PrestigeFixture.Stage] = 101;
+        fixture.OnOpen = () =>
+        {
+            fixture.Battle.Stage = 101;
+            Ui.Numbers[PrestigeFixture.Stage] = 101;
+        };
         Run(fixture.Task.Execute());
         Check(fixture.FreeClicks == 0, "Progress during the check did not cancel a stalled-run prestige.");
 
@@ -295,6 +631,22 @@ internal static class Program
         Check(fixture.FreeClicks == 1 && fixture.ConfirmClicks == 0 && fixture.PaidClicks == 0 &&
               TemplePrestigeTask.LastDecision.Contains("not confirmed"),
             "Unconfirmed prestige clicked another control or reported success.");
+    }
+
+    private static void PrestigeBossRetryTrigger()
+    {
+        var fixture = SetupPrestige(stalled: false);
+        ((MelonPreferences_Entry<int>)fixture.Settings["boss_attempts"]).Value = 2;
+        fixture.TempleScreen.activeSelf = true;
+        fixture.Popup.activeSelf = true;
+        fixture.BattleHud.activeSelf = false;
+        BossAttemptTracker.RecordAttempt(100);
+        BossAttemptTracker.RecordAttempt(100);
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 1 && fixture.PaidClicks == 0 && fixture.ConfirmClicks == 1,
+            "The boss retry trigger did not use the already-open free preview.");
+        Check(TemplePrestigeTask.LastDecision.Contains("Prestige confirmed"),
+            "Boss-triggered prestige was not confirmed.");
     }
 
     private static void PrestigeTaskGrowth()
@@ -321,6 +673,138 @@ internal static class Program
         }
         Check(fixture.PaidClicks == 0 && fixture.ConfirmClicks == 1,
             "The growth trigger did not use the verified free completion flow.");
+    }
+
+    private static void PrestigeZeroGainSampling()
+    {
+        var fixture = SetupPrestige(stalled: false);
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        Ui.Texts[PrestigeFixture.Gain] = "+0%";
+        var opened = 0;
+        fixture.OnOpen = () => opened++;
+        Run(fixture.Task.Execute());
+        Check(opened == 1 &&
+              ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value == 0 &&
+              DateTime.TryParse(((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value, out _),
+            "The zero preview did not record a growth sample.");
+
+        Run(fixture.Task.Execute());
+        Check(opened == 1 && TemplePrestigeTask.LastDecision.Contains("next growth sample"),
+            "A scheduled check reopened the zero preview before the next sample was due.");
+
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value =
+            DateTime.Now.AddHours(-1).AddSeconds(-1).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_observed_run_at"]).Value =
+            DateTime.Now.AddHours(-1).AddSeconds(-1).ToString("o");
+        Ui.Texts[PrestigeFixture.Age] = "1d 02h 33m 24s";
+        Run(fixture.Task.Execute());
+        Check(opened == 2, "An hourly zero-boost sample was skipped.");
+
+        for (var attempt = 0; attempt < 3; attempt++) BossAttemptTracker.RecordAttempt(100);
+        Run(fixture.Task.Execute());
+        Check(opened == 3 && fixture.FreeClicks == 0 && fixture.PaidClicks == 0,
+            "Hourly sampling blocked a qualifying boss check or allowed zero-gain prestige.");
+    }
+
+    private static void PrestigeBlockedPreview()
+    {
+        var fixture = SetupPrestige();
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value = 0;
+        var oldSample = DateTime.Now.AddMinutes(-20).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value = oldSample;
+        Ui.Texts[PrestigeFixture.Gain] = "+0%";
+        var started = DateTime.Now;
+        Run(fixture.Task.Execute());
+        Check(((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value == oldSample,
+            "A zero-gain stall check postponed the hourly sample.");
+        Check(fixture.Task.NextRunTime >= started.AddMinutes(4.9) &&
+              fixture.Task.NextRunTime <= started.AddMinutes(5.1) && fixture.FreeClicks == 0,
+            "A zero-gain stall check did not defer the preview without resetting.");
+
+        fixture = SetupPrestige();
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value = 0;
+        oldSample = DateTime.Now.AddMinutes(-58).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value = oldSample;
+        Ui.Texts[PrestigeFixture.Gain] = "+20%";
+        started = DateTime.Now;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 &&
+              fixture.Task.NextRunTime >= started.AddMinutes(1.9) &&
+              fixture.Task.NextRunTime <= started.AddMinutes(2.1),
+            "The minimum-gain delay postponed a nearly due hourly sample.");
+        Check(((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value == oldSample,
+            "A blocked preview changed an hourly sample that was not due.");
+
+        fixture = SetupPrestige();
+        ((MelonPreferences_Entry<int>)fixture.Settings["efficiency_percent"]).Value = 75;
+        ((MelonPreferences_Entry<int>)fixture.Settings["min_hours_played"]).Value = 26;
+        ((MelonPreferences_Entry<double>)fixture.Settings["last_gain"]).Value = 100;
+        oldSample = DateTime.Now.AddMinutes(-50).ToString("o");
+        ((MelonPreferences_Entry<string>)fixture.Settings["last_gain_at"]).Value = oldSample;
+        started = DateTime.Now;
+        Run(fixture.Task.Execute());
+        Check(fixture.FreeClicks == 0 &&
+              fixture.Task.NextRunTime >= started.AddMinutes(9.9) &&
+              fixture.Task.NextRunTime <= started.AddMinutes(10.1),
+            "The minimum-run-age delay postponed a nearly due hourly sample.");
+    }
+
+    private static void ScarabSpinSafety()
+    {
+        Check(ScarabSpinPolicy.SelectCurrency(true, false, false) == ScarabSpinCurrency.Noble,
+            "Noble spins were blocked.");
+        Check(ScarabSpinPolicy.SelectCurrency(false, true, false) == ScarabSpinCurrency.None,
+            "Pharaoh tokens were allowed without opt-in.");
+        Check(ScarabSpinPolicy.SelectCurrency(false, true, true) == ScarabSpinCurrency.Pharaoh,
+            "Opted-in Pharaoh spins were blocked.");
+        foreach (var allowed in new[] { false, true })
+        {
+            Check(ScarabSpinPolicy.SelectCurrency(true, true, allowed) == ScarabSpinCurrency.None &&
+                  ScarabSpinPolicy.SelectCurrency(false, false, allowed) == ScarabSpinCurrency.None,
+                "An ambiguous or unknown token type was allowed.");
+        }
+        Check(ScarabSpinPolicy.CanSpin(ScarabSpinCurrency.Pharaoh, 9, 1),
+            "The observed affordable Pharaoh spin was rejected.");
+        foreach (var balance in new[] { -1d, 0, 0.5, double.NaN, double.PositiveInfinity })
+            Check(!ScarabSpinPolicy.CanSpin(ScarabSpinCurrency.Pharaoh, balance, 1),
+                "An unreadable, fractional, or insufficient balance was accepted.");
+        foreach (var cost in new[] { -1d, 0, 0.5, double.NaN, double.PositiveInfinity })
+            Check(!ScarabSpinPolicy.CanSpin(ScarabSpinCurrency.Pharaoh, 9, cost),
+                "An invalid cost was accepted.");
+        Check(!ScarabSpinPolicy.CanSpin(ScarabSpinCurrency.None, 9, 1), "An unapproved currency was accepted.");
+        Check(ScarabSpinPolicy.SpentExactly(ScarabSpinCurrency.Pharaoh, 9, 8, 1), "Exact token use was not confirmed.");
+        foreach (var after in new[] { -1d, 7, 9, double.NaN })
+            Check(!ScarabSpinPolicy.SpentExactly(ScarabSpinCurrency.Pharaoh, 9, after, 1),
+                "Unreadable, unchanged, or unexpected token use was reported as a confirmed spin.");
+    }
+
+    private static void BattlePassNoRewardScan()
+    {
+        Check(!BattlePassPolicy.ShouldScanRewards(notificationFound: true, notificationVisible: false),
+            "A hidden rewards marker still scanned the reward track.");
+        Check(BattlePassPolicy.ShouldScanRewards(notificationFound: true, notificationVisible: true),
+            "A visible rewards marker skipped the reward scan.");
+        Check(BattlePassPolicy.ShouldScanRewards(notificationFound: false, notificationVisible: false),
+            "A missing rewards marker incorrectly skipped the conservative scan.");
+    }
+
+    private static void LiberationDifficultySelection()
+    {
+        Check(LiberationDifficultyPolicy.TryGetTargets("Easy", out var easy) &&
+              easy.Length == 1 && easy[0] == 1, "Easy did not target one star.");
+        Check(LiberationDifficultyPolicy.TryGetTargets("Normal", out var normal) &&
+              normal.Length == 1 && normal[0] == 2, "Normal did not target two stars.");
+        Check(LiberationDifficultyPolicy.TryGetTargets("Both", out var both) &&
+              both.Length == 2 && both[0] == 1 && both[1] == 2, "Both did not target Easy then Normal.");
+        Check(!LiberationDifficultyPolicy.TryGetTargets("Medium", out _), "An unsupported difficulty was accepted.");
+        Check(LiberationDifficultyPolicy.TryGetStep(1, 2, out var forward) && forward == 1,
+            "The selector did not advance from one to two stars.");
+        Check(LiberationDifficultyPolicy.TryGetStep(2, 1, out var backward) && backward == -1,
+            "The selector did not retreat from two to one star.");
+        Check(!LiberationDifficultyPolicy.TryGetStep(3, 1, out _),
+            "An unsupported star count was accepted.");
     }
 
     private static void PriorityDecisions()
@@ -582,6 +1066,28 @@ if ($Mode -eq 'blocked') {
             { list + "/heroSlot/lvlUpButton", list + "/customUpgrade/buyButton" }),
             "Balanced spending ignored the chosen order.");
 
+        order.Value = "2,1,0";
+        BotManager.PauseAutoUpgrade = false;
+        ExecuteEvents.OnDown = _ =>
+        {
+            Check(AutoUpgrade.IsBalancedCycleActive, "Balanced cycle was not held open through its button pass.");
+            BotManager.PauseAutoUpgrade = true;
+        };
+        RunCycle("balanced");
+        Check(ExecuteEvents.Targets.SequenceEqual(new[]
+            { list + "/heroSlot/lvlUpButton", list + "/guardianSlot/lvlUpButton",
+                list + "/customUpgrade/buyButton" }),
+            "An approaching task interrupted the balanced pass after its first target.");
+        Check(Logger.Messages.Any(message => message.Contains("Balanced pass finished")),
+            "The completed handoff pass was not reported.");
+        ExecuteEvents.OnDown = null;
+        BotManager.PauseAutoUpgrade = false;
+
+        BotManager.IsTaskExecuting = true;
+        RunCycle("balanced");
+        Check(ExecuteEvents.Targets.Count == 0, "A balanced pass continued after the task had started.");
+        BotManager.IsTaskExecuting = false;
+
         RunCycle("invalid");
         Check(ExecuteEvents.Targets.Count == 0, "Invalid strategy spent currency.");
         Check(special.interactable, "Fixture changed the lower-priority button.");
@@ -704,9 +1210,11 @@ if ($Mode -eq 'blocked') {
         var bubble = new BubbleTask();
         bubble.InitializeConfig("test");
         bubble.RestoreNextRun(past);
+        bubble.BubbleQuietUntil = DateTime.Now.AddMinutes(10);
         var precise = new PreciseTask();
         precise.InitializeConfig("test");
         precise.RestoreNextRun(DateTime.Now.AddMinutes(20));
+        precise.BubbleQuietUntil = DateTime.Now.AddMinutes(-1);
         Check(bubble.DueTime == past.AddHours(6), "Bubble fallback time was wrong.");
         Check(!bubble.IsReady(false), "Bubble became ready before its true due time.");
         Check(precise.DueTime == precise.NextRunTime, "Precise task received fallback delay.");
@@ -716,8 +1224,21 @@ if ($Mode -eq 'blocked') {
         var restoredPrecise = new PreciseTask();
         ScheduleStore.Restore(new BotTask[] { restoredBubble, restoredPrecise });
         Check(restoredBubble.NextRunTime == past, "Future bubble fallback was not restored.");
+        Check(restoredBubble.BubbleQuietUntil == bubble.BubbleQuietUntil,
+            "A future notification cooldown was not restored.");
         Check(restoredPrecise.NextRunTime == precise.NextRunTime, "Precise due time was not restored.");
+        Check(restoredPrecise.BubbleQuietUntil == DateTime.MinValue,
+            "An expired notification cooldown was restored.");
+        File.WriteAllLines(Path.Combine("UserData", "ZdbrusBotSchedule.txt"),
+            new[] { $"BubbleTask={past:o}", $"PreciseTask={precise.NextRunTime:o}" });
+        var legacyBubble = new BubbleTask();
+        var legacyPrecise = new PreciseTask();
+        ScheduleStore.Restore(new BotTask[] { legacyBubble, legacyPrecise });
+        Check(legacyBubble.NextRunTime == past && legacyPrecise.NextRunTime == precise.NextRunTime &&
+              legacyBubble.BubbleQuietUntil == DateTime.MinValue,
+            "Schedules written by an older version were not restored.");
         bubble.RestoreNextRun(DateTime.Now.AddHours(-7));
+        bubble.BubbleQuietUntil = DateTime.MinValue;
         precise.RestoreNextRun(DateTime.Now.AddMinutes(-1));
         ScheduleStore.Save(new BotTask[] { bubble, precise });
         Check(File.ReadAllLines(Path.Combine("UserData", "ZdbrusBotSchedule.txt")).Length == 0, "Expired schedule was persisted.");
@@ -730,6 +1251,26 @@ if ($Mode -eq 'blocked') {
     private static void RememberedNames()
     {
         GameObject.Clear();
+        var oracle = GameObject.CreatePath("menus/Oracle");
+        GameObject.CreatePath("menus/Town");
+        var blessing = GameObject.CreatePath("menus/Oracle/submenus/bg/blessingsSubmenu/blessings/blessing (0)").transform;
+        const string legacySuffix = "|blessing (0)#0/blessings#0/blessingsSubmenu#0/bg#0/submenus#0/Oracle#";
+        File.WriteAllText(Path.Combine("UserData", "ZdbrusBotUpgradeNames.json"),
+            System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["oracle-blessings" + legacySuffix + "5"] = "Raining gold",
+                ["oracle-blessings" + legacySuffix + "4"] = "Raining gold",
+                ["oracle-conflict" + legacySuffix + "5"] = "Raining gold",
+                ["oracle-conflict" + legacySuffix + "4"] = "Fate"
+            }));
+        Check(UpgradeNames.TryGet(blessing, "oracle-blessings", out var migrated) && migrated == "Raining gold",
+            "Legacy Oracle names were not reused after menu reordering.");
+        Check(!UpgradeNames.TryGet(blessing, "oracle-conflict", out _), "Conflicting legacy names were trusted.");
+        var key = UpgradeNames.KeyOf(blessing, "oracle-blessings");
+        oracle.transform.SetAsLastSibling();
+        Check(UpgradeNames.KeyOf(blessing, "oracle-blessings") == key &&
+              UpgradeNames.TryGet(blessing, "oracle-blessings", out migrated) && migrated == "Raining gold",
+            "Opening another menu invalidated the remembered Oracle names.");
         var node = GameObject.CreatePath("root/tree/node").transform;
         UpgradeNames.Remember(node, "ledra", "Raining gold");
         UpgradeNames.Remember(node, "yamanoth", "Firestone finder");

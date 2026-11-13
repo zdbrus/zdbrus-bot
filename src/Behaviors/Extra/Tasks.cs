@@ -82,6 +82,8 @@ public class MailTask : BotTask
 
 public class TavernTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Tavern;
+
     protected override string NotificationPath => P.Notifications + "/BeerExchange";
 
     private const string Tavern = P.Menus + "/Tavern/helpCanvas";
@@ -166,6 +168,8 @@ public class TavernTask : BotTask
 
 public class ExoticMerchantTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.ExoticMerchant;
+
     private const string M = P.Menus + "/ExoticMerchant/submenus";
     private const string ExoticCoins = P.Menus + "/ExoticMerchant/counters/currencyInteraction (ExoticCoin)/quantity";
     private const string SellGrid = M + "/bg/sellItemsSubmenu/Scroll View/Viewport/Content/productGrid";
@@ -183,12 +187,9 @@ public class ExoticMerchantTask : BotTask
             "0 = sell nothing, 1 = scrolls only, 2 = everything except gold items, 3 = everything.");
         _buyUpgrades = c.CreateEntry("buy_upgrades", true, "Buy Exotic Upgrades",
             "Spends exotic coins in priority order, filling an available tier before the next.");
-        _priority = c.CreateEntry("priority",
-            "Prestigious,Firestone Finder,Raining gold,Heroes' damage,Team bonus,All main attributes,Firestone effect," +
-            "Damage specialization,Leadership,Guardian power,Energy Heroes,Mana Heroes,Rage Heroes," +
-            "Fist fight,Magic spells,Precision,Skip stage,Skip wave,Healer specialization," +
-            "Tank specialization,Attribute health,Attribute armor",
+        _priority = c.CreateEntry("priority", RecommendedOrders.ExoticMerchant,
             "Priority", "Exotic upgrades to fill in order. Level-locked upgrades are skipped until unlocked.");
+        RecommendedOrders.Adopt(c, _priority);
         _buyChests = c.CreateEntry("buy_emblem_chests", true, "Buy Emblem Chests",
             "Spends emblems on gear chests, best chest first.");
     }
@@ -420,6 +421,8 @@ public class ExoticMerchantTask : BotTask
 
 public class ArcaneCrystalTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     protected override string NotificationPath => P.Notifications + "/ArcaneCrystal";
 
     private const string C = P.Menus + "/ArcaneCrystal";
@@ -455,242 +458,6 @@ public class ArcaneCrystalTask : BotTask
 
         if (hits >= 80) NextRunTime = DateTime.Now.AddMinutes(2);
         yield return Ui.Click(C + "/closeButton");
-    }
-}
-
-public class ChaosRiftTask : BotTask
-{
-    private const string R = P.Menus + "/ChaosRift";
-    private const string UI = R + "/UIElements";
-    private const string Hit = UI + "/godParent/hitButton";
-    private const string Moon = UI + "/counters/currencyInteraction (MoonStone)/quantity";
-    private const string Eclipse = UI + "/counters/currencyInteraction (EclipseStone)/quantity";
-    private const string Shop = P.Menus + "/ChaosRiftShop/bg";
-    private const string Items = Shop + "/submenus/supplies/items";
-    private const string Runes = Shop + "/counters/currencyInteraction (DarkRune)/quantity";
-    private const string MQ = P.Menus + "/MagicQuarters";
-    private MelonPreferences_Entry<bool> _buyStones;
-    private MelonPreferences_Entry<bool> _buyTomes;
-    private MelonPreferences_Entry<bool> _holyUpgrades;
-    private MelonPreferences_Entry<string> _holyGuardians;
-    private MelonPreferences_Entry<string> _holyPriorityMode;
-    private int _hits;
-
-    protected override string NotificationPath => P.Notifications + "/ChaosRift";
-    protected override bool UseScheduledTime => true;
-    private static readonly string[] NotificationNames =
-        { "ChaosRift", "ChaosRiftSupplies", "GuardianHolyUpgrade" };
-
-    internal override IEnumerable<string> HandledNotificationNames => NotificationNames;
-
-    protected override bool IsNotificationVisibleCore()
-        => IsEnabled && DateTime.Now >= BubbleQuietUntil &&
-           NotificationNames.Any(name => Ui.Visible(P.Notifications + "/" + name));
-
-    protected override void OnConfigure(MelonPreferences_Category c)
-    {
-        _buyStones = c.CreateEntry("buy_eclipse_stones", true, "Buy Eclipse Stones",
-            "Spends dark runes on eclipse stones in the rift shop, then hits with them.");
-        _buyTomes = c.CreateEntry("buy_tomes", true, "Buy Tomes Of Power",
-            "Spends dark runes on the current god's Tome of Power.");
-        _holyUpgrades = c.CreateEntry("holy_damage_upgrades", true, "Holy Damage Upgrades",
-            "Spends orbs of light on the holy damage upgrade (resets monthly).");
-        _holyGuardians = c.CreateEntry("holy_guardians", "Vermilion,Grace,Ankaa,Azhar", "Holy Upgrade Guardians",
-            "Guardians to upgrade, in priority order. Pick none to skip them all.");
-        _holyPriorityMode = c.CreateEntry("holy_priority_mode", "balanced", "Holy Upgrade Strategy",
-            "Balance checks every selected guardian in order. Focus first saves orbs for the first unlocked guardian.");
-    }
-
-    public override IEnumerator Execute()
-    {
-        NextRunTime = DateTime.Now.AddHours(1);
-        _hits = 0;
-        if (Ui.Visible(P.Notifications + "/ChaosRift"))
-            yield return Ui.Click(P.Notifications + "/ChaosRift", 2f);
-        else
-            yield return Ui.OpenGuildBuilding("chaosRift");
-        if (!Ui.Visible(R))
-        {
-            Logger.Warning("[Chaos Rift] The Chaos Rift screen did not open; trying the holy upgrade bubble instead.");
-            if (_holyUpgrades.Value && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade"))
-            {
-                yield return Ui.Click(P.Notifications + "/GuardianHolyUpgrade", 2f);
-                yield return HolyUpgrades();
-            }
-            yield break;
-        }
-
-        yield return HitAll();
-
-        if (_buyStones.Value || _buyTomes.Value)
-        {
-            yield return Ui.Click(UI + "/actionButtons/shop", 2f);
-            if (Ui.Visible(Shop))
-            {
-                yield return Ui.Click(Shop + "/submenuButtons/supplies/button", 1.2f);
-                if (_buyStones.Value) yield return Buy("moonstoneBulk");
-                if (_buyTomes.Value) yield return Buy("tomeOfPower");
-                if (_buyStones.Value) yield return Buy("moonstoneOne");
-                yield return Ui.Click(P.Menus + "/ChaosRiftShop/closeButton", 1.5f);
-                yield return HitAll();
-            }
-        }
-
-        if (_holyUpgrades.Value)
-        {
-            yield return Ui.Click(UI + "/actionButtons/upgrades", 2f);
-            yield return HolyUpgrades();
-        }
-        if (_hits >= 30) NextRunTime = DateTime.Now.AddMinutes(2);
-        yield return Ui.Click(R + "/closeButton");
-    }
-
-    private IEnumerator HolyUpgrades()
-    {
-        if (!Ui.Visible(MQ))
-        {
-            Logger.Warning("[Chaos Rift] Magic Quarters did not open; holy upgrades skipped.");
-            yield break;
-        }
-
-        if (!UncappedUpgradePolicy.TryParse(_holyPriorityMode.Value, out var mode))
-        {
-            Logger.Warning("[Chaos Rift] Invalid holy upgrade strategy; no holy upgrades were attempted.");
-            yield return Ui.Click(MQ + "/closeButton", 1.5f);
-            yield break;
-        }
-
-        yield return HolyUpgradeBuyer.Run(_holyGuardians.Value, mode,
-            () => NextRunTime = DateTime.Now.AddMinutes(2));
-        yield return Ui.Click(MQ + "/closeButton", 1.5f);
-    }
-    private IEnumerator HitAll()
-    {
-        // Moon stones go first; the game switches the same button to eclipse stones when they run out.
-        while (_hits < 30 && (Ui.NumberAt(Moon) > 0 || Ui.NumberAt(Eclipse) > 0) && Ui.Clickable(Hit))
-        {
-            var moonBefore = Ui.NumberAt(Moon);
-            var eclipseBefore = Ui.NumberAt(Eclipse);
-            yield return Ui.Click(Hit, 3f, "Chaos Rift hit");
-            var moonAfter = Ui.NumberAt(Moon);
-            var eclipseAfter = Ui.NumberAt(Eclipse);
-            var spentStone = (moonBefore >= 0 && moonAfter >= 0 && moonAfter < moonBefore) ||
-                             (eclipseBefore >= 0 && eclipseAfter >= 0 && eclipseAfter < eclipseBefore);
-            if (!spentStone)
-            {
-                Logger.Warning("[Chaos Rift] No Moonstone or Eclipse Stone decrease was observed; stopping hits.");
-                break;
-            }
-
-            yield return Ui.CloseRewards();
-            _hits++;
-        }
-    }
-
-    private IEnumerator Buy(string item)
-    {
-        var button = Items + $"/{item}/claimBg/purchaseButton";
-        var isStone = item.StartsWith("moonstone");
-        var currency = isStone ? Shop + "/counters/currencyInteraction (ExpeditionToken)/quantity" : Runes;
-        var purchased = 0;
-        for (var n = 0; n < 5; n++)
-        {
-            var cost = Ui.NumberAt(button + "/priceHolder/purchaseCost");
-            var have = Ui.NumberAt(currency);
-            if (cost <= 0)
-            {
-                Logger.Warning($"[Chaos Rift] Could not read the {item} cost; not buying.");
-                break;
-            }
-
-            if (have < cost)
-            {
-                Logger.Info($"[Chaos Rift] {item} costs {cost}; have {have} of its required currency. Skipping.");
-                break;
-            }
-
-            if (!Ui.Clickable(button)) break;
-            var confirmed = false;
-            yield return Ui.ClickUntil(Ui.Find(button), () => Ui.NumberAt(currency) < have,
-                value => confirmed = value, "Chaos Rift " + item, 1.5f, 3f);
-            if (!confirmed)
-            {
-                Logger.Warning($"[Chaos Rift] {item} currency did not decrease; stopping purchases.");
-                break;
-            }
-
-            purchased++;
-            if (Ui.MissingCurrency) yield break;
-            yield return Ui.CloseRewards();
-        }
-
-        Logger.Info($"[Chaos Rift] Confirmed {purchased} purchase(s) of {item}.");
-    }
-}
-
-public class AwakenHeroesTask : BotTask
-{
-    protected override string NotificationPath => P.Notifications + "/Awakening";
-
-    private const string A = P.Menus + "/Awakening";
-    private const string Button = A + "/awakeningOptions/awakenBg/awakenButton";
-
-    public override IEnumerator Execute()
-    {
-        NextRunTime = DateTime.Now.AddHours(3);
-        yield return Ui.OpenGuildBuilding("awakening");
-        if (!Ui.Visible(A))
-        {
-            Logger.Warning("[Awakening] The Awakening screen did not open; nothing attempted.");
-            yield break;
-        }
-
-        var awakened = 0;
-        for (var i = 0; i < 10; i++)
-        {
-            var have = Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity");
-            var cost = Ui.NumberAt(Button + "/costText");
-            if (cost <= 0)
-            {
-                Logger.Warning("[Awakening] Could not read the awakening cost; stopping.");
-                break;
-            }
-
-            if (have < cost)
-            {
-                Logger.Info($"[Awakening] Need {cost} Arcane Crystals; have {have}. No awakening attempted; bubble left alone for 1 hour.");
-                BubbleQuietUntil = DateTime.Now.AddHours(1);
-                break;
-            }
-
-            var waited = 0f;
-            while (!Ui.Clickable(Button) && waited < 5f)
-            {
-                yield return new WaitForSeconds(0.5f);
-                waited += 0.5f;
-            }
-
-            if (!Ui.Clickable(Button))
-            {
-                Logger.Warning($"[Awakening] Cost {cost}, crystals {have}, but the Awaken button is not clickable (visible: {Ui.Visible(Button)}); stopping.");
-                break;
-            }
-            var confirmed = false;
-            yield return Ui.ClickUntil(Ui.Find(Button),
-                () => Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity") < have,
-                value => confirmed = value, "hero awakening", 3f, 3f);
-            if (!confirmed)
-            {
-                Logger.Warning("[Awakening] Arcane Crystal balance did not decrease; stopping to avoid retrying.");
-                break;
-            }
-
-            awakened++;
-            yield return Ui.CloseRewards();
-        }
-
-        Logger.Info($"[Awakening] Confirmed {awakened} awakening(s); crystals now {Ui.NumberAt(A + "/counters/currencyInteraction (ArcaneCrystal)/quantity"):0}.");
-        yield return Ui.Click(A + "/closeButton");
     }
 }
 
@@ -978,6 +745,8 @@ public class WarMachineUpgradeTask : BotTask
 
 public class EventChallengesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.EventManager;
+
     private const string List = P.Events + "/EventManager/bg/verticalLayout/Scroll View/Viewport/Content/activeEvents";
     private const string Mini = P.Events + "/MiniEvents/bg";
     private const string Challenges = Mini + "/submenus/challenges/bg/challengesLayout";
@@ -1028,52 +797,133 @@ public class EventChallengesTask : BotTask
 
 public class LiberationMissionsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Liberation;
+
     private const string Map = P.Menus + "/WorldMap";
+    private const string Campaign = Map + "/submenus/warfrontCampaignSubmenu";
+    private const string Difficulty = Campaign + "/difficultySelector";
     private const string List = P.Popups + "/WFLiberationMissions";
     private const string Grid = List + "/bg/missionsScrollView/Viewport/missionGrid";
+    private const string DailyMissions = P.Popups + "/WFDailyMissions";
+    private MelonPreferences_Entry<string> _difficulty;
 
     public override int MinimumLevel => LevelRequirements.WarfrontCampaign;
+
+    protected override void OnConfigure(MelonPreferences_Category c)
+    {
+        _difficulty = c.CreateEntry("difficulty", "both", "Difficulty",
+            "Run Easy (1 star), Normal (2 stars), or both, in that order.");
+    }
 
     public override IEnumerator Execute()
     {
         NextRunTime = DateTime.Now.AddHours(4);
+        if (!LiberationDifficultyPolicy.TryGetTargets(_difficulty?.Value, out var targets))
+        {
+            Logger.Warning("[Liberation] Unknown difficulty setting; choose Easy, Normal, or Both.");
+            yield break;
+        }
+
         yield return Ui.Click(P.MapButton, 2f);
         yield return Ui.Click(Map + "/submenuButtons/warfrontCampaignButton", 2f);
-        yield return Ui.Click(Map + "/submenus/warfrontCampaignSubmenu/dailyMissionsButton", 2f);
-        yield return Ui.Click(P.Popups + "/WFDailyMissions/bg/liberationMissions/openButton", 2f);
-
-        // Fight one area after another until none is left, a fight is lost, or time runs short.
-        var started = Time.unscaledTime;
-        while (Time.unscaledTime - started < 110f)
+        if (!Ui.Visible(Difficulty))
         {
-            if (!Ui.Visible(Grid)) break;
-            var fight = Ui.VisibleChildren(Grid).Select(m => m.Find("fightButton")).FirstOrDefault(Ui.Clickable);
-            if (fight == null) break;
+            Logger.Warning("[Liberation] Campaign difficulty selector did not open.");
+            yield break;
+        }
 
-            yield return Ui.Click(fight, 1.5f, "liberation fight");
-            bool? won = null;
-            yield return Ui.FinishBattle(r => won = r);
-
-            if (won == false)
+        var started = Time.unscaledTime;
+        var lost = false;
+        foreach (var targetStars in targets)
+        {
+            if (Time.unscaledTime - started >= 110f)
             {
-                Logger.Info("[Liberation] Lost a fight; trying again on a later cycle.");
+                NextRunTime = DateTime.Now.AddMinutes(1);
                 break;
             }
 
-            if (won == null)
+            var currentStars = VisibleDifficultyStars();
+            if (!LiberationDifficultyPolicy.TryGetStep(currentStars, targetStars, out var direction))
             {
-                NextRunTime = DateTime.Now.AddMinutes(2);
-                yield break;
+                Logger.Warning($"[Liberation] Could not identify the current star difficulty ({currentStars}); stopped safely.");
+                break;
             }
 
-            NextRunTime = DateTime.Now.AddMinutes(1); // more areas may be left when time runs out
-            yield return new WaitForSeconds(1.5f);
+            if (direction != 0)
+            {
+                var arrow = Difficulty + (direction > 0 ? "/nextDifficulty" : "/previousDifficulty");
+                if (!Ui.Clickable(arrow))
+                {
+                    Logger.Warning($"[Liberation] Cannot switch to {targetStars}-star missions; stopped safely.");
+                    break;
+                }
+
+                yield return Ui.Click(arrow, 1f);
+                currentStars = VisibleDifficultyStars();
+                if (currentStars != targetStars)
+                {
+                    Logger.Warning($"[Liberation] Difficulty switch was not confirmed ({currentStars} stars, wanted {targetStars}).");
+                    break;
+                }
+            }
+
+            Logger.Info($"[Liberation] Checking {(targetStars == 1 ? "Easy" : "Normal")} missions.");
+            yield return Ui.Click(Campaign + "/dailyMissionsButton", 2f);
+            if (!Ui.Visible(DailyMissions))
+            {
+                Logger.Warning("[Liberation] Daily missions did not open.");
+                break;
+            }
+
+            yield return Ui.Click(DailyMissions + "/bg/liberationMissions/openButton", 2f);
+            while (Time.unscaledTime - started < 110f)
+            {
+                if (!Ui.Visible(Grid)) break;
+                var fight = Ui.VisibleChildren(Grid).Select(m => m.Find("fightButton")).FirstOrDefault(Ui.Clickable);
+                if (fight == null) break;
+
+                yield return Ui.Click(fight, 1.5f, "liberation fight");
+                bool? won = null;
+                yield return Ui.FinishBattle(r => won = r);
+
+                if (won == false)
+                {
+                    Logger.Info("[Liberation] Lost a fight; trying again on a later cycle.");
+                    lost = true;
+                    break;
+                }
+
+                if (won == null)
+                {
+                    NextRunTime = DateTime.Now.AddMinutes(2);
+                    yield break;
+                }
+
+                NextRunTime = DateTime.Now.AddMinutes(1);
+                yield return new WaitForSeconds(1.5f);
+            }
+
+            if (Ui.Visible(List)) yield return Ui.Click(List + "/bg/closeButton");
+            if (Ui.Visible(DailyMissions)) yield return Ui.Click(DailyMissions + "/bg/closeButton");
+            if (lost) break;
         }
+
+        if (Ui.Visible(Map)) yield return Ui.Click(Map + "/closeButton");
+    }
+
+    private static int VisibleDifficultyStars()
+    {
+        var stars = 0;
+        for (var i = 0; i < 6; i++)
+            if (Ui.Visible(Difficulty + $"/star ({i})")) stars++;
+        return stars;
     }
 }
 
 public class OracleBlessingsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Oracle;
+
     protected override string NotificationPath => P.Notifications + "/OracleBlessings";
     protected override bool UseScheduledTime => true;
 
@@ -1087,10 +937,9 @@ public class OracleBlessingsTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority",
-            "Fate,Prestigious,Raining gold,Damage Specialization,Guardian Power,Mana Heroes,Energy Heroes," +
-            "Rage Heroes,Melee Heroes,Ranged Heroes,Spellcaster Heroes,Tank Specialization,Healer Specialization",
+        _priority = c.CreateEntry("priority", RecommendedOrders.Oracle,
             "Priority", "Blessings to fill in order. Change the list to suit your party; unlisted blessings follow.");
+        RecommendedOrders.Adopt(c, _priority);
     }
 
     public override IEnumerator Execute()
@@ -1209,6 +1058,8 @@ public class OracleBlessingsTask : BotTask
 
 public class PersonalTreeTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     private const string T = P.Menus + "/TreeOfLife";
     private const string Nodes = T + "/submenus/personalTree/talentTree";
     private const string Tokens = T + "/submenus/personalTree/counters/currencyInteraction (ExpeditionToken)/quantity";
@@ -1219,10 +1070,9 @@ public class PersonalTreeTask : BotTask
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        _priority = c.CreateEntry("priority", "Raining gold,Battle cry,Prestigious,All main attributes,Attribute damage," +
-                                              "Firestone effect,Hero level up cost,Attribute health,Attribute armor,Guardian," +
-                                              "Precision,Fist fight,Magic spells", "Priority",
+        _priority = c.CreateEntry("priority", RecommendedOrders.PersonalTree, "Priority",
             "Upgrade names in the order to buy, comma-separated. Upgrades not listed are bought last.");
+        RecommendedOrders.Adopt(c, _priority);
         _keepTokens = c.CreateEntry("keep_tokens", 0, "Tokens To Keep",
             "Expedition tokens to leave unspent (war machine levels use them too).");
     }
@@ -1390,6 +1240,8 @@ public class PersonalTreeTask : BotTask
 
 public class QuestsTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Quests;
+
     private const string C = P.Popups + "/Character/bg";
     private const string Q = C + "/submenus/quests/bg";
 

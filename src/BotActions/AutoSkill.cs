@@ -26,6 +26,7 @@ public static class AutoSkill
     private const string DefaultSequence = "1";
 
     private static MelonPreferences_Entry<string> _comboSequence;
+    private static readonly WaitForSeconds TutorialPollWait = new(1f);
     private static string _lastSequence;
     private static List<Hotkey> _comboHotkeys;
     private static bool _isRunning;
@@ -304,6 +305,14 @@ public static class AutoSkill
             if (_comboHotkeys.Count == 0)
             {
                 throw new InvalidOperationException("The combo has no usable steps.");
+            }
+
+            // The bot's clicks go straight to the button and skip the tutorial's "only the highlighted thing"
+            // lock, so a combo pressed mid-step can do the step's click for the player or one it forbids.
+            if (GameTutorial.ShouldHold)
+            {
+                yield return TutorialPollWait;
+                continue;
             }
 
             // Driven through the guard: a step that throws stops the combo and says so, instead of killing this

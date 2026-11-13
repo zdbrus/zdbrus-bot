@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Town.Oracle;
 using Firebot.GameModel.Shared;
@@ -8,6 +9,8 @@ namespace Firebot.Behaviors.Town;
 
 public class OracleTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Oracle;
+
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.OracleRitualsBtn;
 
     public override int MinimumLevel => LevelRequirements.Oracle;

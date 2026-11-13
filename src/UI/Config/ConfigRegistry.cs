@@ -80,7 +80,8 @@ internal static class ConfigRegistry
         ["personal_tree/keep_tokens"] = new NumberRange(0f, 5000f, true),
         ["meteorite_research/keep_meteorites"] = new NumberRange(0f, 100000f, true),
         ["temple_prestige/min_gain_percent"] = new NumberRange(0f, 100000f, true),
-        ["temple_prestige/stall_hours"] = new NumberRange(1f, 48f, true),
+        ["temple_prestige/stall_minutes"] = new NumberRange(30f, 60f, true),
+        ["temple_prestige/boss_attempts"] = new NumberRange(2f, 5f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
         ["temple_prestige/efficiency_percent"] = new NumberRange(0f, 200f, true),
         ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true),
@@ -95,6 +96,14 @@ internal static class ConfigRegistry
     /// </summary>
     private static readonly Dictionary<string, ConfigChoice[]> SingleChoices = new()
     {
+        ["awaken_heroes/quantity"] = new[]
+        {
+            new ConfigChoice("1", "x1"),
+            new ConfigChoice("2", "x2"),
+            new ConfigChoice("5", "x5"),
+            new ConfigChoice("10", "x10"),
+            new ConfigChoice("20", "x20")
+        },
         ["auto_upgrade/upgrade_mode"] = new[]
         {
             new ConfigChoice("milestone", "Next milestone"),
@@ -125,6 +134,24 @@ internal static class ConfigRegistry
         {
             new ConfigChoice("asc", "Shorter first"),
             new ConfigChoice("desc", "Longer first")
+        },
+        ["temple_prestige/stall_minutes"] = new[]
+        {
+            new ConfigChoice("30", "30 minutes"),
+            new ConfigChoice("60", "1 hour")
+        },
+        ["temple_prestige/boss_attempts"] = new[]
+        {
+            new ConfigChoice("2", "2 attempts"),
+            new ConfigChoice("3", "3 attempts"),
+            new ConfigChoice("4", "4 attempts"),
+            new ConfigChoice("5", "5 attempts")
+        },
+        ["liberation_missions/difficulty"] = new[]
+        {
+            new ConfigChoice("easy", "Easy (1 star)"),
+            new ConfigChoice("normal", "Normal (2 stars)"),
+            new ConfigChoice("both", "Both")
         },
         ["exotic_merchant/sell_mode"] = new[]
         {
@@ -430,11 +457,14 @@ internal static class ConfigRegistry
         // Tasks
         ["temple_prestige/enabled"] =
             "Uses only the free empower option. The bot must also be running.\n" +
-            "The minimum boost and run age apply to both triggers.",
+            "The minimum boost and run age apply to every trigger.",
 
-        ["temple_prestige/stall_hours"] =
-            "Consider a reset after this many hours without a new highest stage.\n" +
-            "Both minimums must still be met.",
+        ["temple_prestige/stall_minutes"] =
+            "Fallback reset delay after no new highest stage. Growth and repeated boss failures can trigger sooner.\n" +
+            "The minimum boost and run age still apply.",
+
+        ["temple_prestige/boss_attempts"] =
+            "Reset after this many boss attempts at the same stage, if the minimum boost and run age are met.",
 
         ["temple_prestige/min_gain_percent"] =
             "Minimum extra gold boost on the free empower preview. 0 removes the minimum.\n" +
@@ -445,8 +475,11 @@ internal static class ConfigRegistry
             "The bot never resets when the run age is unreadable.",
 
         ["temple_prestige/efficiency_percent"] =
-            "Two hourly samples below this share of the run's average growth can trigger a reset.\n" +
+            "Two hourly samples below this share of the run's average growth trigger a reset without waiting for the timer.\n" +
             "This is an estimate, not a proven optimum. 0 disables this trigger.",
+
+        ["liberation_missions/difficulty"] =
+            "Choose Easy (1 star), Normal (2 stars), or both. Both runs Easy first, then Normal.",
 
         ["alchemist/resource_type"] =
             "HOW TO USE: Toggle which resources an experiment may use.\n" +
@@ -454,44 +487,44 @@ internal static class ConfigRegistry
             "No resource marked disables the task.",
 
         ["firestone_research/research_priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
-            "Names describe Tree I; positions also apply to other trees.\n" +
-            "An empty list picks any available research.",
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
+            "Guide order: Firestone Finder and Raining gold first.\n" +
+            "Names describe Tree I; positions also apply to other trees.",
 
         ["personal_tree/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
         ["forbidden_knowledge/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
         ["meteorite_research/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
         ["talents/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
-            "Fill each available listed talent before the next.",
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
+            "Guide order puts Battle cry and Fate first; locked talents are skipped.",
 
         ["oracle_blessings/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
-            "Prioritize the blessings that suit your party.",
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
+            "Guide order: Fate once unlocked, then Guardian power; locked ones are skipped.",
 
         ["exotic_merchant/priority"] =
-            "Numbers show priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Level-locked upgrades wait until you can unlock them.",
 
         ["war_machine_upgrade/war_machine"] =
-            "Numbers show machine order. Tap to remove, then tap to add last.\n" +
+            "Numbers show machine order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Active squad expands to the machines in your current squad.",
 
         ["war_machine_upgrade/blueprint_priority"] =
             "When Blueprints is set to All, buy these types in numbered order.\n" +
-            "Tap to remove, then tap to add last; an empty list buys none.",
+            "Tap to toggle; Recommended resets, Clear empties; an empty list buys none.",
 
         ["chaos_rift/holy_guardians"] =
-            "Numbers show guardian priority. Tap to remove, then tap to add last.\n" +
+            "Numbers show guardian priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "The holy upgrade strategy decides whether lower priorities can spend.",
 
         ["chaos_rift/holy_priority_mode"] =
@@ -499,7 +532,7 @@ internal static class ConfigRegistry
             "Focus first saves orbs for the first unlocked guardian, even when it cannot afford an upgrade.",
 
         ["event_exchange/priority"] =
-            "Numbers show buying order. Tap to remove, then tap to add last.\n" +
+            "Numbers show buying order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Unlisted items are not bought.",
 
         ["free_pickaxes/pickaxe_claim_threshold"] =
@@ -512,7 +545,7 @@ internal static class ConfigRegistry
             "An empty sequence plays nothing.",
 
         ["auto_upgrade/upgrade_target_slots"] =
-            "Numbers show upgrade order. Tap to remove, then tap to add last.\n" +
+            "Numbers show upgrade order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "An empty list uses all slots in screen order.",
 
         ["auto_upgrade/priority_mode"] =

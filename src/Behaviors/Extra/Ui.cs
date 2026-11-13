@@ -63,6 +63,22 @@ internal static class Ui
         return t.TryGetComponent(out Button b) && b.enabled && b.interactable;
     }
 
+    public static bool HasPriceMarker(Transform button, bool allowFreePriceHolder = false)
+    {
+        if (button == null) return true;
+        foreach (var child in button.GetComponentsInChildren<Transform>(true))
+        {
+            if (child == null || !child.gameObject.activeInHierarchy || child == button) continue;
+            var name = child.name.ToLowerInvariant();
+            if (name.Contains("cost") || name.Contains("currency") || name.Contains("gem")) return true;
+            if (!name.Contains("price")) continue;
+            var freeText = child.Find("freeText");
+            if (!allowFreePriceHolder || name != "priceholder" || freeText == null ||
+                !freeText.gameObject.activeInHierarchy) return true;
+        }
+        return false;
+    }
+
     /// <summary>Clicks if the button is visible and interactable. Returns through <paramref name="done" /> whether it clicked.</summary>
     public static IEnumerator Click(string path, float wait = -1) => Click(Find(path), wait, path);
 

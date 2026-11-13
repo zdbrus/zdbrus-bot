@@ -12,6 +12,8 @@ namespace Firebot.Behaviors.Guild;
 
 public class FreePickaxesTask : BotTask
 {
+    public override GameFeature RequiredFeature => GameFeature.Guilds;
+
     private MelonPreferences_Entry<int> _pickaxeClaimThreshold;
 
     private int PickaxeClaimThreshold => _pickaxeClaimThreshold?.Value ?? 1;
@@ -36,27 +38,51 @@ public class FreePickaxesTask : BotTask
         );
     }
 
+    private void RetryInTenMinutes()
+    {
+        var retryAt = DateTime.Now.AddMinutes(10);
+        NextRunTime = retryAt;
+        if (BubbleQuietUntil < retryAt) BubbleQuietUntil = retryAt;
+    }
+
     public override IEnumerator Execute()
     {
         yield return Notifications.FreePickaxes;
 
-        if (FreePickaxes.Quantity >= PickaxeClaimThreshold)
+        if (!FreePickaxes.TryGetQuantity(out var before))
         {
-            var before = FreePickaxes.Quantity;
+            Logger.Warning("[Free Pickaxes] The available quantity could not be read; trying again later.");
+            RetryInTenMinutes();
+            yield return GuildShop.Close;
+            yield break;
+        }
+
+        if (before >= PickaxeClaimThreshold)
+        {
             var confirmed = false;
             const string claimButton =
                 P.Menus + "/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/purchaseButton";
-            yield return Ui.ClickUntil(Ui.Find(claimButton), () => FreePickaxes.Quantity > before,
+            const string claimedMarker =
+                P.Menus + "/GuildShop/bg/submenus/supplies/items/freePickaxe/claimBg/claimedBG";
+            var wasClaimed = Ui.Visible(claimedMarker);
+            yield return Ui.ClickUntil(Ui.Find(claimButton),
+                () => (FreePickaxes.TryGetQuantity(out var after) && after < before) ||
+                      (!wasClaimed && Ui.Visible(claimedMarker)),
                 value => confirmed = value, "Free pickaxes claim", 1.5f);
             if (confirmed)
-                Logger.Info($"[Free Pickaxes] Quantity increased from {before} to {FreePickaxes.Quantity}.");
+                Logger.Info("[Free Pickaxes] The claim was confirmed by the game.");
             else
-                Logger.Warning("[Free Pickaxes] Claim did not increase the pickaxe quantity; stopping.");
+            {
+                Logger.Warning("[Free Pickaxes] The claim could not be confirmed; trying again later.");
+                RetryInTenMinutes();
+                yield return GuildShop.Close;
+                yield break;
+            }
         }
         else
         {
             Logger.Info($"[Free Pickaxes] Waiting for {PickaxeClaimThreshold} pickaxes; " +
-                        $"{FreePickaxes.Quantity} available.");
+                        $"{before} available.");
         }
 
         NextRunTime = FreePickaxes.NextRunTime;

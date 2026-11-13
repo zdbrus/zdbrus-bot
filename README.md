@@ -57,7 +57,7 @@ enable it once in F1 or press its hotkey to retry. An empty skill combo cannot s
 | Key | Action |
 |-----|--------|
 | **F1** | Settings panel (turn features on or off, set priorities) |
-| **F2** | Task status (what runs next and when) |
+| **F2** | Task status (what runs next and when); click a task's ON/OFF switch to change its F1 setting |
 | **F4** | War Machine Planner (opens in your browser) |
 | **F6** | Hero auto-upgrade on / off (on by default: every minute it opens upgrades, buys to the next milestone or Max, and closes the menu again) |
 | **F7** | Start / stop the bot |
@@ -68,17 +68,26 @@ enable it once in F1 or press its hotkey to retry. An empty skill combo cannot s
 
 Every feature can be switched on or off in the F1 panel.
 
+Priority lists (talents, Oracle, Personal Tree, Forbidden Knowledge, research, Exotic Merchant, event exchange) ship in the order the community guides recommend: Aurora's Steam Complete Guide, the Steam War Machine guide, the Firestone Fandom wiki and firestone-idle-rpg.de. Talents start with Battle cry and Fate. Locked upgrades are skipped until you unlock them. Each ordered list in F1 has **Clear** and **Recommended** buttons, so you can start from scratch or go back to the guide order.
+
 | Area | Automated |
 |------|-----------|
-| **Daily** | Daily rewards, check-in, free shop items, mail rewards, daily and weekly quests, battle pass free rewards, opens your chests (keeps the ones you choose) |
+| **Daily** | Daily rewards, check-in, free shop items, free Mystery Box, mail rewards, daily and weekly quests, battle pass free rewards (skips empty-track scans), opens eligible chests and free Mystery Boxes (keeps the ones you choose) |
 | **Town** | Firestone research (your priority order), meteorite research, alchemist, Oracle rituals and blessings, engineer tools, guardian training and enlightenment, exotic merchant (sell, upgrades, emblem chests), tavern (beer to tokens, cards), Scarab's game, Pharaoh's vault and milestones |
 | **Guild** | Expeditions, free pickaxes, guild crystal, Chaos Rift (hits, eclipse stones, tomes, holy upgrades for the guardians you choose), personal tree, hero awakening, forbidden knowledge |
-| **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (keeps going after each win) |
+| **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (Easy 1 star, Normal 2 stars, or both) |
 | **Battle** | Arena (chooses the lowest readable opponent power within your limit and verifies the preview), war machine levels and blueprints for any machines you pick or your active squad, switches to your arena squad for arena fights and back, clicks coal miners and double-beer dragons the moment they appear |
 | **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
-| **Progress** | Retries the stage boss after a lost fight so the run keeps climbing |
-| **Prestige** | Free Temple prestige after a stalled run or two slow growth samples, subject to your minimum boost and run age; status and controls have their own F1 tab |
+| **Progress** | Retries the stage boss after a lost fight; repeated attempts at one stage can trigger a free prestige |
+| **Prestige** | Free Temple prestige when growth efficiency drops, after repeated boss attempts at one stage, or when the fallback stall timer expires; status and controls have their own F1 tab |
+
+Mystery Box claims are retried if the offer or claim cannot be confirmed. Opening boxes requires a
+readable amount and a free opening control with no visible price marker; otherwise the boxes are kept.
+Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
+even if its notification remains lit or the game restarts. Notification cooldowns and separate
+Chaos Rift and Mystery Box retries also continue after a restart. Like other task schedules, these
+waits are shared across accounts on the same installation, so switching accounts can carry one over.
 
 ### Arena safety
 
@@ -90,8 +99,10 @@ unconfirmed fights stop the attempt. A refresh must produce a stable changed opp
 If **One Fight Per Day** is enabled, after 20:00 local time the bot may try the weakest opponent once
 even above your limit when all three opponents are readable and refresh is unavailable. An attempted
 exception is recorded even if the outcome cannot be confirmed. A configured Arena squad must be verified;
-the bot allows time to switch back and logs if restoration fails. Stopping the bot, changing accounts or
-closing the game mid-task can interrupt the switch back, so check the active squad afterward. If the
+if it is confirmed empty, the bot warns once and fights with your current squad instead. If the squad
+cannot be read, it skips the fight rather than guessing. The bot allows time to switch back and logs if
+restoration fails. Stopping the bot, changing accounts or closing the game mid-task can interrupt the
+switch back, so check the active squad afterward. If the
 log says there is not enough time to switch, raise **F1 > General > Max Task Runtime**.
 
 **Matchup recording:** Turn on **F1 > Battle > Arena > Record Arena Matchups**
@@ -106,13 +117,37 @@ for the file format.
 ### Prestige and upgrade priorities
 
 Open **F1 > Prestige** to enable the task and see its last decision, run reading, and check time. The
-default stall trigger is three hours without a new highest stage. The optional growth trigger compares
-two hourly samples with this run's average boost growth (75% by default; 0 disables this trigger).
-Both triggers respect your minimum gold boost and run age. The growth rule is an estimate, not a
-guaranteed optimum. If the run age, boost format, or verified free control cannot be read, the bot
-does not prestige; it never chooses the paid 2x option. The stall timer starts fresh when a run has
-not yet been tracked or its age changes unexpectedly. Similar-age account switches cannot always
-be identified, so turn prestige off when switching accounts until you have checked its settings.
+growth efficiency is the primary trigger: two hourly samples below the configured share of the run's
+average boost growth (75% by default) can prestige without waiting for a timer. If growth does not
+trigger, repeated boss attempts at the same stage can trigger next (3 by default; choose 2–5). The
+no-progress timer is the final fallback, selectable as 30 minutes or 1 hour. All triggers still respect
+your minimum gold boost and run age. The growth rule is an estimate, not a guaranteed optimum. If the
+live stage, run age (including the game's `minutes:seconds` clock), boost format, or verified free
+control cannot be read, the bot does not prestige. A `+0%` boost is treated as a valid zero sample,
+not an unreadable value, and is sampled hourly rather than reopening the Temple on every task check.
+The bot never chooses the paid 2x option. Stage checks use game data, so opening the Temple and hiding the
+battle HUD does not cancel a valid reset. The fallback timer starts fresh when a run has not yet been
+tracked or its age changes unexpectedly. Similar-age account switches cannot always be identified, so turn prestige
+off when switching accounts until you have checked its settings.
+The bot confirms only the free-empower prompt it just opened; an existing or unrecognized confirmation
+is left untouched. After a confirmed reset, it waits briefly for the completion screen and presses
+**Start now** when available.
+
+Scarab uses Noble's tokens by default. Enable **Use Pharaoh's Tokens** in its task settings to allow
+those tokens too. It uses the game's **Auto** mode at x1, checks each native spin against those
+permissions, verifies token use, and never buys tokens or spends gems.
+
+Under **F1 > Guild > Awaken Heroes**, choose **Awaken Amount**: x1, x2, x5, x10 or x20 (default x1).
+Awakening uses **Auto** until another selected batch is unaffordable; it does not drop to a smaller
+amount or buy Arcane Crystals. Both Auto activities stop when finished or when the bot stops.
+Large balances may be split across visits to respect **Max Task Runtime**.
+
+Compatible tasks in the same town or guild reuse that hub, while still closing finished activities
+and blocking popups. The bot returns to battle for battle tasks and idle upgrade windows;
+AutoUpgrade runs separately, not as the last task of a fixed cycle.
+With **Balance** selected, AutoUpgrade uses gaps between tasks even when the next check is less than
+30 seconds away, then finishes its short pass before handing over to a waiting task. Ready and running
+tasks still take priority. **Focus** still pauses as soon as a task is approaching.
 
 Priority chips show their order as numbers. Tap an item to remove it and tap it again to add it at the
 end. Firestone Research, Personal Tree, Meteorite Research, Forbidden Knowledge, Talents, Oracle
@@ -120,7 +155,14 @@ Blessings, Exotic Merchant and selected War Machines use their priority order; E
 only selected items. A higher available tier that cannot yet be afforded holds its currency instead
 of falling through to a lower tier. Level-locked Exotic upgrades are skipped until unlocked.
 The bot remembers discovered upgrade names between launches, not prices or completion state; some
-previously unknown preview-based upgrades must still be inspected once.
+previously unknown preview-based upgrades must still be inspected once. Talents and Meteorite Research read names,
+levels and unlock state directly from the live tree, then verify only the selected preview before spending.
+
+In **F1 > Meteorite Research**, **Meteorites To Keep** is the minimum left after a purchase, not a
+starting-balance target. Research buys one level at a time using the game's actual balance and cost,
+checks the latest reserve immediately before each purchase, and waits for both the level and exact
+debit before buying again. It stops rather than guessing from rounded or unreadable numbers.
+Raising the reserve applies to the next purchase; one already sent to the game may still finish.
 
 Hero/guardian gold upgrades and guardian holy-damage upgrades can keep growing without a known
 cap. For each of those categories, choose **Balance** to try every selected target in order, or
@@ -133,7 +175,7 @@ damage, health, and armor blueprints.
 
 Press **F4** in game and your browser opens the planner at `http://localhost:5577`. It reads your real war machines, crews, heroes and jewels from the game every few seconds.
 
-- **Auto-build squad** picks up to 5 machines and crews using campaign or arena power, with a tank and a healer whenever you own them. Each hero is used once.
+- **Auto-build squad** picks up to 5 machines and crews for campaign or arena power together, so a machine can make the squad because of the heroes it benefits from. It includes a tank and a healer whenever you own them, and each hero is used once.
 - **Drag heroes** between machines; the bench shows how much power each hero would add to the selected machine.
 - **Game check** compares every number with the game's own, so you can trust the math.
 - **Campaign target** shows the power a mission needs and the furthest mission your squad covers.
@@ -143,8 +185,17 @@ Press **F4** in game and your browser opens the planner at `http://localhost:557
 - Only heroes you have unlocked are used. It only saves when the squad on screen matches the plan, so a half-done change never replaces a working squad.
 - **Hero faces** come from your own game (open Engineer > Select crew once).
 - **Plan upgrades** by editing levels, rarities, blueprints or jewels.
-- **Upgrade advisor** ranks machine levels and blueprints by power gained per resource; unsampled costs are marked as estimates. It is read-only.
+- **Upgrade advisor** shows the best machine to level and the best blueprint to buy for the selected mode, then ranks every machine level and blueprint by power gained per expedition token or blueprint. Levels count the real workshop upgrades from the machine's current XP and check that machine's own screws, cogs and metal. It is read-only.
+- **Tooltips**: hover over a number or label, or tap its **?**, to see what it means, what it costs and where to get more.
 - **Ethereal shard advisor** ranks the next jewel enchant for every hero in your squad by war machine power per shard. **Spend for me** does those enchants for you within a shard budget.
+- **Void Crystal advisor** automatically compares your hero gear across the whole roster; selecting one hero is optional. Choose damage, health, armor, gold or gear power. It compares each next enchant's boost and price, using the current party's DPS, health or armor to estimate personal-gear value; global gear counts even on benched heroes. Gear power is a separate goal for gear-tier and mission unlocks. Estimates are not combat simulations or a guarantee of the best complete budget plan. **Spend for me** requires a budget and confirmation, re-ranks the best affordable upgrade before each click and verifies the exact crystal debit and level change. **Stop spending** cancels further purchases; each request is limited to 40 enchants. It never buys crystals, unlocks gear tiers or spends another currency. These are hero upgrades, not war-machine upgrades.
+- **War machine tier list** ranks every machine S to C for long-term investment (from community guides), marks a goal squad to work toward, and puts a tier badge on each machine across the planner. Hover a badge for why it's ranked there and what to spend on it. Auto-build still picks by today's numbers.
+
+Crystal and shard spending select only unlocked heroes through their own hero buttons. They wait for
+the requested hero to finish loading and stop if the selection cannot be confirmed, rather than
+cycling into locked heroes. This fixes the Hall of Heroes black screen caused by reordered hero lists.
+
+New to war machines? The [War Machine Guide](WAR-MACHINES.md) explains jewel chests, unlocks, the tier list and where to spend, in plain language.
 
 <img src="assets/planner.jpg" alt="War Machine Planner in the browser" width="100%">
 
