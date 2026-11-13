@@ -32,7 +32,8 @@ then remembered between launches. Prices and completion state are not persisted.
 For hero gold and guardian holy upgrades, Balance tries all selected targets in order; Focus first
 saves for the first available target and can leave lower priorities waiting indefinitely.
 When War Machine Blueprints is set to All, separate priority chips order damage, health and armor.
-The planner can auto-apply a stronger squad on a schedule when enabled; it is off by default.
+The planner's auto-build includes a tank and a healer whenever you own them, in both Campaign and Arena.
+It can auto-apply a stronger squad on a schedule when enabled; this is off by default.
 The planner's read-only upgrade advisor ranks machine levels and blueprints by power gained per resource.
 
 ARENA

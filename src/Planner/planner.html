@@ -527,7 +527,7 @@ function requiredPower(difficulty, mission) {
 const cloneCrews = (c) => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v.slice()]));
 
 // ---- Optimizer ----
-// Picks the 5 machines and assigns heroes (each hero used once) to maximize squad battle power.
+// Picks up to 5 machines, including a healer when owned, and assigns each hero once for the selected mode.
 // Greedy fill then pairwise-swap hill climb until no swap improves.
 function optimize(account, opts = {}) {
   const machines = account.machines.filter(m => m.owned !== false);
@@ -535,28 +535,31 @@ function optimize(account, opts = {}) {
   const cap = account.crewSlots || maxCrew(account.engineerLevel);
   const squadSize = Math.min(5, machines.length);
   const locked = opts.locked || {}; // { heroId: machineId }
+  const scoreOf = (st) => opts.mode === 'arena' ? st.arenaPower : st.battlePower;
 
   const score = (assign) => {
     let total = 0; const detail = [];
     for (const wm of assign.squad) {
       const crew = assign.crews[wm.id].map(id => heroes.find(h => h.id === id));
       const st = machineStats(wm, account, crew);
-      total += opts.mode === 'arena' ? st.arenaPower : st.battlePower;
+      total += scoreOf(st);
       detail.push(st);
     }
     return { total, detail };
   };
 
-  // 1. machine selection by solo power with an average crew
+  // 1. reserve the strongest required roles, then fill by solo power
   const ranked = machines
-    .map(wm => ({ wm, p: machineStats(wm, account, []).battlePower }))
+    .map(wm => ({ wm, p: scoreOf(machineStats(wm, account, [])) }))
     .sort((a, b) => b.p - a.p);
-  let squad = ranked.slice(0, squadSize).map(r => r.wm);
-  if (opts.requireTank) {
-    const hasTank = squad.some(w => WAR_MACHINES[w.id].spec === SPEC.TANK);
-    const bestTank = ranked.find(r => WAR_MACHINES[r.wm.id].spec === SPEC.TANK);
-    if (!hasTank && bestTank) squad[squad.length - 1] = bestTank.wm;
+  const selected = new Set();
+  const requiredSpecs = opts.requireTank ? [SPEC.TANK, SPEC.HEALER] : [SPEC.HEALER];
+  for (const spec of requiredSpecs) {
+    const best = ranked.find(r => WAR_MACHINES[r.wm.id].spec === spec);
+    if (best) selected.add(best.wm.id);
   }
+  for (const { wm } of ranked) if (selected.size < squadSize) selected.add(wm.id);
+  const squad = ranked.filter(r => selected.has(r.wm.id)).map(r => r.wm);
 
   // 2. greedy crew fill: each slot takes the hero with the biggest marginal power gain
   const crews = Object.fromEntries(squad.map(w => [w.id, []]));
@@ -567,10 +570,10 @@ function optimize(account, opts = {}) {
     improved = false; let best = null;
     for (const wm of squad) {
       if (crews[wm.id].length >= cap) continue;
-      const cur = machineStats(wm, account, crews[wm.id].map(id => heroes.find(h => h.id === id))).battlePower;
+      const cur = scoreOf(machineStats(wm, account, crews[wm.id].map(id => heroes.find(h => h.id === id))));
       for (const h of heroes) {
         if (used.has(h.id)) continue;
-        const next = machineStats(wm, account, [...crews[wm.id], h.id].map(id => heroes.find(x => x.id === id))).battlePower;
+        const next = scoreOf(machineStats(wm, account, [...crews[wm.id], h.id].map(id => heroes.find(x => x.id === id))));
         const gain = next - cur;
         if (!best || gain > best.gain) best = { gain, wm: wm.id, h: h.id };
       }

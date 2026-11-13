@@ -133,7 +133,7 @@ damage, health, and armor blueprints.
 
 Press **F4** in game and your browser opens the planner at `http://localhost:5577`. It reads your real war machines, crews, heroes and jewels from the game every few seconds.
 
-- **Auto-build squad** picks your best 5 machines and crews for the campaign or the arena (each hero once, always a tank).
+- **Auto-build squad** picks up to 5 machines and crews using campaign or arena power, with a tank and a healer whenever you own them. Each hero is used once.
 - **Drag heroes** between machines; the bench shows how much power each hero would add to the selected machine.
 - **Game check** compares every number with the game's own, so you can trust the math.
 - **Campaign target** shows the power a mission needs and the furthest mission your squad covers.
