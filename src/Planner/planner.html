@@ -464,6 +464,7 @@ table.ledger.adv{min-width:700px}
     <div class="panel-b">
       <div class="inline">
         <label class="field"><span class="label">Goal</span><select id="crystal-goal" aria-label="Crystal upgrade goal">
+          <option value="balanced">Balanced gear - rings first</option>
           <option value="damage">Hero damage</option><option value="health">Hero health</option>
           <option value="armor">Hero armor</option><option value="gold">Gold earnings</option>
           <option value="power">Gear power (unlocks)</option>
@@ -473,10 +474,10 @@ table.ledger.adv{min-width:700px}
         <button class="btn primary" id="crystal-spend" type="button" disabled>Spend for me</button>
         <button class="btn" id="crystal-stop" type="button" hidden>Stop spending</button>
       </div>
-      <p class="note">Automatically compares your current gear across the whole roster. Party members' personal gear and everyone's global gear are considered; choose one hero only if you want to focus on them.</p>
+      <p class="note">Balanced gear spreads upgrades across your roster by next-upgrade cost, favoring rings until they cost 4 times as much as other gear, including relics and bracers (Wrist). Choose one hero to limit this strategy to their gear.</p>
       <p id="crystal-status" role="status" aria-live="polite"></p>
       <div class="ledger-wrap"><table class="ledger" id="crystals"></table></div>
-      <p class="note">Value compares the next boost per 100 crystals, using your live gear and party stats. Damage, health and armor are estimates, not a combat simulation. Gear power is a separate goal for unlocking gear tiers and missions. Spending rechecks the best affordable upgrade before every enchant, stays within your budget and stops after 40 enchants or any unconfirmed result. It never buys crystals, unlocks tiers or spends other currencies. Enchants stay on the slot when you get better gear.</p>
+      <p class="note">Balanced priority is a cost-balancing rule, not a predicted stat gain. Other goals compare the next boost per 100 crystals using live gear and party stats. Use Gear power when working toward gear tiers and missions; this is separate from balanced upgrades. Spending rechecks the best affordable upgrade before every enchant, stays within your budget and stops after 40 enchants or any unconfirmed result. It never buys crystals, unlocks tiers or spends other currencies. Enchants stay on the slot when you get better gear.</p>
     </div>
   </section>
 
@@ -1246,7 +1247,7 @@ function rarityTip(wm) {
 }
 
 const TIPS = {
-  crystals: { title: 'Void Crystals: hero gear', body: 'The advisor reads your gear, next enchant and price. For party damage it estimates each active hero’s share using their current DPS; health and armor use their current stats. Global gear helps the whole party even when its owner is on the bench. Gold and gear power are ranked separately.',
+  crystals: { title: 'Void Crystals: hero gear', body: 'Balanced gear favors rings until their next enchant costs 4 times as much as other gear, then lets the cheaper gear catch up. It balances costs, not equal levels. Damage, health, armor, gold and gear power remain separate goals. Gear power helps work toward gear tiers and missions; the bot never unlocks them for you.',
     foot: 'Auto compares everyone without choosing a hero. Gear power helps unlock gear tiers and missions; it is not the same as combat strength. Spend for me requires a budget and confirmation and never spends automatically in the background.' },
   source: () => ({ title: 'Where these numbers come from', body: ({
     live: 'Live from your game. While the bot runs, this page re-reads your machines, heroes, jewels, parts and currencies every few seconds.',
@@ -1623,15 +1624,15 @@ const CRYSTAL_SLOTS = ['Weapon', 'Chest', 'Boots', 'Wrist', 'Shoulder', 'Belt', 
 let crystalSending = false, crystalPending = null, crystalNotice = '', crystalEpoch = '', crystalHeroKey = '';
 const wholeCrystals = n => Number.isSafeInteger(n) && n >= 0;
 function crystalOptions(items, goal, target) {
-  if (!['damage', 'health', 'armor', 'gold', 'power'].includes(goal) || !Number.isInteger(target) || target < -1) return [];
+  if (!['balanced', 'damage', 'health', 'armor', 'gold', 'power'].includes(goal) || !Number.isInteger(target) || target < -1) return [];
   return (items || []).map(i => {
-    const applicable = target === -1 || ((goal !== 'power' && i.slot >= 3) || i.hero === target);
+    const applicable = target === -1 || ((!['balanced', 'power'].includes(goal) && i.slot >= 3) || i.hero === target);
     const score = applicable ? i.values?.[goal]?.[target === -1 ? 'all' : 'hero'] : 0;
     return { ...i, score };
   }).filter(i => Number.isInteger(i.hero) && i.hero >= 0 && Number.isInteger(i.slot) &&
     Number.isInteger(i.level) && i.level >= 0 && wholeCrystals(i.cost) && i.cost > 0 &&
     fin(i.score) && i.score > 0 && fin(i.powerGain) && i.powerGain > 0)
-    .sort((a, b) => b.score - a.score || b.powerGain - a.powerGain || a.cost - b.cost ||
+    .sort((a, b) => b.score - a.score || (goal === 'balanced' ? a.cost - b.cost : b.powerGain - a.powerGain) || a.cost - b.cost ||
       a.hero - b.hero || a.slot - b.slot);
 }
 const crystalReady = (c, goal, target) => target !== -1 || !['damage', 'health', 'armor'].includes(goal) || !!c?.party?.[goal];
@@ -1677,13 +1678,14 @@ function renderCrystals() {
   const plain = text => String(text || '').replace(/<[^>]*>/g, '');
   const table = $('#crystals');
   table.replaceChildren(el('thead', {}, el('tr', {},
-    ...['Hero', 'Gear', 'Helps', 'Level', 'Crystals', 'Current effect', 'Next effect', 'Gear power', 'Value / 100'].map(t => el('th', {}, t)))));
+    ...['Hero', 'Gear', 'Helps', 'Level', 'Crystals', 'Current effect', 'Next effect', 'Gear power', crystalGoal() === 'balanced' ? 'Balanced priority' : 'Value / 100'].map(t => el('th', {}, t)))));
   table.append(el('tbody', {}, ...(rows.length ? rows.map((r, index) => el('tr', {},
     el('td', {}, r.name), el('td', {}, CRYSTAL_SLOTS[r.slot]),
     el('td', {}, r.slot === 6 ? 'Gold earnings' : r.slot >= 3 ? 'All heroes' : r.name + ' only'),
     el('td', {}, r.level + ' → ' + (r.level + 1)), el('td', {}, n0(r.cost)),
     el('td', {}, plain(r.current)), el('td', {}, plain(r.next)), el('td', {}, '+' + fmt(r.powerGain)),
-    el('td', { class: index === 0 ? 'best' : '' }, '+' + (crystalGoal() === 'power' ? fmt(r.score * 100) : pct(r.score * 100)))))
+    el('td', { class: index === 0 ? 'best' : '' }, crystalGoal() === 'balanced' ? fmt(r.score * 100) :
+      '+' + (crystalGoal() === 'power' ? fmt(r.score * 100) : pct(r.score * 100)))))
     : [el('tr', {}, el('td', { colspan: '9' }, c?.available
       ? (!crystalReady(c, crystalGoal(), crystalTarget()) ? 'Waiting for current party stats.' :
         c.ownedGear === 0 ? 'No hero gear is owned yet. Open gear chests to find pieces you can enchant.' :

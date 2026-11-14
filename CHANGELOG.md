@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.62 (2026-11-13)
+- F4's Void Crystal advisor now defaults to **Balanced gear - rings first** for both recommendations and Spend for me. It balances next-upgrade costs across the roster, weighting rings four times higher; at the 4x boundary, cheaper gear catches up.
+- Selecting a hero limits this strategy to their gear. Existing damage, health, armor, gold and gear-power goals remain available. Balanced priority is a cost rule, not a predicted stat gain or combat simulation.
+- Spending still re-reads and re-ranks before each enchant, enforces the confirmed budget, verifies the exact price and level change, and stops on uncertainty or after 40 enchants.
+
 ## 0.7.61 (2026-11-12)
 - **Healer-aware squads:** Campaign and Arena auto-builds now include a healer whenever you own one, while keeping a tank whenever available. This applies to both the Auto-build button and scheduled auto-apply.
 - The planner still compares machines and crews together using the selected mode's power. Machine replacements cannot drop the last required healer or tank; remaining places stay power-based.

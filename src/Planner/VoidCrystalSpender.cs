@@ -288,7 +288,7 @@ public static class VoidCrystalSpender
                 writer.WriteNumber("healthShare", item.HealthShare);
                 writer.WriteNumber("armorShare", item.ArmorShare);
                 writer.WriteStartObject("values");
-                foreach (var goal in new[] { "damage", "health", "armor", "gold", "power" })
+                foreach (var goal in new[] { "balanced", "damage", "health", "armor", "gold", "power" })
                 {
                     writer.WriteStartObject(goal);
                     writer.WriteNumber("all", VoidCrystalPolicy.Score(item, goal, -1));

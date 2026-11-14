@@ -10,6 +10,10 @@ const engineScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = { module: { exports: {} } };
 vm.runInNewContext(engineScript, context);
 const E = context.module.exports;
+for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
+const crystalContext = { fin: Number.isFinite };
+vm.runInNewContext(html.slice(html.indexOf('const CRYSTAL_SLOTS ='), html.indexOf('const crystalReady =')) +
+  '\nglobalThis.options = crystalOptions;', crystalContext);
 const ids = Object.keys(E.WAR_MACHINES);
 const role = id => E.WAR_MACHINES[id].spec;
 const machine = (id, level = 1, extra = {}) => ({ id, level, owned: true, ...extra });
@@ -19,6 +23,20 @@ const score = (a, m, mode, crew = []) => {
   return mode === 'arena' ? stats.arenaPower : stats.battlePower;
 };
 const plain = value => JSON.parse(JSON.stringify(value));
+
+test('balanced crystal rows use server priority, cheaper boundary ties and exact hero targeting', () => {
+  const item = (hero, slot, cost) => ({ hero, slot, cost, level: 0, powerGain: 100,
+    values: { balanced: { all: (slot === 6 ? 4 : 1) / cost, hero: (slot === 6 ? 4 : 1) / cost } } });
+  const ring = item(1, 6, 239), relic = item(2, 7, 60), wrist = item(3, 3, 60);
+  assert.equal(crystalContext.options([ring, relic, wrist], 'balanced', -1)[0].slot, 6);
+  ring.cost = 240; ring.values.balanced.all = 4 / 240;
+  assert.equal(crystalContext.options([ring, relic, wrist], 'balanced', -1)[0].slot, 7);
+  ring.cost = 241; ring.values.balanced.all = 4 / 241;
+  assert.equal(crystalContext.options([ring, relic, wrist], 'balanced', -1)[2].slot, 6);
+  assert.deepEqual(plain(crystalContext.options([ring, relic, wrist], 'balanced', 1)).map(i => i.hero), [1]);
+  assert.equal(crystalContext.options([{ ...ring, cost: NaN }], 'balanced', -1).length, 0);
+  assert.match(html, /<select id="crystal-goal"[^>]*>\s*<option value="balanced">/);
+});
 
 for (const mode of ['campaign', 'arena']) {
   test(`${mode}: low-power healer and tank both survive stronger damage machines`, () => {

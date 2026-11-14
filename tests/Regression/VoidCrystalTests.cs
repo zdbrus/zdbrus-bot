@@ -25,6 +25,26 @@ internal static class VoidCrystalTests
 
     public static void Ranking()
     {
+        var ring = Gear(1, 6, 239);
+        var relic = Gear(2, 7, 60);
+        var wrist = Gear(3, 3, 60);
+        var balanced = new[] { ring, relic, wrist };
+        Check(VoidCrystalPolicy.Rank(balanced, "balanced", -1).First() == ring,
+            "Rings must be favored below four times the next gear cost.");
+        ring.Cost = 240;
+        Check(VoidCrystalPolicy.Rank(balanced, "balanced", -1).First() == relic,
+            "At exactly four times the cost, cheaper gear must catch up.");
+        ring.Cost = 241;
+        Check(VoidCrystalPolicy.Rank(balanced, "balanced", -1).Last() == ring,
+            "Rings above the four-times threshold must yield to other gear.");
+        Check(VoidCrystalPolicy.Rank(balanced, "balanced", 1).Single() == ring,
+            "Balanced hero targeting must not include another hero's global gear.");
+        var personal = Gear(9, 0, 30); personal.Active = false; personal.DamageReady = false;
+        Check(VoidCrystalPolicy.Rank(balanced.Append(personal), "balanced", -1).First() == personal,
+            "Balanced upgrades must include cheaper personal gear without requiring party stats.");
+        personal.Cost = double.NaN;
+        Check(!VoidCrystalPolicy.Rank(new[] { personal }, "balanced", -1).Any(),
+            "Balanced upgrades must reject unreadable costs.");
         var weakWeapon = Gear(1, 0, 10); weakWeapon.DamageShare = 0.05;
         var strongWeapon = Gear(2, 0, 20); strongWeapon.DamageShare = 0.9;
         var benchWeapon = Gear(9, 0, 5); benchWeapon.Active = false; benchWeapon.PowerGain = 900;
@@ -219,6 +239,26 @@ internal static class VoidCrystalTests
     public static void Spending()
     {
         var game = Setup();
+        foreach (var hero in GameInitialize.HandlerLoader.heroServerHandler.heroesDict.Values)
+            foreach (var gear in hero.heroGears)
+                if (gear.gearSlot == GearSlot.Weapon) gear.enchantCost = 1000;
+        var ring = new GearItem { heroId = HeroCode.Talia, gearSlot = GearSlot.Ring,
+            gearTier = GearTier.Tier1, enchantCost = 180 };
+        GameInitialize.HandlerLoader.heroServerHandler.heroesDict[HeroCode.Talia].heroGears.Add(ring);
+        GameInitialize.MenuLoader.HallOfHeroesMech.OnSelect(0);
+        Check(Snapshot().GetProperty("items").EnumerateArray().Any(i =>
+            i.GetProperty("slot").GetInt32() == 6 &&
+            i.GetProperty("values").GetProperty("balanced").GetProperty("all").GetDouble() > 0),
+            "The live snapshot must export balanced priorities.");
+        Check(VoidCrystalSpender.Request(Packet(240, "balanced")) == "Spending",
+            "Balanced spending request rejected.");
+        Pump();
+        Check(VoidCrystalSpender.Ok && game.Clicked.Count == 2 && game.Clicked[0] == ring &&
+              game.Clicked[1].gearSlot == GearSlot.Wrist && game.Balance.amount == 760,
+            $"Balanced spending must re-rank after the ring: {VoidCrystalSpender.Status}; " +
+            $"clicked {string.Join(", ", game.Clicked.Select(g => g.gearSlot))}; balance {game.Balance.amount}.");
+
+        game = Setup();
         var options = VoidCrystalSpender.ReadOptions().Items;
         Check(options.Count == 4 && options.All(o => o.Hero != 2),
             "The live gear list must be used even when the dictionary contains empty placeholders; unowned gear must be excluded.");

@@ -35,7 +35,7 @@ public static class VoidCrystalPolicy
     public static bool WholeAmount(double value) =>
         double.IsFinite(value) && value >= 0 && value <= MaxInteger && value == Math.Truncate(value);
 
-    public static bool ValidGoal(string goal) => goal is "damage" or "health" or "armor" or "gold" or "power";
+    public static bool ValidGoal(string goal) => goal is "balanced" or "damage" or "health" or "armor" or "gold" or "power";
 
     public static bool Matches(VoidCrystalOption item, string goal, int target)
     {
@@ -44,7 +44,7 @@ public static class VoidCrystalPolicy
             !double.IsFinite(item.MultiplierGain) || item.MultiplierGain <= 0 ||
             !double.IsFinite(item.PowerGain) || item.PowerGain <= 0)
             return false;
-        if (goal == "power") return target == -1 || item.Hero == target;
+        if (goal is "balanced" or "power") return target == -1 || item.Hero == target;
         if (target == -1 && (goal switch
             {
                 "damage" => !item.DamageReady,
@@ -66,6 +66,7 @@ public static class VoidCrystalPolicy
     public static double Score(VoidCrystalOption item, string goal, int target)
     {
         if (!Matches(item, goal, target)) return 0;
+        if (goal == "balanced") return (item.Slot == 6 ? 4d : 1d) / item.Cost;
         if (goal == "power") return item.PowerGain / item.Cost;
         var share = target == -1 && item.Slot < 3 ? goal switch
         {
@@ -80,7 +81,8 @@ public static class VoidCrystalPolicy
 
     public static IEnumerable<VoidCrystalOption> Rank(IEnumerable<VoidCrystalOption> items, string goal, int target) =>
         items.Where(item => Score(item, goal, target) > 0).OrderByDescending(item => Score(item, goal, target))
-            .ThenByDescending(item => item.PowerGain).ThenBy(item => item.Cost)
+            .ThenBy(item => goal == "balanced" ? item.Cost : 0)
+            .ThenByDescending(item => goal == "balanced" ? 0 : item.PowerGain).ThenBy(item => item.Cost)
             .ThenBy(item => item.Hero).ThenBy(item => item.Slot);
 
     public static bool CanSpend(VoidCrystalOption expected, VoidCrystalOption current,

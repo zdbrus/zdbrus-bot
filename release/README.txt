@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.61 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.62 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -71,8 +71,10 @@ The planner can auto-apply a stronger squad on a schedule when enabled; it is of
 The planner's read-only upgrade advisor shows the best machine to level and the best blueprint to buy, and
 checks each machine's own screws, cogs and metal. Hover over planner numbers (or tap ?) for explanations.
 The planner's tier list ranks every war machine S to C for long-term investment and marks a goal squad.
-F4 has a Void Crystal advisor for hero gear. It automatically compares your roster; choosing one hero
-is optional. Pick damage, health, armor, gold or gear power. It uses the game's current gear, next
+F4's Void Crystal advisor defaults to Balanced gear - rings first. It spreads upgrades by next-enchant
+cost, favoring rings until they cost 4 times as much as other gear, then lets cheaper gear catch up.
+This balances costs, not equal levels or predicted stat gains. Choosing one hero limits this strategy
+to their gear. Damage, health, armor, gold and gear power remain separate goals. It uses current gear, next
 boost and price, and estimates party gains using the heroes currently fighting. Gear on benched heroes
 counts when it helps everyone; gear power also considers their personal gear. Gear power helps unlock
 tiers and missions, but is not hero damage. These are next-upgrade estimates, not a combat simulation
