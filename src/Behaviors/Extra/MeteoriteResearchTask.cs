@@ -4,11 +4,17 @@ using System.Collections.Generic;
 using System.Linq;
 using Firebot.Core;
 using Firebot.Core.Tasks;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
+#if MONO
+using ResearchQuantity = global::MeteoriteResearchPreviewPopup.ResearchQuantity;
+#else
 using ResearchQuantity = Il2Cpp.MeteoriteResearchPreviewPopup.ResearchQuantity;
+#endif
 
 namespace Firebot.Behaviors.Extra;
 
@@ -50,7 +56,11 @@ public class MeteoriteResearchTask : BotTask
     private static bool Selected(MeteoriteResearch research)
     {
         var selected = Popup?.meteoriteResearch;
+#if MONO
+        return Ui.Visible(Preview) && selected != null && ReferenceEquals(selected, research) &&
+#else
         return Ui.Visible(Preview) && selected != null && selected.Pointer == research.Pointer &&
+#endif
                selected.index == research.index &&
                selected.researchTree == research.researchTree &&
                selected.meteoriteResearchType == research.meteoriteResearchType;

@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Firebot.Behaviors.Extra;
 using Firebot.Core;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
@@ -482,7 +484,11 @@ public static class SquadApplier
             }
             var vc = UnityEngine.Object.FindObjectOfType<SelectWarMachineFormationViewController>();
             var card = target == null ? "none" : vc != null && vc.ActiveSquadFormationInteraction != null &&
+#if MONO
+                                                 ReferenceEquals(target, vc.ActiveSquadFormationInteraction) ? "the active card" : "an alternative card";
+#else
                                                  target.Pointer == vc.ActiveSquadFormationInteraction.Pointer ? "the active card" : "an alternative card";
+#endif
             Logger.Info($"[Planner] Applying to squad {_slot}, editing {card}. {string.Join("; ", parts)}");
         }
         catch (Exception e) { Logger.Debug($"[Planner] squads log: {e.Message}"); }
@@ -500,7 +506,11 @@ public static class SquadApplier
         for (var i = 0; rest != null && i < rest.Count; i++) if (rest[i] != null) all.Add(rest[i]);
         if (formation != null)
             foreach (var x in all)
+#if MONO
+                if (x.formation != null && ReferenceEquals(x.formation, formation)) return x;
+#else
                 if (x.formation != null && x.formation.Pointer == formation.Pointer) return x;
+#endif
         // Unknown formation list: squad 1 means the active card.
         return slot == 1 ? vc.ActiveSquadFormationInteraction : null;
     }

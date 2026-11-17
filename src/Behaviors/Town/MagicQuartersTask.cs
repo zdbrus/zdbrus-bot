@@ -9,6 +9,10 @@ using MelonLoader;
 
 namespace Firebot.Behaviors.Town;
 
+// On Mono (macOS) the game declares types with these names in the global namespace,
+// which would otherwise win over the usings above.
+using Guardian = Firebot.GameModel.Features.Town.MagicQuarters.Guardian;
+
 public class MagicQuartersTask : BotTask
 {
     public override GameFeature RequiredFeature => GameFeature.GuardianStrengthen;

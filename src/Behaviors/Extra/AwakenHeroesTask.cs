@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using Firebot.Core;
 using Firebot.Core.Tasks;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;

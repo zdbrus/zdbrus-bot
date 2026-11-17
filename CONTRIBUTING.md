@@ -21,7 +21,7 @@ Zdbrus Bot (a fork of Firebot by danilogmoura) is a C# mod for Firestone Idle RP
 
 ### Prerequisites
 
-- **Windows**
+- **Windows**, or **macOS** with the Steam version of the game (see [ADVANCED.md](ADVANCED.md) → *macOS*).
 - **MelonLoader V0.7.3 or higher** installed in your Firestone game folder.
 - **.NET SDK** (version compatible with the project — see the `.csproj` files).
 - **Visual Studio** or any C# editor of your choice.

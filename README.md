@@ -49,6 +49,23 @@ enable it once in F1 or press its hotkey to retry. An empty skill combo cannot s
 >
 > The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update uses separate PowerShell helpers to check GitHub while the game is open and install a newer DLL after it closes. F1 shows the check status and a Releases button. Wait for `UserData\ZdbrusBot_update.log` to report the result before reopening; if the game restarts too early, the update is skipped until the next close. The previous DLL is kept as `.bak`, and the three Il2CppInterop files are not changed. Turn Auto Update off in F1 > General.
 
+### macOS
+
+The macOS version of Firestone is built differently from the Windows one (Mono instead of IL2CPP), so it needs a few extra steps and a bot build made for it. `ZdbrusBot.zip` contains the Windows build only.
+
+1. Install MelonLoader 0.7.3 by extracting [`MelonLoader.macOS.x64.zip`](https://github.com/LavaGang/MelonLoader/releases/tag/v0.7.3) into the Firestone folder (the one with `Firestone.app`).
+2. Close the game and run `tools/macos/setup-macos.sh` from a clone of this repository. It downloads Unity's official macOS package once (~5 GB, about 11 GB of free space needed while it runs) and keeps only the files MelonLoader needs.
+3. Build the bot for macOS: see [ADVANCED.md](ADVANCED.md) → *macOS*. The build installs `Mods/ZdbrusBot.dll` and the `System.Text.Json` files it needs in `UserLibs/`.
+4. In Steam, open **Firestone → Properties → General → Launch Options** and set the line the script prints, for example:
+
+   ```text
+   "/Users/<you>/Library/Application Support/Steam/steamapps/common/Firestone/melonloader-launch.sh" %command%
+   ```
+
+5. Start the game **from Steam**. Started any other way, it does not log in and stays on *Fetching data from server*.
+
+On macOS, Auto Update is always off (it installs the Windows build); update by pulling and rebuilding. The three `Il2CppInterop` files are not needed. Run `tools/macos/setup-macos.sh` again after every game update or Steam *Verify integrity of game files*; `tools/macos/setup-macos.sh --restore` puts the original game files back.
+
 ## Keys
 
 <img src="assets/panel.jpg" alt="Zdbrus Bot settings panel in game, Battle tab" width="380" align="right">
@@ -221,7 +238,7 @@ Upgrade tasks skip preview scans when the relevant currency is at or below its r
 
 ## Requirements
 
-- Windows, Firestone from Steam or Epic, game version **9.1.3a** (the bot is updated when the game updates).
+- Windows (Steam or Epic), or macOS (Steam, see [macOS](#macos)), game version **9.1.3a** (the bot is updated when the game updates).
 - MelonLoader **0.7.3** (newer nightly builds crash the current game).
 - In the game settings, under **Gameplay**, set **Adventure buttons style** to **PC (Legacy)**.
 

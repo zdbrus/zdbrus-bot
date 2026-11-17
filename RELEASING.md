@@ -1,6 +1,6 @@
 # Building and preparing a release
 
-This project is a Windows MelonLoader mod targeting .NET 6. The DLL references assemblies generated in the installed game folder, so a plain checkout is not enough to build it.
+This project is a Windows MelonLoader mod targeting .NET 6. The DLL references assemblies generated in the installed game folder, so a plain checkout is not enough to build it. The macOS (Mono) build is made from source on a Mac and is not part of `ZdbrusBot.zip`; see [ADVANCED.md](ADVANCED.md) → *macOS*.
 
 ## Build and test
 

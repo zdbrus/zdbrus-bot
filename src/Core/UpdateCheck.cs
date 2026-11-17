@@ -14,6 +14,14 @@ internal static class UpdateCheck
 {
     public const string ReleasesUrl = "https://github.com/zdbrus/zdbrus-bot/releases/latest";
 
+    // The updater runs PowerShell and installs the Windows (IL2CPP) DLL, so the Mono (macOS)
+    // build never starts it and reports Auto Update as off.
+#if MONO
+    private static readonly bool Supported = false;
+#else
+    private static readonly bool Supported = true;
+#endif
+
     public static UpdateStatus Status { get; private set; } = UpdateStatus.Disabled;
     public static string Newer { get; private set; }
 
@@ -70,7 +78,7 @@ try {
 
     public static void Tick()
     {
-        if (!BotSettings.AutoUpdate)
+        if (!Supported || !BotSettings.AutoUpdate)
         {
             StopProbe();
             Status = UpdateStatus.Disabled;
@@ -171,6 +179,8 @@ try {
 
     public static void ScheduleOnExit()
     {
+        if (!Supported) return;
+
         try
         {
             var dll = Path.Combine(MelonEnvironment.MelonBaseDirectory, "Mods", "ZdbrusBot.dll");

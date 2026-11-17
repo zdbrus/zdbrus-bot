@@ -1,7 +1,9 @@
 using System;
 using Firebot.Core;
 using HarmonyLib;
+#if !MONO
 using Il2Cpp;
+#endif
 
 namespace Firebot.Behaviors.Extra;
 

@@ -44,7 +44,11 @@ public class TalentsTask : BotTask
         available = false;
         try
         {
+#if MONO
+            var talent = node?.GetComponent<global::TalentsInteraction>()?.talent;
+#else
             var talent = node?.GetComponent<Il2Cpp.TalentsInteraction>()?.talent;
+#endif
             if (talent == null || string.IsNullOrWhiteSpace(talent.name)) return false;
             double level = talent.tempLevel;
             int cap = talent.levelCap;

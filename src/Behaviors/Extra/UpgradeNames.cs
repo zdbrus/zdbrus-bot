@@ -97,7 +97,11 @@ internal static class UpgradeNames
         {
             var temp = FilePath + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(Names));
+#if MONO
+            File.Copy(temp, FilePath, true); File.Delete(temp);
+#else
             File.Move(temp, FilePath, true);
+#endif
             _dirty = false;
         }
         catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)

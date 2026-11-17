@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Firebot.BotActions;
 using Firebot.UI.Config;
-using Il2CppTMPro;
 using UnityEngine;
 using UnityEngine.UI;
 

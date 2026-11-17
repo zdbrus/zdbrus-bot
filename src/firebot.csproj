@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
         <OutputType>Library</OutputType>
         <RootNamespace>Firebot</RootNamespace>
         <AssemblyName>ZdbrusBot</AssemblyName>
@@ -19,57 +18,91 @@
         <Reference Include="0Harmony">
             <HintPath>$(MelonLoaderNetDir)\0Harmony.dll</HintPath>
         </Reference>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>$(GameAssembliesDir)\Assembly-CSharp.dll</HintPath>
+        </Reference>
+        <Reference Include="Unity.TextMeshPro">
+            <HintPath>$(GameAssembliesDir)\Unity.TextMeshPro.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.IMGUIModule">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.IMGUIModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.InputLegacyModule">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.TextRenderingModule">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.UI">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.UI.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.UIModule">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.UIModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.ImageConversionModule">
+            <HintPath>$(GameAssembliesDir)\UnityEngine.ImageConversionModule.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <!-- IL2CPP (Windows): interop runtime and Il2Cpp-prefixed game assemblies. -->
+    <ItemGroup Condition="'$(GameRuntime)' == 'Il2Cpp'">
         <Reference Include="Il2CppInterop.Runtime">
             <HintPath>$(MelonLoaderNetDir)\Il2CppInterop.Runtime.dll</HintPath>
         </Reference>
-        <Reference Include="Assembly-CSharp">
-            <HintPath>$(Il2CppAssembliesDir)\Assembly-CSharp.dll</HintPath>
-        </Reference>
         <Reference Include="Il2CppACTk.Runtime">
-            <HintPath>$(Il2CppAssembliesDir)\Il2CppACTk.Runtime.dll</HintPath>
+            <HintPath>$(GameAssembliesDir)\Il2CppACTk.Runtime.dll</HintPath>
         </Reference>
         <Reference Include="Il2Cppmscorlib">
-            <HintPath>$(Il2CppAssembliesDir)\Il2Cppmscorlib.dll</HintPath>
-        </Reference>
-        <Reference Include="Unity.TextMeshPro">
-            <HintPath>$(Il2CppAssembliesDir)\Unity.TextMeshPro.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.CoreModule">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.CoreModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.IMGUIModule">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.IMGUIModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.InputLegacyModule">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.InputLegacyModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.TextRenderingModule">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.TextRenderingModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.UI">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.UI.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.UIModule">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.UIModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.ImageConversionModule">
-            <HintPath>$(Il2CppAssembliesDir)\UnityEngine.ImageConversionModule.dll</HintPath>
+            <HintPath>$(GameAssembliesDir)\Il2Cppmscorlib.dll</HintPath>
         </Reference>
         <Reference Include="Il2CppViewControllerRefactor.Runtime">
-            <HintPath>$(Il2CppAssembliesDir)\Il2CppViewControllerRefactor.Runtime.dll</HintPath>
+            <HintPath>$(GameAssembliesDir)\Il2CppViewControllerRefactor.Runtime.dll</HintPath>
         </Reference>
         <Reference Include="Il2CppSharedASM">
-            <HintPath>$(Il2CppAssembliesDir)\Il2CppSharedASM.dll</HintPath>
+            <HintPath>$(GameAssembliesDir)\Il2CppSharedASM.dll</HintPath>
         </Reference>
         <Reference Include="Il2CppUtilitiesASM">
-            <HintPath>$(Il2CppAssembliesDir)\Il2CppUtilitiesASM.dll</HintPath>
+            <HintPath>$(GameAssembliesDir)\Il2CppUtilitiesASM.dll</HintPath>
         </Reference>
         <Reference Include="Il2CppCoreASM">
-            <HintPath>$(Il2CppAssembliesDir)\Il2CppCoreASM.dll</HintPath>
+            <HintPath>$(GameAssembliesDir)\Il2CppCoreASM.dll</HintPath>
         </Reference>
+        <Using Include="Il2CppTMPro"/>
+    </ItemGroup>
+
+    <!-- Mono (macOS): the game's managed assemblies are used directly. -->
+    <ItemGroup Condition="'$(GameRuntime)' == 'Mono'">
+        <!-- System.Text.Json ships with .NET 6 but not with Mono; its package DLLs go to UserLibs. -->
+        <PackageReference Include="System.Text.Json" Version="8.0.5"/>
+        <!-- IL2CPP interop exposes every game member as public; on Mono the private ones need publicizing. -->
+        <PackageReference Include="Krafs.Publicizer" Version="2.2.1" PrivateAssets="all"/>
+        <Publicize Include="Assembly-CSharp;CoreASM;SharedASM;UtilitiesASM;ViewControllerRefactor.Runtime"/>
+        <Reference Include="ACTk.Runtime">
+            <HintPath>$(GameAssembliesDir)\ACTk.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="ViewControllerRefactor.Runtime">
+            <HintPath>$(GameAssembliesDir)\ViewControllerRefactor.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="SharedASM">
+            <HintPath>$(GameAssembliesDir)\SharedASM.dll</HintPath>
+        </Reference>
+        <Reference Include="UtilitiesASM">
+            <HintPath>$(GameAssembliesDir)\UtilitiesASM.dll</HintPath>
+        </Reference>
+        <Reference Include="CoreASM">
+            <HintPath>$(GameAssembliesDir)\CoreASM.dll</HintPath>
+        </Reference>
+        <Using Include="TMPro"/>
+        <!-- Fully qualified Il2Cpp names used in the code map 1:1 to these namespaces on Mono. -->
+        <Using Include="System" Alias="Il2CppSystem"/>
+        <Using Include="TMPro" Alias="Il2CppTMPro"/>
+        <Using Include="HolydayStudios" Alias="Il2CppHolydayStudios"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -82,6 +115,12 @@
         <Copy SourceFiles="$(TargetDir)$(AssemblyName).dll"
               DestinationFolder="$(ModsDir)"
               Condition="Exists('$(ModsDir)')"
+              SkipUnchangedFiles="true"/>
+
+        <!-- Mono only: NuGet dependencies the game does not ship (System.Text.Json and its dependencies). -->
+        <Copy SourceFiles="@(ReferenceCopyLocalPaths)"
+              DestinationFolder="$(UserLibsDir)"
+              Condition="'$(GameRuntime)' == 'Mono' and '%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and '%(ReferenceCopyLocalPaths.Extension)' == '.dll' and Exists('$(UserLibsDir)')"
               SkipUnchangedFiles="true"/>
 
         <Message Text="➡ Mod deployed to: $(ModsDir)" Importance="High"

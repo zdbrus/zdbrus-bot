@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Linq;
 using Firebot.GameModel.Base;
 using Firebot.Utilities;
-using Il2CppTMPro;
 using UnityEngine;
 
 namespace Firebot.GameModel.Primitives;

@@ -7,7 +7,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader.Utils;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;

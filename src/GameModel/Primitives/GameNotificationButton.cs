@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Firebot.GameModel.Base;
+#if !MONO
 using Il2Cpp;
+#endif
 using UnityEngine;
 using UnityEngine.UI;
 using static Firebot.Core.BotSettings;

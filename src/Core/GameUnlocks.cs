@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+#if !MONO
 using Il2Cpp;
+#endif
 
 namespace Firebot.Core;
 

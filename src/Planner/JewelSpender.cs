@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Firebot.Behaviors.Extra;
 using Firebot.Core;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;

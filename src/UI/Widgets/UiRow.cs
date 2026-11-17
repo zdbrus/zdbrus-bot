@@ -1,6 +1,5 @@
 using System;
 using Firebot.UI.Config;
-using Il2CppTMPro;
 using UnityEngine;
 
 namespace Firebot.UI.Widgets;

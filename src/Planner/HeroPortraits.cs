@@ -2,8 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+#if !MONO
 using Il2Cpp;
+#endif
+#if !MONO
 using Il2CppInterop.Runtime;
+#endif
 using UnityEngine;
 
 namespace Firebot.Planner;
@@ -34,11 +38,19 @@ public static class HeroPortraits
 
         try
         {
+#if MONO
+            var found = UnityEngine.Object.FindObjectsOfType(typeof(HeroInteractionSquare));
+#else
             var found = UnityEngine.Object.FindObjectsOfType(Il2CppType.Of<HeroInteractionSquare>());
+#endif
             if (found == null) return;
             foreach (var obj in found)
             {
+#if MONO
+                var square = obj as HeroInteractionSquare;
+#else
                 var square = obj?.TryCast<HeroInteractionSquare>();
+#endif
                 if (square == null || square.isEmpty) continue;
                 var hero = square.hero;
                 var image = square.heroImage;

@@ -10,6 +10,10 @@ using Firebot.GameModel.Shared;
 
 namespace Firebot.Behaviors.Map;
 
+// On Mono (macOS) the game declares types with these names in the global namespace,
+// which would otherwise win over the usings above.
+using MapMission = Firebot.GameModel.Features.Map.MapMission;
+
 public class WarfrontCampaignLootTask : BotTask
 {
     public override GameFeature RequiredFeature => GameFeature.WorldMap;
