@@ -423,12 +423,23 @@ public static class SquadApplier
             var card = SquadInteraction(slot);
             if (card == null) break;
             var button = card.activateFormationButton;
+            // The card's own "Set active" button, found by name: the field above has never been seen to work in
+            // the game (squad 2 never became active), so later attempts click the button on screen instead.
+            var named = attempt == 0 ? null : card.transform.Find("setActiveButton");
             try
             {
-                if (button != null && button.gameObject.activeInHierarchy && button.interactable) button.onClick.Invoke();
+                if (named != null && Ui.Clickable(named))
+                {
+                    if (attempt == 1) named.GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                    else Ui.PointerClick(named);
+                }
+                else if (button != null && button.gameObject.activeInHierarchy && button.interactable) button.onClick.Invoke();
                 else card.ActivateFormation();
             }
             catch (Exception e) { Logger.Debug($"[Squads] activate: {e.Message}"); }
+            Logger.Debug($"[Squads] Squad {slot} attempt {attempt + 1}: card found, field button " +
+                         $"{(button == null ? "missing" : button.interactable ? "ready" : "not interactable")}, " +
+                         $"named button {(named == null ? "not tried" : Ui.Clickable(named) ? "ready" : "not clickable")}.");
             var until = Time.unscaledTime + 5f;
             while (ActiveSlot() != slot && Time.unscaledTime < until) yield return new WaitForSeconds(0.25f);
         }

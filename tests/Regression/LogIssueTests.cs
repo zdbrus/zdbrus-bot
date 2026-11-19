@@ -214,8 +214,8 @@ internal static class LogIssueTests
     public static void MysteryBoxClaims()
     {
         const string storePath = "menus/Store";
-        const string tabPath = storePath + "/submenuButtons/grid/valueBundleButton";
-        const string item = storePath + "/bg/submenus/extremeValueBundles/bundles/mysteryBox/Graphics";
+        const string tabPath = storePath + "/submenuButtons/grid/valueBundleDailyButton";
+        const string item = storePath + "/bg/submenus/valueBundleDaily/Scroll View/Viewport/bundles/mysteryBox/Graphics";
         const string checkIn = storePath + "/bg/submenus/dailyRewards/Viewport/transparentFrame/checkIn";
 
         (DailyRewardsTask Task, GameObject Store, Button Tab, Button Claim, GameObject Marker) Setup(

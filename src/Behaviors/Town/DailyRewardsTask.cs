@@ -22,14 +22,15 @@ public class DailyRewardsTask : BotTask
     private const string OracleGiftClaimed =
         P.Menus + "/OracleStore/bg/submenus/extremeValueBundles/items/oraclesGift/Graphics/claimedBG";
     private const string MysteryBoxButton =
-        P.Menus + "/Store/bg/submenus/extremeValueBundles/bundles/mysteryBox/Graphics/purchaseButton";
+        P.Menus + "/Store/bg/submenus/valueBundleDaily/Scroll View/Viewport/bundles/mysteryBox/Graphics/purchaseButton";
     private const string MysteryBoxClaimed =
-        P.Menus + "/Store/bg/submenus/extremeValueBundles/bundles/mysteryBox/Graphics/claimedBG";
-    private const string ValueBundleTab = P.Menus + "/Store/submenuButtons/grid/valueBundleButton";
+        P.Menus + "/Store/bg/submenus/valueBundleDaily/Scroll View/Viewport/bundles/mysteryBox/Graphics/claimedBG";
+    private const string ValueBundleTab = P.Menus + "/Store/submenuButtons/grid/valueBundleDailyButton";
     private const string ScarabTokenButton =
-        P.Popups + "/ScarabGameShop/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
+        P.Popups + "/ScarabGameShop/bg/submenus/extremeValueBundlesDaily/Scroll View/Viewport/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
     private const string ScarabTokenClaimed =
-        P.Popups + "/ScarabGameShop/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/claimedBG";
+        P.Popups + "/ScarabGameShop/bg/submenus/extremeValueBundlesDaily/Scroll View/Viewport/items/scarabGameShopFreeTokenInteraction/claimBg/claimedBG";
+    private const string ScarabDailyTab = P.Popups + "/ScarabGameShop/bg/submenuButtons/dailyDeals/button";
     private const string CheckInButton =
         P.Menus + "/Store/bg/submenus/dailyRewards/Viewport/transparentFrame/checkIn";
     private static readonly string[] NotificationNames =
@@ -173,6 +174,12 @@ public class DailyRewardsTask : BotTask
             yield return Notifications.ScarabGameShopFreeToken;
             yield return new WaitForSeconds(MenuOpenDelay);
             var confirmed = false;
+            if (!Ui.Visible(ScarabTokenButton) && !Ui.Visible(ScarabTokenClaimed) && Ui.Clickable(ScarabDailyTab))
+            {
+                yield return Ui.Click(ScarabDailyTab, MenuOpenDelay);
+                yield return Ui.WaitUntil(() => Ui.Visible(ScarabTokenButton) || Ui.Visible(ScarabTokenClaimed),
+                    _ => { }, 3f);
+            }
             yield return ClaimWithVisibleState(ScarabTokenButton, ScarabTokenClaimed, "Scarab free token",
                 value => confirmed = value);
             yield return Ui.CloseRewards();

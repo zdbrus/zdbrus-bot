@@ -125,7 +125,7 @@ public static class Paths
 
                 public static class MysteryBoxLoc
                 {
-                    private const string Root = RootSubMenus + "/extremeValueBundles/bundles/mysteryBox/Graphics";
+                    private const string Root = RootSubMenus + "/valueBundleDaily/Scroll View/Viewport/bundles/mysteryBox/Graphics";
 
                     public const string MysteryBoxBtn = Root + "/purchaseButton";
 
@@ -149,10 +149,10 @@ public static class Paths
                 public const string CloseBtn = Root + "/bg/closeButton";
 
                 public const string ClaimFreeTokenBtn =
-                    Root + "/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
+                    Root + "/bg/submenus/extremeValueBundlesDaily/Scroll View/Viewport/items/scarabGameShopFreeTokenInteraction/claimBg/purchaseButton";
 
                 public const string NextRunTimeTxt =
-                    Root + "/bg/submenus/sale/items/scarabGameShopFreeTokenInteraction/claimBg/renewText";
+                    Root + "/bg/submenus/extremeValueBundlesDaily/Scroll View/Viewport/items/scarabGameShopFreeTokenInteraction/claimBg/renewText";
             }
 
             public static class OracleStoreLoc
