@@ -18,5 +18,6 @@ internal static class RunNowTests
         task.RequestRunNow();
         Check(task.DueTime <= DateTime.Now && task.BubbleQuietUntil <= DateTime.Now && task.BubbleIdleStreak == 0,
             "Run now must make the task due immediately and clear the bubble cooldown.");
+        Check(task.RunNowRequested, "Run now must flag the task so the scheduler picks it before lit bubbles.");
     }
 }

@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.64 (2026-11-18)
+- **F2 RUN now really runs the task next.** Before, any task with a lit notification bubble (Arena, Quests, Chaos Rift and so on) went first, so a task you pressed RUN on could keep getting pushed back. RUN now puts the task at the front of the line.
+
 ## 0.7.63 (2026-11-15)
 - **Run any task now from F2.** Every task in F2 has a **RUN** button next to its ON/OFF switch. It skips the task's timer and bubble cooldown so the bot runs it next. If the bot was stopped, RUN starts it.
 - **Priority orders re-checked against Aurora's Steam Complete Guide** (October 2026 update) and the game's own upgrade names:

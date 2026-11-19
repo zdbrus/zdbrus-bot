@@ -54,6 +54,18 @@ public static class BotManager
         return true;
     }
 
+    /// <summary>The first enabled, unlocked task the player asked to run from F2, or null.</summary>
+    internal static BotTask PickRunNow(IEnumerable<BotTask> tasks)
+    {
+        foreach (var task in tasks)
+            if (task.RunNowRequested)
+            {
+                if (task.IsEnabled && !task.IsLocked) return task;
+                task.RunNowRequested = false;
+            }
+        return null;
+    }
+
     /// <summary>Queues an enabled task to run at the scheduler's next pick, ignoring its timer (F2 "Run").</summary>
     internal static bool RunTaskNow(BotTask task)
     {
@@ -244,6 +256,10 @@ public static class BotManager
                     (readyTask == null || notificationTask.SchedulerPriority >= readyTask.SchedulerPriority))
                     readyTask = notificationTask;
 
+                // F2 RUN goes first: lit bubbles and priorities would otherwise keep pushing it back.
+                var requested = PickRunNow(Tasks);
+                if (requested != null) readyTask = requested;
+
                 var hasNearTask = nextEnabledTaskRun != DateTime.MaxValue &&
                                   (nextEnabledTaskRun - DateTime.Now).TotalSeconds <=
                                   AutoUpgradeMinExecutionWindowSeconds;
@@ -333,6 +349,7 @@ public static class BotManager
                     // because Logger.Debug filters the write but not the cost of building the output.
                     var stopwatch = Logger.IsDebugEnabled ? Stopwatch.StartNew() : null;
 
+                    readyTask.RunNowRequested = false;
                     var fromBubble = readyTask == notificationTask;
                     yield return RunSafe(readyTask.Execute(), $"Task {readyTask.SectionTitle}");
                     ReleaseTask(readyTask);

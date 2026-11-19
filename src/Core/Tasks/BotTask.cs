@@ -48,10 +48,14 @@ public abstract class BotTask
     /// <summary>Makes the task due right now: clears its timer and any bubble cooldown (F2 "Run" button).</summary>
     internal void RequestRunNow()
     {
+        RunNowRequested = true;
         NextRunTime = DateTime.MinValue;
         BubbleQuietUntil = DateTime.MinValue;
         BubbleIdleStreak = 0;
     }
+
+    /// <summary>Set by F2 RUN: the scheduler picks this task before lit bubbles and priorities. Cleared when it runs.</summary>
+    internal bool RunNowRequested { get; set; }
 
     internal virtual IEnumerable<KeyValuePair<string, DateTime>> RetryDeadlines
         => Array.Empty<KeyValuePair<string, DateTime>>();
