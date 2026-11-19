@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.65 (2026-11-18)
+- **Engineer Tools works again.** Clicking the Engineer building opens a small Engineer/Garage chooser first, and the task never picked Engineer, so it logged "Could not open the tools screen" every run. It now picks Engineer, then opens the tools screen.
+- **The bot leaves your screens alone.** If you clicked or typed in the last 12 seconds and a screen is open (Tree of Life, a hero, the shop), a due task waits instead of closing it. A task you start with RUN still goes right away.
+- **Six F1 descriptions no longer get cut off** (Talents, Oracle, Firestone Research, Enable All On Launch, Record Arena Matchups).
+
 ## 0.7.64 (2026-11-18)
 - **F2 RUN now really runs the task next.** Before, any task with a lit notification bubble (Arena, Quests, Chaos Rift and so on) went first, so a task you pressed RUN on could keep getting pushed back. RUN now puts the task at the front of the line.
 

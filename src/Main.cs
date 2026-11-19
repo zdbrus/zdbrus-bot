@@ -88,6 +88,7 @@ public class Main : MelonMod
     public override void OnUpdate()
     {
         ArenaMatchupRecorder.ReportErrors();
+        UserActivity.Tick();
         UpdateCheck.Tick();
         // Frozen once, before anything consumes it. A key press lasts the whole frame, so every GetKeyDown
         // below sees the same key: without this, recording F6 would also start AutoUpgrade and recording

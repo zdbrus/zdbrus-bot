@@ -7,6 +7,14 @@ internal static class RunNowTests
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    public static void WaitsForPlayer()
+    {
+        Check(Firebot.Core.UserActivityPolicy.ShouldWait(3f, true, false), "A recent click with a screen open must hold the task.");
+        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(30f, true, false), "A quiet player must not hold the task.");
+        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(3f, false, false), "No open screen means nothing of the player's to close.");
+        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(3f, true, true), "A task started with RUN must never wait.");
+    }
+
     public static void MakesDue()
     {
         var task = new TalentsTask();

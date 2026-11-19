@@ -29,7 +29,18 @@ public class EngineerToolsTask : BotTask
             }
 
             if (!Ui.Visible(Tools))
-                yield return Ui.OpenTownSubmenu("engineer", Tools, Menu + "/submenus/submenuButtons/engineer");
+            {
+                // The Engineer building first opens a chooser popup (Engineer or Garage); pick Engineer.
+                yield return Ui.OpenTownBuilding("engineer");
+                if (!Ui.Visible(Menu))
+                    yield return Ui.Click(P.Popups + "/GarageSelection/bg/engineer", 1.5f);
+                yield return Ui.WaitFor(Menu, 3f);
+                if (Ui.Visible(Menu) && !Ui.Visible(Tools))
+                {
+                    yield return Ui.Click(Menu + "/submenus/submenuButtons/engineer", 1.5f);
+                    yield return Ui.WaitFor(Tools, 3f);
+                }
+            }
         }
 
         if (!Ui.Visible(Tools))

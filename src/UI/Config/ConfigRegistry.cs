@@ -502,9 +502,9 @@ internal static class ConfigRegistry
             "No resource marked disables the task.",
 
         ["firestone_research/research_priority"] =
-            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
-            "Guide order: Firestone Finder and Raining gold first.\n" +
-            "Names describe Tree I; positions also apply to other trees.",
+            "Numbers show priority; tap to toggle.\n" +
+            "Guide order: Firestone Finder, Raining gold first.\n" +
+            "Names describe Tree I; positions apply to all trees.",
 
         ["personal_tree/priority"] =
             "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
@@ -519,12 +519,22 @@ internal static class ConfigRegistry
             "Fill each available listed upgrade before the next.",
 
         ["talents/priority"] =
-            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
-            "Guide order puts Battle cry and Fate first; locked talents are skipped.",
+            "Numbers show priority; tap to toggle.\n" +
+            "Battle cry and Fate first; locked talents are skipped.",
 
         ["oracle_blessings/priority"] =
-            "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
-            "Guide order: Fate once unlocked, then Guardian power; locked ones are skipped.",
+            "Numbers show priority; tap to toggle.\n" +
+            "Fate first once unlocked, then Guardian power.",
+
+        ["firebot_settings/enable_all_on_launch"] =
+            "At each game launch, turns on Auto Start, AutoUpgrade,\n" +
+            "AutoSkill and every task. Priorities and reserves stay.\n" +
+            "Manual off choices last until the game closes. Default: off.",
+
+        ["arena/record_matchups"] =
+            "Off by default. Saves bot-started Arena results locally,\n" +
+            "no player names, in UserData\\ZdbrusBotArenaMatchups.jsonl.\n" +
+            "Does not predict winners or change fights.",
 
         ["exotic_merchant/priority"] =
             "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +

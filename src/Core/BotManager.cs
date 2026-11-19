@@ -292,6 +292,15 @@ public static class BotManager
             _tutorialHold = GameTutorial.ShouldHold;
             if (_tutorialHold) readyTask = null;
 
+            // The player is using a screen of their own (Tree of Life, a hero, the shop): leave it open until they
+            // have been quiet for a moment, instead of sweeping it shut for the next task.
+            if (readyTask != null && !IsTaskExecuting &&
+                UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
+                    Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus).Any() &&
+                    !Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle),
+                    readyTask.RunNowRequested))
+                readyTask = null;
+
             // Story dialogue, "New hero!" and the chapter reward sit on top of everything and have no close button
             // for the sweep. Cleared between tasks too, but a new account can go a long time with no task due.
             if (!plannerBusy && Watchdog.StoryPopupOpen && !GameTutorial.IsForced)

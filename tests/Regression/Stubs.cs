@@ -1062,3 +1062,12 @@ namespace Firebot.GameModel.Features.Map.Missions
 
     public static class MissionRewardsPopup { public static IEnumerator Close { get { yield break; } } }
 }
+
+namespace Firebot.Core
+{
+    public static class UserActivity
+    {
+        public static void Tick() { }
+        public static float SecondsSinceInput => 0f;
+    }
+}
