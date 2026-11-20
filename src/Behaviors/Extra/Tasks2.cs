@@ -900,15 +900,22 @@ public class OpenChestsTask : BotTask
     private const string NewItems = P.Popups + "/NewItem";
     private const string MysteryBoxId = MysteryBoxOpener.ItemId;
     private MelonPreferences_Entry<bool> _openMysteryBoxes;
-    private static readonly HashSet<string> SupportedChests = new(StringComparer.OrdinalIgnoreCase)
-        { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" };
+    // The game's own chest codes (GearChestCode, JewelChestCode, CelestialChestCode). A chest whose tile shows a
+    // requirement (gear power, campaign stars, Oracle level) is kept by the requirement check below.
+    private static readonly string[] ChestIds =
+    {
+        "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Titan", "Angel",
+        "Wooden", "Iron", "Golden", "Diamond", "Opal", "Emerald", "Platinum", "Bloodstone",
+        "Comet", "Lunar", "Solar", "Nebula", "Cosmic", "Galaxy", "Stellar", "Constellation"
+    };
+    private static readonly HashSet<string> SupportedChests = new(ChestIds, StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MelonPreferences_Entry<bool>> _open = new(StringComparer.OrdinalIgnoreCase);
     protected override bool EnabledByDefault => true;
 
     // Keyed by the chest tile's object name in the game (its ID), never by the displayed text.
     protected override void OnConfigure(MelonPreferences_Category c)
     {
-        foreach (var id in new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Wooden", "Iron", "Golden", "Comet", "Lunar" })
+        foreach (var id in ChestIds)
             _open[id] = c.CreateEntry("open_" + id.ToLowerInvariant(), true, "Open " + id + " Chests",
                 "Tick to let the bot open this chest type (game id: " + id + "). Untick to keep them.");
         _openMysteryBoxes = c.CreateEntry("open_mysterybox", true, "Open Mystery Boxes",

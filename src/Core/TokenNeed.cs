@@ -26,6 +26,13 @@ internal static class TokenNeed
         _at = Now();
     }
 
+    /// <summary>
+    ///     True when paying cost still leaves what a war machine is waiting for. The guide ranks war machines
+    ///     above the Chaos Rift for expedition tokens, so the rift's stone purchases respect this.
+    /// </summary>
+    public static bool AllowsSpend(double have, double cost) =>
+        double.IsFinite(have) && double.IsFinite(cost) && have - cost >= Current;
+
     public static void Clear()
     {
         _amount = 0;

@@ -15,6 +15,15 @@ internal static class RunNowTests
         Check(!Firebot.Core.UserActivityPolicy.ShouldWait(3f, true, true), "A task started with RUN must never wait.");
     }
 
+    public static void KeepsStrangeDust()
+    {
+        Check(Firebot.Core.StrangeDustPolicy.CanSpend(100, 40, 0), "No reserve must allow spending.");
+        Check(Firebot.Core.StrangeDustPolicy.CanSpend(1040, 40, 1000), "Spending down to exactly the reserve is allowed.");
+        Check(!Firebot.Core.StrangeDustPolicy.CanSpend(1039, 40, 1000), "Spending below the reserve must be refused.");
+        Check(!Firebot.Core.StrangeDustPolicy.CanSpend(double.NaN, 20, 0), "An unreadable balance must never spend.");
+        Check(Firebot.Core.StrangeDustPolicy.CanSpend(50, 20, -5), "A negative reserve counts as none.");
+    }
+
     public static void MakesDue()
     {
         var task = new TalentsTask();

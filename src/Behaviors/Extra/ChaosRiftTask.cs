@@ -212,6 +212,12 @@ public class ChaosRiftTask : BotTask
                 break;
             }
 
+            if (isStone && !TokenNeed.AllowsSpend(have, cost))
+            {
+                Logger.Info($"[Chaos Rift] Keeping expedition tokens for a war machine level ({TokenNeed.Current:0} needed); not buying {item}.");
+                break;
+            }
+
             if (!Ui.Clickable(button)) break;
             var confirmed = false;
             yield return Ui.ClickUntil(Ui.Find(button), () => Ui.NumberAt(currency) < have,

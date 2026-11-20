@@ -18,6 +18,7 @@ public class AlchemistTask : BotTask
     public override GameFeature RequiredFeature => GameFeature.Alchemist;
 
     private MelonPreferences_Entry<string> _resourceType;
+    private MelonPreferences_Entry<int> _keepDust;
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.ExperimentsBtn;
     protected override bool UseScheduledTime => true;
 
@@ -42,6 +43,8 @@ public class AlchemistTask : BotTask
             $"\nDefault: empty. If no value is provided, the task will be disabled." +
             $"\nEXAMPLES: '0,1' = Use Dragon blood and Strange dust. '2' = Only use Exotic coin."
         );
+        _keepDust = category.CreateEntry("keep_strange_dust", 0, "Strange Dust To Keep",
+            "Strange Dust the Alchemist leaves unspent (guardian evolutions, Tier 2 soulstones need 1,000).");
     }
 
     private string[] GetResourceTypes()
@@ -118,7 +121,7 @@ public class AlchemistTask : BotTask
         }
 
         yield return new WaitForSeconds(1f);
-        yield return experiments.Start(startableResources);
+        yield return experiments.Start(startableResources, _keepDust?.Value ?? 0);
         NextRunTime = experiments.NextRunTime(Experiments.ValidResourceIds);
         yield return Alchemist.Close;
     }

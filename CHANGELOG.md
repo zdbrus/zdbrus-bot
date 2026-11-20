@@ -1,6 +1,10 @@
 ﻿# Changelog
 
 ## 0.7.65 (2026-11-18)
+- **Strange Dust To Keep (Alchemist and Magic Quarters).** The Alchemist's dust experiments and guardian Enlightenment both spend Strange Dust, which kept some accounts near zero and unable to reach the 1,000 dust Tier 2 soulstones need. Each now has a reserve setting that is never spent into. It defaults to 0, so nothing changes until you set it.
+- **Chaos Rift leaves war machine tokens alone.** Moonstone purchases use expedition tokens, which the guide ranks below war machine levels. The rift now skips a purchase that would take tokens a war machine level is waiting for.
+- **Firestone Research default order follows the guide again.** Raining Gold first, then Trainer Skills, Expeditioner and Attribute damage. Firestone Finder moves down (the guide calls it weak in this tree) and health and armor go last. Lists you never edited move once; edited lists are left alone, and Recommended restores it.
+- **Open Chests now covers every chest the game has.** Mythic, Titan and Angel gear chests, Diamond through Bloodstone jewel chests and Solar through Constellation celestial chests were skipped before. Chests that show a requirement are still kept, and each type has its own on/off switch.
 - **Soul Shard advisor in the Planner (F4).** Lists soulstone enchants for your heroes in the guide's order (Wisdom, Faith, Charisma, then Focus, Stamina, Courage), crew heroes first, then cheapest level, with the real cost from the game. "Spend for me" enchants them through the Hall of Heroes up to your budget and stops at the first enchant the game refuses. It only runs when you press it.
 - **Engineer Tools works again.** Clicking the Engineer building opens a small Engineer/Garage chooser first, and the task never picked Engineer, so it logged "Could not open the tools screen" every run. It now picks Engineer, then opens the tools screen.
 - **Daily Rewards finds the Mystery Box and the Scarab free token again.** The game moved both to new screens in the Store and the Scarab shop, so the bot logged "could not be found" and retried every few minutes for days. It now looks in the new places.

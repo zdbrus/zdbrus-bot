@@ -15,6 +15,7 @@ public class MagicQuartersTask : BotTask
 
     private MelonPreferences_Entry<int> _guardianIndex;
     private MelonPreferences_Entry<bool> _useStrangeDust;
+    private MelonPreferences_Entry<int> _keepDust;
 
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.GuardianTrainingBtn;
 
@@ -59,6 +60,8 @@ public class MagicQuartersTask : BotTask
             "Use Strange Dust",
             "Use 'Strange Dust' for training. Default is false."
         );
+        _keepDust = category.CreateEntry("keep_strange_dust", 0, "Strange Dust To Keep",
+            "Strange Dust Enlightenment leaves unspent (Tier 2 soulstones need 1,000).");
     }
 
     private int FindAvailableGuardian(int preferredIndex)
@@ -116,8 +119,15 @@ public class MagicQuartersTask : BotTask
 
         var enlightenmentBtn = Guardian.EnlightenmentBtn;
         var applied = 0;
+        var keep = _keepDust?.Value ?? 0;
         while (applied < 50 && enlightenmentBtn.IsClickable())
         {
+            if (!StrangeDustPolicy.CanSpend(Balance(), StrangeDustPolicy.EnlightenmentCost, keep))
+            {
+                Debug($"[INFO] Enlightenment skipped: it would use Strange Dust you keep ({keep}).");
+                break;
+            }
+
             yield return enlightenmentBtn.Click();
             applied++;
         }
@@ -128,6 +138,13 @@ public class MagicQuartersTask : BotTask
             Debug($"[INFO] Enlightenment clicked {applied} time(s) until the button became unavailable.");
     }
 
+
+    private static double Balance()
+    {
+        var currencies = Il2Cpp.GameInitialize.HandlerLoader?.currencyHandler?.currencies;
+        return currencies != null && currencies.TryGetValue(Il2Cpp.CurrencyCode.StrangeDust, out var currency) &&
+               currency != null ? currency.amount : double.NaN;
+    }
 
     private int GetGuardianIndex()
     {

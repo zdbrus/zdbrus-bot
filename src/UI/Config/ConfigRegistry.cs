@@ -73,6 +73,8 @@ internal static class ConfigRegistry
         ["firebot_settings/free_speedup_seconds"] =
             new NumberRange(BotSettings.FreeSpeedupSecondsMin, BotSettings.FreeSpeedupSecondsMax, false),
         ["magic_quarters/guardian_index"] = new NumberRange(0f, 3f, true),
+        ["magic_quarters/keep_strange_dust"] = new NumberRange(0f, 100000f, true),
+        ["alchemist/keep_strange_dust"] = new NumberRange(0f, 100000f, true),
         ["free_pickaxes/pickaxe_claim_threshold"] = new NumberRange(1f, 30f, true),
         ["exotic_merchant/sell_mode"] = new NumberRange(0f, 3f, true),
         ["arcane_crystal/keep_pickaxes"] = new NumberRange(0f, 500f, true),
@@ -495,6 +497,16 @@ internal static class ConfigRegistry
 
         ["liberation_missions/difficulty"] =
             "Choose Easy (1 star), Normal (2 stars), or both. Both runs Easy first, then Normal.",
+
+        ["magic_quarters/keep_strange_dust"] =
+            "Strange Dust Enlightenment will not touch.\n" +
+            "Tier 2 soulstones need 1,000 dust; evolutions need more.\n" +
+            "0 spends freely. Allowed range: 0 to 100000.",
+
+        ["alchemist/keep_strange_dust"] =
+            "Strange Dust the Alchemist will not touch.\n" +
+            "Tier 2 soulstones need 1,000 dust; evolutions need more.\n" +
+            "0 spends freely. Allowed range: 0 to 100000.",
 
         ["alchemist/resource_type"] =
             "HOW TO USE: Toggle which resources an experiment may use.\n" +

@@ -111,6 +111,8 @@ internal static class Program
             Test("one chest is kept for the daily quest", RecommendedOrderTests.ChestKeepOptions);
             Test("F2 run now makes a task due immediately", RunNowTests.MakesDue);
             Test("A due task waits while the player uses a screen", RunNowTests.WaitsForPlayer);
+            Test("Strange Dust reserve is never spent into", RunNowTests.KeepsStrangeDust);
+            Test("Chaos Rift leaves war machine tokens alone", RecommendedOrderTests.ChaosRiftRespectsWarMachineTokens);
             Test("Void Crystal requests reject replays, changed sessions, tutorials and overlapping actions", VoidCrystalTests.RequestSafety);
             Test("meteorite research preserves the exact reserve instead of trusting rounded UI values", MeteoriteTests.Boundaries);
             Test("meteorite research rechecks live reserve, balance, price and selection at the click", MeteoriteTests.LiveGuard);

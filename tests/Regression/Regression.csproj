@@ -26,6 +26,7 @@
     <Compile Include="..\..\src\Core\UpdateCheck.cs" Link="UpdateCheck.cs" />
     <Compile Include="..\..\src\Core\Brand.cs" Link="Brand.cs" />
     <Compile Include="..\..\src\Core\UserActivityPolicy.cs" Link="UserActivityPolicy.cs" />
+    <Compile Include="..\..\src\Core\StrangeDustPolicy.cs" Link="StrangeDustPolicy.cs" />
     <Compile Include="..\..\src\Core\ExoticUpgradePolicy.cs" Link="ExoticUpgradePolicy.cs" />
     <Compile Include="..\..\src\Core\PurchaseObservation.cs" Link="PurchaseObservation.cs" />
     <Compile Include="..\..\src\Core\VoidCrystalPolicy.cs" Link="VoidCrystalPolicy.cs" />

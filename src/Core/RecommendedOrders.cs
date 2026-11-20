@@ -30,9 +30,10 @@ internal static class RecommendedOrders
         "Tank specialization,Healer specialization,Expose Weakness,Weaklings,Skip wave,Skip stage," +
         "Scroll of damage effect,Scroll of speed effect,Scroll of health effect";
 
-    // Aurora: time reductions first (Trainer skills, Expeditioner), then gold and firestone (Firestone Finder,
-    // Raining gold), then attributes. Critical loot is weak in tree 1, so it goes last.
-    public const string FirestoneResearch = "14,16,13,7,1,5,2,3,4,6,15,12,10,11,8,9";
+    // Aurora: Raining gold is the best upgrade, then the time cuts (Trainer skills, Expeditioner) and attribute
+    // damage. Firestone Finder is weak in this tree (it shines in the Exotic Merchant and meteorite tree 3), health
+    // and armor go last together, and critical loot, Weaklings and Medal of honor are poor.
+    public const string FirestoneResearch = "7,14,16,1,5,4,6,15,13,2,3,11,12,10,8,9";
 
     public const string PersonalTree =
         "Battle cry,Miner,Firestone Finder,Raining gold,Attribute damage,All main attributes," +
@@ -78,24 +79,24 @@ internal static class RecommendedOrders
     ///     The orders 0.7.62 and earlier shipped. A list still exactly equal to one of these was never edited by
     ///     the player, so it moves to the new guide order once; any edited list is left alone.
     /// </summary>
-    private static readonly IReadOnlyDictionary<string, string> PreviousDefaults = new Dictionary<string, string>
+    private static readonly IReadOnlyDictionary<string, string[]> PreviousDefaults = new Dictionary<string, string[]>
     {
         ["talents/priority"] =
-            "Battle cry,Fate,Leader - Auto Abilities,Party - Auto Abilities,All main attributes,Raining gold,Guardian power,Leadership,Team bonus,Attribute damage,Librarian,Alchemy,Meteorite hunter,Trainer skills,Expeditioner,Twin dragons,Coworkers,Attribute health,Attribute armor,Critical chance,Critical damage,Attack speed,Dodge,Fist fight,Precision,Magic spells,Mana heroes,Energy heroes,Rage heroes,Damage specialization,Tank specialization,Healer specialization,Weaklings,Expose weakness,Powerless enemy,Powerless boss,Ancient knowledge",
+            new[] { "Battle cry,Fate,Leader - Auto Abilities,Party - Auto Abilities,All main attributes,Raining gold,Guardian power,Leadership,Team bonus,Attribute damage,Librarian,Alchemy,Meteorite hunter,Trainer skills,Expeditioner,Twin dragons,Coworkers,Attribute health,Attribute armor,Critical chance,Critical damage,Attack speed,Dodge,Fist fight,Precision,Magic spells,Mana heroes,Energy heroes,Rage heroes,Damage specialization,Tank specialization,Healer specialization,Weaklings,Expose weakness,Powerless enemy,Powerless boss,Ancient knowledge" },
         ["meteorite_research/priority"] =
-            "All main attributes,Firestone finder,Raining gold,Attribute damage,Hero level up cost,Attribute health,Attribute armor,Powerless enemy,Powerless boss",
+            new[] { "All main attributes,Firestone finder,Raining gold,Attribute damage,Hero level up cost,Attribute health,Attribute armor,Powerless enemy,Powerless boss" },
         ["firestone_research/research_priority"] =
-            "13,7,1,5,2,3,4,6,14,15,16,8,9,12,10,11",
+            new[] { "13,7,1,5,2,3,4,6,14,15,16,8,9,12,10,11", "14,16,13,7,1,5,2,3,4,6,15,12,10,11,8,9" },
         ["personal_tree/priority"] =
-            "Prestigious,Firestone effect,Battle cry,All main attributes,Raining gold,Attribute damage,Hero level up cost,Attribute health,Attribute armor,Guardian,Fist fight,Precision,Magic spells",
+            new[] { "Prestigious,Firestone effect,Battle cry,All main attributes,Raining gold,Attribute damage,Hero level up cost,Attribute health,Attribute armor,Guardian,Fist fight,Precision,Magic spells" },
         ["oracle_blessings/priority"] =
-            "Fate,Guardian Power,Prestigious,Raining gold,Damage Specialization,Tank Specialization,Healer Specialization,Melee Heroes,Ranged Heroes,Spellcaster Heroes,Mana Heroes,Rage Heroes,Energy Heroes",
+            new[] { "Fate,Guardian Power,Prestigious,Raining gold,Damage Specialization,Tank Specialization,Healer Specialization,Melee Heroes,Ranged Heroes,Spellcaster Heroes,Mana Heroes,Rage Heroes,Energy Heroes" },
         ["exotic_merchant/priority"] =
-            "All main attributes,Prestigious,Firestone effect,Firestone Finder,Raining gold,Heroes' damage,Leadership,Team bonus,Guardian power,Attribute health,Attribute armor,Damage specialization,Tank specialization,Healer specialization,Fist fight,Precision,Magic spells,Mana Heroes,Energy Heroes,Rage Heroes,Skip stage,Skip wave"
+            new[] { "All main attributes,Prestigious,Firestone effect,Firestone Finder,Raining gold,Heroes' damage,Leadership,Team bonus,Guardian power,Attribute health,Attribute armor,Damage specialization,Tank specialization,Healer specialization,Fist fight,Precision,Magic spells,Mana Heroes,Energy Heroes,Rage Heroes,Skip stage,Skip wave" }
     };
 
     /// <summary>Bumped when the shipped orders change, so untouched lists move to the new order once.</summary>
-    private const string OrderRevision = "aurora-2026-11";
+    private const string OrderRevision = "aurora-2026-11b";
 
     /// <summary>
     ///     Moves an existing player onto the guide order once per list. Later edits are left alone, and
@@ -112,7 +113,7 @@ internal static class RecommendedOrders
         if (!first)
         {
             if (!BotSettings.TryMarkGuideOrderAdopted(key + "@" + OrderRevision)) return;
-            if (!PreviousDefaults.TryGetValue(key, out var previous) || !Same(entry.Value, previous)) return;
+            if (!PreviousDefaults.TryGetValue(key, out var previous) || !previous.Any(old => Same(entry.Value, old))) return;
         }
         else BotSettings.TryMarkGuideOrderAdopted(key + "@" + OrderRevision);
         if (!Same(entry.Value, order))

@@ -71,7 +71,7 @@ public class Experiments : GameElement
         }
     }
 
-    public IEnumerator Start(string[] experimentResources)
+    public IEnumerator Start(string[] experimentResources, double keepStrangeDust = 0)
     {
         foreach (var resource in experimentResources)
         {
@@ -92,6 +92,12 @@ public class Experiments : GameElement
             if (quantity < cost)
             {
                 Logger.Info($"[Alchemist] Experiment {resource} needs {cost}; have {quantity}. Skipping start.");
+                continue;
+            }
+
+            if (resource == "1" && !StrangeDustPolicy.CanSpend(quantity, cost, keepStrangeDust))
+            {
+                Logger.Info($"[Alchemist] Experiment {resource} would use dust you keep ({keepStrangeDust:0} to keep, have {quantity}); skipping start.");
                 continue;
             }
 

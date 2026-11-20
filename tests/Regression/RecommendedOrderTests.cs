@@ -65,8 +65,8 @@ internal static class RecommendedOrderTests
 
         var exotic = RecommendedOrders.Split(RecommendedOrders.ExoticMerchant);
         Check(exotic[0] == "Firestone Finder" && exotic[1] == "Raining gold", "Guide: Firestone Finder, then Raining gold.");
-        Check(RecommendedOrders.FirestoneResearch.StartsWith("14,16,13,7,") &&
-              RecommendedOrders.FirestoneResearch.EndsWith(",8,9"), "Firestone research: time cuts, gold, crit loot last.");
+        Check(RecommendedOrders.FirestoneResearch.StartsWith("7,14,16,1,") &&
+              RecommendedOrders.FirestoneResearch.EndsWith(",8,9"), "Firestone research: Raining gold first, time cuts next, crit loot last.");
     }
 
     public static void TokenReserve()
@@ -83,6 +83,20 @@ internal static class RecommendedOrderTests
         TokenNeed.Request(600);
         TokenNeed.Clear();
         Check(TokenNeed.Current == 0, "A new war machine run starts clean.");
+        TokenNeed.Now = () => DateTime.Now;
+    }
+
+    public static void ChaosRiftRespectsWarMachineTokens()
+    {
+        var now = new DateTime(2026, 11, 19, 12, 0, 0);
+        TokenNeed.Now = () => now;
+        TokenNeed.Clear();
+        Check(TokenNeed.AllowsSpend(2889, 2500), "With no war machine waiting the rift may spend.");
+        TokenNeed.Request(1500);
+        Check(!TokenNeed.AllowsSpend(2889, 2500), "A waiting war machine level must keep its tokens.");
+        Check(TokenNeed.AllowsSpend(4000, 2500), "Tokens above the reserve may still be spent.");
+        Check(!TokenNeed.AllowsSpend(double.NaN, 2500), "An unreadable balance never spends.");
+        TokenNeed.Clear();
         TokenNeed.Now = () => DateTime.Now;
     }
 
