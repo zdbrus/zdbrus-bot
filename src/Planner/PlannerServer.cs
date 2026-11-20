@@ -170,6 +170,11 @@ public static class PlannerServer
                 Send(stream, 200, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(
                     "{\"result\":\"" + spent.Replace("\"", "'") + "\"}"));
                 break;
+            case "/spendsoul":
+                var spentSoul = SoulShardSpender.Request(Query(text, "plan"));
+                Send(stream, 200, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(
+                    "{\"result\":\"" + spentSoul.Replace("\"", "'") + "\"}"));
+                break;
             case var face when face.StartsWith("/hero/", StringComparison.Ordinal) && face.EndsWith(".png", StringComparison.Ordinal):
                 var png = HeroPortraits.Get(face.Substring(6, face.Length - 10));
                 if (png == null) Send(stream, 404, "text/plain", Encoding.ASCII.GetBytes("No face yet"));

@@ -86,6 +86,11 @@ public static class RosterExport
             w.WriteBoolean("ok", JewelSpender.Ok);
             w.WriteString("status", JewelSpender.Status ?? "");
             w.WriteEndObject();
+            w.WriteStartObject("soulSpend");
+            w.WriteBoolean("busy", SoulShardSpender.Busy);
+            w.WriteBoolean("ok", SoulShardSpender.Ok);
+            w.WriteString("status", SoulShardSpender.Status ?? "");
+            w.WriteEndObject();
             WriteCurrencies(w, loader);
             WriteCampaign(w, loader);
             VoidCrystalSpender.WriteSnapshot(w);
@@ -309,6 +314,22 @@ public static class RosterExport
             }
         w.WriteEndArray();
 
+        // Soulstones: only the ones the hero has (rarity set). cost is what the next enchant costs in soul shards.
+        w.WriteStartArray("soulstones");
+        if (h.soulstoneDict != null)
+            foreach (var kv in h.soulstoneDict)
+            {
+                var st = kv.Value;
+                if (st == null || (int)st.rarity == 0) continue;
+                w.WriteStartObject();
+                w.WriteString("slot", kv.Key.ToString());
+                w.WriteNumber("rarity", (int)st.rarity);
+                w.WriteNumber("level", st.enchantLevel);
+                Num(w, "cost", st.enchantCost);
+                w.WriteEndObject();
+            }
+        w.WriteEndArray();
+
         var je = h.jewelEffects;
         var cb = h.crewBonuses;
         w.WriteStartObject("game");
@@ -338,6 +359,7 @@ public static class RosterExport
                         CurrencyCode.ExpeditionToken => "expeditionTokens",
                         CurrencyCode.Blueprint => "blueprints",
                         CurrencyCode.EtherealShard => "etherealShards",
+                        CurrencyCode.SoulShard => "soulShards",
                         _ => null,
                     };
                     if (name != null) Num(w, name, kv.Value.amount);

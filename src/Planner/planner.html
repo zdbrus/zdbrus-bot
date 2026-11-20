@@ -456,6 +456,19 @@ table.ledger.adv{min-width:700px}
     </div>
   </section>
 
+  <section class="panel shards" id="soul-advisor" aria-label="Soul shard advisor">
+    <div class="panel-h"><h2 class="lh">Soul shard advisor</h2><span class="note" id="soul-sub"></span>
+      <span class="spend" id="soul-wrap" hidden>
+        <label class="field"><span class="label">Budget</span><input id="soul-budget" type="number" min="0" step="1" value="0" aria-label="Soul shard budget"></label>
+        <button class="btn primary" id="soul-spend">Spend for me</button>
+      </span></div>
+    <div class="panel-b">
+      <div id="soul-status"></div>
+      <div class="ledger-wrap"><table class="ledger" id="soul-table"></table></div>
+      <p class="note">Soul shards enchant a hero's soulstones. The list goes Charisma first, then Wisdom, Faith, Focus, Stamina and Courage, cheapest level first within each. Soulstones raise hero stats, not war machine power, so this is ranked by that order and not by power gained. Costs come straight from the game. "Spend for me" takes rows from the top while they fit your budget and stops at the first enchant the game refuses.</p>
+    </div>
+  </section>
+
   <section class="panel shards" id="crystal-advisor" aria-label="Void Crystal advisor">
     <div class="panel-h">
       <h2 class="lh">Void Crystal advisor <button class="tipbtn" type="button" data-tip-id="crystals" aria-label="About Void Crystal upgrades">?</button></h2>
@@ -926,7 +939,7 @@ function applyGame(g) {
     const jewels = {};
     for (const j of h.jewels) jewels[j.slot.toLowerCase()] = { rarity: j.rarity, level: j.level };
     const o = O.heroes[h.id];
-    return { id: h.id, name: h.code, spec: SPEC_OF[h.spec] || 'damage', jewels: o ? structuredClone(o.jewels) : jewels, gameJewels: jewels, game: h.game, edited: !!o };
+    return { id: h.id, name: h.code, soulstones: h.soulstones || [], spec: SPEC_OF[h.spec] || 'damage', jewels: o ? structuredClone(o.jewels) : jewels, gameJewels: jewels, game: h.game, edited: !!o };
   });
   S = { ...S, engineerLevel: g.engineerLevel, crewSlots: g.crewSlots, artifacts: [], inscriptionBonus: { damage: 0, health: 0, armor: 0 },
     currencies: g.currencies || null, campaignNeed: (g.campaign && g.campaign.need) || S.campaignNeed || null, machines, heroes, mode, difficulty: diff, mission };
@@ -1620,6 +1633,65 @@ function renderShards(total) {
       el('td', { class: i === 0 ? 'best' : '' }, '+' + fmt(r.per))))));
 }
 
+
+// Soul shards: hero soulstone enchants in a fixed priority (Charisma first), cheapest level first within a slot.
+const SOUL_ORDER = ['charisma', 'wisdom', 'faith', 'focus', 'stamina', 'courage'];
+let soulSending = false;
+function soulOptions() {
+  const out = [];
+  for (const h of S.heroes || []) for (const st of h.soulstones || []) {
+    const slot = String(st.slot || '').toLowerCase(), rank = SOUL_ORDER.indexOf(slot);
+    if (rank < 0 || !(st.rarity > 0) || !fin(st.cost) || st.cost <= 0) continue;
+    out.push({ hid: h.id, hero: h.name, slot: st.slot, rank, lv: st.level || 0, cost: st.cost });
+  }
+  return out.sort((a, b) => a.rank - b.rank || a.lv - b.lv || a.cost - b.cost || a.hid - b.hid);
+}
+function soulPlan(budget) {
+  const steps = []; let left = budget;
+  for (const o of soulOptions()) { if (steps.length >= 40) break; if (o.cost <= left) { steps.push(o); left -= o.cost; } }
+  return { steps, spent: budget - left };
+}
+async function soulSpendForMe() {
+  if (!G || soulSending) return;
+  const budget = Math.max(0, +$('#soul-budget').value || 0);
+  const { steps, spent } = soulPlan(budget);
+  if (!steps.length) { toast('Nothing fits in ' + budget + ' soul shards'); return; }
+  const plan = steps.map(s => s.hid + '.' + s.slot).join(',');
+  soulSending = true; render();
+  try {
+    const r = await fetch('/spendsoul?plan=' + encodeURIComponent(plan), { cache: 'no-store' });
+    const j = await r.json();
+    toast(j.result === 'Spending' ? steps.length + ' enchants (' + spent.toLocaleString() + ' soul shards) sent to the game' : j.result);
+  } catch { toast('The bot did not answer'); }
+  setTimeout(() => { soulSending = false; }, 3000);
+  fastPoll();
+}
+function renderSoul() {
+  const wrap = $('#soul-wrap'); if (!wrap) return;
+  wrap.hidden = !(LIVE && G);
+  const have = haveOf('soulShards');
+  const sp = G && G.soulSpend, sbox = $('#soul-status'); sbox.replaceChildren();
+  if (sp && (sp.busy || soulSending || sp.status)) {
+    const bar = el('div', { class: 'applybar' });
+    if (sp.busy || soulSending) bar.append(el('span', { class: 'spin' }));
+    bar.append(el('b', {}, 'Spend for me: '), sp.status || 'Sending the plan to the bot…');
+    sbox.append(bar);
+  }
+  const busy = !!(sp && sp.busy) || soulSending || !!(G && G.spend && G.spend.busy) || !!(G && G.apply && G.apply.busy) || !!G?.crystals?.busy || crystalSending || spending;
+  $('#soul-spend').disabled = busy;
+  const inp = $('#soul-budget');
+  if (have != null && document.activeElement !== inp && inp.dataset.set !== '1') { inp.value = Math.floor(have); inp.dataset.set = '1'; }
+  const rows = soulOptions().slice(0, 12);
+  $('#soul-sub').textContent = (have != null ? n0(have) + ' soul shards · ' : '') + 'top ' + rows.length;
+  const t = $('#soul-table');
+  if (!rows.length) { t.replaceChildren(el('tr', {}, el('td', {}, 'No soulstone enchants available yet (soulstones unlock at hero level 200).'))); return; }
+  t.replaceChildren(
+    el('thead', {}, el('tr', {}, ...['Hero', 'Soulstone', 'Level', 'Soul shards'].map(x => el('th', {}, x)))),
+    el('tbody', {}, ...rows.map(r => el('tr', {},
+      el('td', {}, r.hero), el('td', {}, r.slot), el('td', {}, r.lv + ' → ' + (r.lv + 1)),
+      el('td', { class: have != null && r.cost > have ? '' : 'best' }, r.cost.toLocaleString())))));
+}
+
 const CRYSTAL_SLOTS = ['Weapon', 'Chest', 'Boots', 'Wrist', 'Shoulder', 'Belt', 'Ring', 'Relic'];
 let crystalSending = false, crystalPending = null, crystalNotice = '', crystalEpoch = '', crystalHeroKey = '';
 const wholeCrystals = n => Number.isSafeInteger(n) && n >= 0;
@@ -1942,6 +2014,7 @@ function render() {
   const total = all.reduce((a, st) => a + scoreOf(st), 0);
   renderUpgradeAdvisor();
   renderShards(total);
+  renderSoul();
   renderCrystals();
   countTo($('#pow'), 'squad', total);
   $('#pow-label').textContent = S.mode === 'arena' ? 'Squad arena power' : 'Squad battle power';
@@ -2161,6 +2234,7 @@ $('#dlg-close').onclick = () => $('#dlg').close();
 $('#auto').onclick = runAuto;
 $('#apply').onclick = () => applyToGame();
 $('#spend').onclick = spendForMe;
+$('#soul-spend').onclick = soulSpendForMe;
 $('#crystal-goal').onchange = renderCrystals;
 $('#crystal-target').onchange = renderCrystals;
 $('#crystal-budget').oninput = () => { $('#crystal-spend').disabled = !crystalCanSpend(); };

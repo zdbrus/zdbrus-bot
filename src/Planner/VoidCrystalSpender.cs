@@ -320,7 +320,7 @@ public static class VoidCrystalSpender
             var budget = root.GetProperty("budget").GetDouble();
             if (!VoidCrystalPolicy.ValidGoal(goal) || target < -1 ||
                 !VoidCrystalPolicy.WholeAmount(budget) || budget <= 0) return Reject("Choose a goal and a positive whole-crystal budget.");
-            if (Busy || SquadApplier.Busy || JewelSpender.Busy) return Reject("Another planner action is running. Wait for it to finish.");
+            if (Busy || SquadApplier.Busy || JewelSpender.Busy || SoulShardSpender.Busy) return Reject("Another planner action is running. Wait for it to finish.");
             if (GameTutorial.ShouldHold) return Reject("Finish the game's tutorial step before spending.");
             var options = ReadOptions();
             var balance = Balance();

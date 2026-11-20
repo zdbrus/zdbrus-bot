@@ -1,6 +1,7 @@
 ﻿# Changelog
 
 ## 0.7.65 (2026-11-18)
+- **Soul Shard advisor in the Planner (F4).** Lists soulstone enchants for your heroes in the order Charisma, Wisdom, Faith, Focus, Stamina, Courage (cheapest level first), with the real cost from the game. "Spend for me" enchants them through the Hall of Heroes up to your budget and stops at the first enchant the game refuses. It only runs when you press it.
 - **Engineer Tools works again.** Clicking the Engineer building opens a small Engineer/Garage chooser first, and the task never picked Engineer, so it logged "Could not open the tools screen" every run. It now picks Engineer, then opens the tools screen.
 - **Daily Rewards finds the Mystery Box and the Scarab free token again.** The game moved both to new screens in the Store and the Scarab shop, so the bot logged "could not be found" and retried every few minutes for days. It now looks in the new places.
 - **Arena squad switching clicks the squad card's real "Set active" button.** The button it used before closed the squads screen without switching, so the bot gave up after one try. It now reopens the screen and retries, and logs what it tried.

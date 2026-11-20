@@ -142,7 +142,7 @@ internal static class VoidCrystalTests
         Firebot.Behaviors.Extra.Ui.BeforeFind = null;
         Firebot.Behaviors.Extra.Ui.OpenTownWorks = true;
         BotManager.IsRunning = BotManager.IsTaskExecuting = false;
-        SquadApplier.Busy = JewelSpender.Busy = false;
+        SquadApplier.Busy = JewelSpender.Busy = SoulShardSpender.Busy = false;
         GameInitialize.Loaded = true;
         GameInitialize.HandlerLoader = new();
         GameInitialize.MenuLoader = new();
@@ -505,6 +505,9 @@ internal static class VoidCrystalTests
         JewelSpender.Busy = true;
         Check(VoidCrystalSpender.Request(Packet()) != "Spending", "Overlapping jewel spending accepted.");
         JewelSpender.Busy = false;
+        SoulShardSpender.Busy = true;
+        Check(VoidCrystalSpender.Request(Packet()) != "Spending", "Overlapping soul shard spending accepted.");
+        SoulShardSpender.Busy = false;
         SquadApplier.Busy = true;
         Check(VoidCrystalSpender.Request(Packet()) != "Spending", "Overlapping squad apply accepted.");
         SquadApplier.Busy = false;

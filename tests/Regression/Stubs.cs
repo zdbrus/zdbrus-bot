@@ -467,6 +467,7 @@ namespace Firebot.Planner
     }
 
     public static class JewelSpender { public static bool Busy; }
+    public static class SoulShardSpender { public static bool Busy; }
 }
 
 namespace Firebot.UI.Config

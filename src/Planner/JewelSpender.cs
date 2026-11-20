@@ -36,7 +36,7 @@ public static class JewelSpender
     public static string Request(string plan)
     {
         if (Busy) return "Already spending.";
-        if (VoidCrystalSpender.Busy) return "Void Crystal spending is running. Wait for it to finish.";
+        if (VoidCrystalSpender.Busy || SoulShardSpender.Busy) return "Another planner spending action is running. Wait for it to finish.";
         var steps = new List<Step>();
         foreach (var part in (plan ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Take(40))
         {
