@@ -421,25 +421,35 @@ public static class SquadApplier
         for (var attempt = 0; attempt < 3 && ActiveSlot() != slot; attempt++)
         {
             var card = SquadInteraction(slot);
-            if (card == null) break;
+            if (card == null)
+            {
+                // The screen went away (a click closed it, or it never finished opening): open it again and retry.
+                Logger.Debug($"[Squads] Squad {slot} attempt {attempt + 1}: the squads screen is not open, opening it again.");
+                yield return Ui.Click(SquadsTab, 1f);
+                yield return Ui.WaitFor(Squads, 3f);
+                yield return new WaitForSeconds(0.8f);
+                continue;
+            }
             var button = card.activateFormationButton;
-            // The card's own "Set active" button, found by name: the field above has never been seen to work in
-            // the game (squad 2 never became active), so later attempts click the button on screen instead.
-            var named = attempt == 0 ? null : card.transform.Find("setActiveButton");
+            // The card's own "Set active" button, found by name (it is in the screen map). The card's
+            // activateFormationButton field has never made a squad active in the game and the screen closed after
+            // clicking it, so the named button goes first.
+            var named = card.transform.Find("setActiveButton");
             try
             {
                 if (named != null && Ui.Clickable(named))
                 {
-                    if (attempt == 1) named.GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                    if (attempt == 0) named.GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
                     else Ui.PointerClick(named);
                 }
-                else if (button != null && button.gameObject.activeInHierarchy && button.interactable) button.onClick.Invoke();
-                else card.ActivateFormation();
+                else if (attempt >= 2 && button != null && button.gameObject.activeInHierarchy && button.interactable)
+                    button.onClick.Invoke();
+                else if (attempt >= 2) card.ActivateFormation();
             }
             catch (Exception e) { Logger.Debug($"[Squads] activate: {e.Message}"); }
-            Logger.Debug($"[Squads] Squad {slot} attempt {attempt + 1}: card found, field button " +
-                         $"{(button == null ? "missing" : button.interactable ? "ready" : "not interactable")}, " +
-                         $"named button {(named == null ? "not tried" : Ui.Clickable(named) ? "ready" : "not clickable")}.");
+            Logger.Debug($"[Squads] Squad {slot} attempt {attempt + 1}: card found, named button " +
+                         $"{(named == null ? "missing" : Ui.Clickable(named) ? "clicked" : "not clickable")}, " +
+                         $"field button {(button == null ? "missing" : button.interactable ? "ready" : "not interactable")}.");
             var until = Time.unscaledTime + 5f;
             while (ActiveSlot() != slot && Time.unscaledTime < until) yield return new WaitForSeconds(0.25f);
         }

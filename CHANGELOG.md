@@ -3,7 +3,8 @@
 ## 0.7.65 (2026-11-18)
 - **Engineer Tools works again.** Clicking the Engineer building opens a small Engineer/Garage chooser first, and the task never picked Engineer, so it logged "Could not open the tools screen" every run. It now picks Engineer, then opens the tools screen.
 - **Daily Rewards finds the Mystery Box and the Scarab free token again.** The game moved both to new screens in the Store and the Scarab shop, so the bot logged "could not be found" and retried every few minutes for days. It now looks in the new places.
-- **Arena squad switching tries the real "Set active" button** when the first method does not take, and logs what it tried if it still fails.
+- **Arena squad switching clicks the squad card's real "Set active" button.** The button it used before closed the squads screen without switching, so the bot gave up after one try. It now reopens the screen and retries, and logs what it tried.
+- **Meteorite Research can buy the last level.** With one level left the game hides the quantity button, and the bot treated that as "could not confirm one-level purchasing" and never bought it.
 - **The bot leaves your screens alone.** If you clicked or typed in the last 12 seconds and a screen is open (Tree of Life, a hero, the shop), a due task waits instead of closing it. A task you start with RUN still goes right away.
 - **Six F1 descriptions no longer get cut off** (Talents, Oracle, Firestone Research, Enable All On Launch, Record Arena Matchups).
 

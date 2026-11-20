@@ -37,6 +37,18 @@ public class MeteoriteResearchTask : BotTask
     private static MeteoriteResearchPreviewPopup Popup =>
         GameInitialize.MenuLoader?.MeteoriteResearchPreviewPopup;
 
+    /// <summary>
+    ///     With one level left the game hides the quantity button, so there is nothing to change and a purchase
+    ///     can only be that one level. Read from the preview's own "Level 9/10" text.
+    /// </summary>
+    private static bool OneLevelLeft()
+    {
+        if (Ui.Visible(Preview + "/unlocked/changeQuantityButton")) return false;
+        var match = System.Text.RegularExpressions.Regex.Match(Ui.Text(Preview + "/level") ?? "", @"(\d+)\s*/\s*(\d+)");
+        return match.Success && int.TryParse(match.Groups[1].Value, out var level) &&
+               int.TryParse(match.Groups[2].Value, out var max) && max - level == 1;
+    }
+
     private static bool SingleQuantity => Popup?.currentResearchQuantityEnum == ResearchQuantity.ResearchX1 &&
                                           Popup.currentResearchQuantity == 1;
 
@@ -150,14 +162,14 @@ public class MeteoriteResearchTask : BotTask
         {
             if (research.IsMaxLevel()) { result(PriorityTierAction.Advance); yield break; }
             // Native cost is recalculated for the selected quantity. Never use a rounded UI price or a bulk buy.
-            for (var attempts = 0; attempts < 8 && Selected(research) && !SingleQuantity; attempts++)
+            for (var attempts = 0; attempts < 8 && Selected(research) && !SingleQuantity && !OneLevelLeft(); attempts++)
             {
                 var changed = false;
                 yield return Ui.ClickIf(Preview + "/unlocked/changeQuantityButton", () => Selected(research),
                     value => changed = value, 0.3f);
                 if (!changed) break;
             }
-            if (!Selected(research) || !SingleQuantity)
+            if (!Selected(research) || !(SingleQuantity || OneLevelLeft()))
             {
                 Logger.Warning("[Meteorite Research] Could not confirm one-level purchasing; no purchase attempted.");
                 yield break;
@@ -181,7 +193,7 @@ public class MeteoriteResearchTask : BotTask
             yield return Ui.ClickIf(Buy, () =>
             {
                 before = Balance();
-                return Selected(research) && SingleQuantity &&
+                return Selected(research) && (SingleQuantity || OneLevelLeft()) &&
                        research.level == level && research.IsUnlocked() && !research.IsMaxLevel() &&
                        research.levelUpCost.GetDecrypted() == cost &&
                        PurchaseObservation.CanAffordWithReserve(before, cost, _keep.Value);
