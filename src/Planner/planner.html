@@ -465,7 +465,7 @@ table.ledger.adv{min-width:700px}
     <div class="panel-b">
       <div id="soul-status"></div>
       <div class="ledger-wrap"><table class="ledger" id="soul-table"></table></div>
-      <p class="note">Soul shards enchant a hero's soulstones. The list goes Charisma first, then Wisdom, Faith, Focus, Stamina and Courage, cheapest level first within each. Soulstones raise hero stats, not war machine power, so this is ranked by that order and not by power gained. Costs come straight from the game. "Spend for me" takes rows from the top while they fit your budget and stops at the first enchant the game refuses.</p>
+      <p class="note">Soul shards enchant a hero's soulstones. The list follows the community guide: Wisdom (gold) and Faith (Firestone gain) first, then Charisma (all attributes), then Focus, Stamina and Courage. Heroes in your crews come first, then the cheapest level. Tier 2 slots (Wisdom, Faith, Charisma) only show once you've unlocked tier 2 (Oracle level 11 and 1,000 Strange Dust). Soulstones raise hero stats, not war machine power, so this is ranked by that order and not by power gained. Costs come straight from the game. "Spend for me" takes rows from the top while they fit your budget and stops at the first enchant the game refuses.</p>
     </div>
   </section>
 
@@ -1634,17 +1634,17 @@ function renderShards(total) {
 }
 
 
-// Soul shards: hero soulstone enchants in a fixed priority (Charisma first), cheapest level first within a slot.
-const SOUL_ORDER = ['charisma', 'wisdom', 'faith', 'focus', 'stamina', 'courage'];
+// Soul shards: hero soulstone enchants in a fixed priority (the guide's order: Wisdom, Faith, Charisma, then Focus), crew heroes first, cheapest level first within a slot.
+const SOUL_ORDER = ['wisdom', 'faith', 'charisma', 'focus', 'stamina', 'courage'];
 let soulSending = false;
 function soulOptions() {
-  const out = [];
+  const out = [], inCrew = new Set(Object.values(S.crews || {}).flat());
   for (const h of S.heroes || []) for (const st of h.soulstones || []) {
     const slot = String(st.slot || '').toLowerCase(), rank = SOUL_ORDER.indexOf(slot);
     if (rank < 0 || !(st.rarity > 0) || !fin(st.cost) || st.cost <= 0) continue;
-    out.push({ hid: h.id, hero: h.name, slot: st.slot, rank, lv: st.level || 0, cost: st.cost });
+    out.push({ hid: h.id, hero: h.name, slot: st.slot, rank, crew: inCrew.has(h.id) ? 0 : 1, lv: st.level || 0, cost: st.cost });
   }
-  return out.sort((a, b) => a.rank - b.rank || a.lv - b.lv || a.cost - b.cost || a.hid - b.hid);
+  return out.sort((a, b) => a.rank - b.rank || a.crew - b.crew || a.lv - b.lv || a.cost - b.cost || a.hid - b.hid);
 }
 function soulPlan(budget) {
   const steps = []; let left = budget;
