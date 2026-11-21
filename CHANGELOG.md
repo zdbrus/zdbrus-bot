@@ -1,6 +1,7 @@
 ﻿# Changelog
 
 ## 0.7.65 (2026-11-18)
+- **Talents follow a staged plan by default.** Talents now work through a step-by-step plan ("Guide plan" in F1 > Talents) before the priority list: all main attributes, Leadership and Trainer skills first, then Meteorite hunter, Raining gold, Expeditioner and the later tiers, each raised to its stage level before the next step starts. Steps that are already done are skipped. Steps are written Name#copy:level, where #2 is the second copy of a repeated talent counting from the top tier. Clear the field to use only the priority list as before.
 - **Arena squad switch checks the game's own selected squad.** The log showed the Set active click closing the squads screen while the squad flags still said the old squad, so the arena never fought. The bot now also reads the game's selected squad, asks the game to select the squad if the click did not, logs both states, and restores your squad only when both agree it is back.
 - **Daily Rewards waits for a claim button to become clickable.** A lit Scarab free token bubble with a button that was still opening made the task reopen the shop every few minutes; it now waits a moment and goes quiet for 3 hours when the claim cannot be confirmed.
 - **Meteorite Research logs why it could not confirm one-level purchasing** (quantity, button state, level text, cost, balance) so a stuck research can be diagnosed from the log.

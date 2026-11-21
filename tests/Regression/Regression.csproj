@@ -32,6 +32,7 @@
     <Compile Include="..\..\src\Core\VoidCrystalPolicy.cs" Link="VoidCrystalPolicy.cs" />
     <Compile Include="..\..\src\Core\RecommendedOrders.cs" Link="RecommendedOrders.cs" />
     <Compile Include="..\..\src\Core\TokenNeed.cs" Link="TokenNeed.cs" />
+    <Compile Include="..\..\src\Core\TalentPlan.cs" Link="TalentPlan.cs" />
     <Compile Include="..\..\src\Core\ChestKeep.cs" Link="ChestKeep.cs" />
     <Compile Include="..\..\src\Planner\VoidCrystalSpender.cs" Link="VoidCrystalSpender.cs" />
     <Compile Include="..\..\src\Planner\HeroSelection.cs" Link="HeroSelection.cs" />

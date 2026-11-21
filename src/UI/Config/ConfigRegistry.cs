@@ -530,6 +530,11 @@ internal static class ConfigRegistry
             "Numbers show priority. Tap to toggle; Recommended resets, Clear empties.\n" +
             "Fill each available listed upgrade before the next.",
 
+        ["talents/plan"] =
+            "Steps: Name#copy:level, comma-separated, followed in order.\n" +
+            "#2 is the second copy of a repeated talent, top tier first.\n" +
+            "Empty means only the priority list is used.",
+
         ["talents/priority"] =
             "Numbers show priority; tap to toggle.\n" +
             "Battle cry and Fate first; locked talents are skipped.",

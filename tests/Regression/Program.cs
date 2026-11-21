@@ -67,6 +67,10 @@ internal static class Program
             Test("scarab permits Pharaoh tokens only with opt-in and verifies exact spending", ScarabSpinSafety);
             Test("talents select live priorities without scanning previews", AutoPlayTests.TalentTargeting);
             Test("talents reject unreadable and changed selections", AutoPlayTests.TalentSafety);
+            Test("talent guide plan levels the right copies to target", AutoPlayTests.TalentGuidePlan);
+            Test("talent guide plan holds points at locked or misread steps", AutoPlayTests.TalentGuidePlanHolds);
+            Test("talent guide plan parses and validates", AutoPlayTests.TalentPlanParsing);
+            Test("talent guide adds a filler point to open a locked tier", AutoPlayTests.TalentGuideFillerOpensTier);
             Test("awakening Auto respects every supported batch size", AutoPlayTests.AwakeningBatches);
             Test("native Auto rejects unconfirmed purchases and releases on cancellation", AutoPlayTests.AutoSafety);
             Test("Scarab Auto enforces token boundaries before native requests", AutoPlayTests.ScarabBoundaries);

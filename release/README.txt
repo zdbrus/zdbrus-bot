@@ -59,7 +59,7 @@ War machine levels get expedition tokens before the Personal Tree, and one chest
 Upgrade buyers hold for an unaffordable higher tier rather than spending on lower tiers; level-locked
 Exotic upgrades are skipped until unlocked. Previously unknown preview-based names may be read once,
 then remembered between launches. Prices and completion state are not persisted.
-Talents and Meteorite Research read the live tree directly and open only eligible priority previews.
+Talents and Meteorite Research read the live tree directly and open only eligible priority previews. Talents follow a staged plan first (F1 > Talents > Guide plan); clear it to use only the priority list.
 Meteorite Research's "Meteorites To Keep" is the minimum left after each purchase, not a target to
 reach before spending. It buys at x1 using the game's actual balance and cost, rechecks the latest
 reserve before each purchase, and waits for both the level and exact debit before buying again.
