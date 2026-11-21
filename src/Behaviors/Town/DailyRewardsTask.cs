@@ -82,6 +82,9 @@ public class DailyRewardsTask : BotTask
     {
         var wasClaimed = Ui.Visible(claimedPath);
         var rewardWasVisible = Ui.Visible(P.RewardsClose);
+        // The shop screens finish their open animation after the button is already in the tree; give a visible
+        // button a moment to become clickable before reporting it unavailable.
+        if (Ui.Visible(path) && !Ui.Clickable(path)) yield return Ui.WaitUntil(() => Ui.Clickable(path), _ => { }, 3f);
         yield return Ui.ClickUntil(Ui.Find(path),
             () => (!wasClaimed && Ui.Visible(claimedPath)) || (Ui.Visible(path) && !Ui.Clickable(path)) ||
                   (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
@@ -184,7 +187,12 @@ public class DailyRewardsTask : BotTask
                 value => confirmed = value);
             yield return Ui.CloseRewards();
             if (confirmed) verifiedStateChanges++;
-            else unconfirmedClaims++;
+            else
+            {
+                unconfirmedClaims++;
+                // A lit bubble with no claimable button would otherwise reopen the shop every few minutes.
+                BubbleQuietUntil = _now().AddHours(3);
+            }
             var reset = Store.ScarabGameShopFreeTokenNextRunTime;
             Schedule(reset > _now() && reset < _now().AddDays(2)
                 ? reset

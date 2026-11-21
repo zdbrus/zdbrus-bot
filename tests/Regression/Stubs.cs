@@ -435,13 +435,15 @@ namespace Firebot.Planner
         public static readonly List<int> Requests = new();
         public static Action<int> OnSet;
         public static int ActiveSlot() => Active;
+        public static bool SwitchedTo(int slot) => Active == slot;
+        public static bool Settled(int slot) => Active == slot;
         public static bool HasMachines(int slot) => Populated.Contains(slot);
         public static bool TryHasMachines(int slot, out bool hasMachines)
         {
             hasMachines = Populated.Contains(slot);
             return !Unreadable.Contains(slot);
         }
-        public static IEnumerator SetActive(int slot, string why)
+        public static IEnumerator SetActive(int slot, string why, bool strict = false)
         {
             Requests.Add(slot);
             if (OnSet != null) OnSet(slot);

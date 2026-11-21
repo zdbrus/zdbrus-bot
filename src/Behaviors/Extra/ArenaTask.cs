@@ -150,7 +150,7 @@ public class ArenaTask : BotTask
                 yield break;
             }
             yield return Planner.SquadApplier.SetActive(want, "arena");
-            if (Planner.SquadApplier.ActiveSlot() != want)
+            if (!Planner.SquadApplier.SwitchedTo(want))
             {
                 Retry($"Arena squad {want} did not become active; no fight was attempted.");
                 yield return RestoreSquad(before);
@@ -184,9 +184,9 @@ public class ArenaTask : BotTask
     private IEnumerator RestoreSquad(int before)
     {
         yield return Watchdog.ForceClearAll("after arena");
-        if (Planner.SquadApplier.ActiveSlot() != before)
-            yield return Planner.SquadApplier.SetActive(before, "back from arena");
-        if (Planner.SquadApplier.ActiveSlot() != before)
+        if (!Planner.SquadApplier.Settled(before))
+            yield return Planner.SquadApplier.SetActive(before, "back from arena", strict: true);
+        if (!Planner.SquadApplier.Settled(before))
             Logger.Warning($"[Arena] Could not verify that squad {before} was restored.");
     }
 

@@ -368,6 +368,65 @@ public static class SquadApplier
         return 0;
     }
 
+    /// <summary>The squad the game's own handler reports as selected (1-3), or 0 when it cannot be read.</summary>
+    public static int HandlerSelectedSlot()
+    {
+        try
+        {
+            var handler = GameInitialize.HandlerLoader?.warMachineFormationsHandler;
+            var selected = handler?.SelectedFormation;
+            var list = handler?.formations;
+            for (var i = 0; selected != null && list != null && i < list.Count; i++)
+                if (list[i] != null && list[i].Pointer == selected.Pointer) return i + 1;
+        }
+        catch { }
+        return 0;
+    }
+
+    /// <summary>True when either the squad flags or the game's selected squad say squad N is the active one.</summary>
+    public static bool SwitchedTo(int slot) => slot >= 1 && (ActiveSlot() == slot || HandlerSelectedSlot() == slot);
+
+    /// <summary>True when the squad flags and the game's selected squad both agree that squad N is active.</summary>
+    public static bool Settled(int slot)
+    {
+        var selected = HandlerSelectedSlot();
+        return slot >= 1 && ActiveSlot() == slot && (selected == 0 || selected == slot);
+    }
+
+    private static string SwitchState()
+    {
+        try
+        {
+            var handler = GameInitialize.HandlerLoader?.warMachineFormationsHandler;
+            var list = handler?.formations;
+            var flags = new List<string>();
+            for (var i = 0; list != null && i < list.Count; i++) flags.Add($"{i + 1}={(list[i] != null && list[i].selected)}");
+            var temp = handler?.TempSelectedFormation;
+            var tempSlot = 0;
+            for (var i = 0; temp != null && list != null && i < list.Count; i++)
+                if (list[i] != null && list[i].Pointer == temp.Pointer) tempSlot = i + 1;
+            return $"flags [{string.Join(", ", flags)}], game selected squad {HandlerSelectedSlot()}, pending squad {tempSlot}";
+        }
+        catch (Exception e) { return "state unreadable: " + e.Message; }
+    }
+
+    /// <summary>
+    ///     Last resort: asks the game's own squad handler to select squad N, the same two calls its Set active button
+    ///     makes. Used only after the button click did not change the selection.
+    /// </summary>
+    private static void CommitSelection(int slot)
+    {
+        try
+        {
+            var handler = GameInitialize.HandlerLoader?.warMachineFormationsHandler;
+            var formation = Formation(slot);
+            if (handler == null || formation == null) return;
+            handler.SetTempSelectedFormation(formation);
+            handler.SetSelectedFormation();
+        }
+        catch (Exception e) { Logger.Debug($"[Squads] select: {e.Message}"); }
+    }
+
     /// <summary>Reads whether squad N has machines; false means the squad data was unavailable.</summary>
     public static bool TryHasMachines(int slot, out bool hasMachines)
     {
@@ -399,9 +458,10 @@ public static class SquadApplier
     ///     Makes squad N the active squad (Engineer, Squads, "Set active"), the same as a player does. Does nothing
     ///     when it already is, or when that squad is empty.
     /// </summary>
-    public static IEnumerator SetActive(int slot, string why)
+    public static IEnumerator SetActive(int slot, string why, bool strict = false)
     {
-        if (slot < 1 || slot > 3 || ActiveSlot() == slot) yield break;
+        bool Done() => strict ? Settled(slot) : SwitchedTo(slot);
+        if (slot < 1 || slot > 3 || Done()) yield break;
         if (!HasMachines(slot)) { Logger.Warning($"[Squads] Squad {slot} is empty or unavailable, so it was not set active ({why})."); yield break; }
 
         yield return Watchdog.ForceClearAll($"before switching to squad {slot}");
@@ -418,7 +478,7 @@ public static class SquadApplier
         }
         yield return new WaitForSeconds(0.8f);
 
-        for (var attempt = 0; attempt < 3 && ActiveSlot() != slot; attempt++)
+        for (var attempt = 0; attempt < 3 && !Done(); attempt++)
         {
             var card = SquadInteraction(slot);
             if (card == null)
@@ -451,11 +511,20 @@ public static class SquadApplier
                          $"{(named == null ? "missing" : Ui.Clickable(named) ? "clicked" : "not clickable")}, " +
                          $"field button {(button == null ? "missing" : button.interactable ? "ready" : "not interactable")}.");
             var until = Time.unscaledTime + 5f;
-            while (ActiveSlot() != slot && Time.unscaledTime < until) yield return new WaitForSeconds(0.25f);
+            while (!Done() && Time.unscaledTime < until) yield return new WaitForSeconds(0.25f);
+            if (attempt == 0 && !Done()) Logger.Debug($"[Squads] After the click: {SwitchState()}.");
         }
 
-        if (ActiveSlot() == slot) Logger.Info($"[Squads] Squad {slot} is now active ({why}).");
-        else Logger.Warning($"[Squads] Could not set squad {slot} active ({why}).");
+        if (!Done())
+        {
+            CommitSelection(slot);
+            var settle = Time.unscaledTime + 3f;
+            while (!Done() && Time.unscaledTime < settle) yield return new WaitForSeconds(0.25f);
+            Logger.Debug($"[Squads] After asking the game to select squad {slot}: {SwitchState()}.");
+        }
+
+        if (Done()) Logger.Info($"[Squads] Squad {slot} is now active ({why}).");
+        else Logger.Warning($"[Squads] Could not set squad {slot} active ({why}). {SwitchState()}.");
         yield return Watchdog.ForceClearAll($"after switching to squad {slot}");
     }
 

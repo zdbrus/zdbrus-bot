@@ -171,7 +171,11 @@ public class MeteoriteResearchTask : BotTask
             }
             if (!Selected(research) || !(SingleQuantity || OneLevelLeft()))
             {
-                Logger.Warning("[Meteorite Research] Could not confirm one-level purchasing; no purchase attempted.");
+                Logger.Warning("[Meteorite Research] Could not confirm one-level purchasing; no purchase attempted. " +
+                               $"{name}: quantity {Popup?.currentResearchQuantityEnum} x{Popup?.currentResearchQuantity}, " +
+                               $"quantity button {(Ui.Visible(Preview + "/unlocked/changeQuantityButton") ? (Ui.Clickable(Preview + "/unlocked/changeQuantityButton") ? "ready" : "locked") : "hidden")}, " +
+                               $"level text '{Ui.Text(Preview + "/level")}', cost {research.levelUpCost.GetDecrypted()}, " +
+                               $"balance {Balance()}, reserve {_keep.Value}.");
                 yield break;
             }
 

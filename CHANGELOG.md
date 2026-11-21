@@ -1,6 +1,9 @@
 ﻿# Changelog
 
 ## 0.7.65 (2026-11-18)
+- **Arena squad switch checks the game's own selected squad.** The log showed the Set active click closing the squads screen while the squad flags still said the old squad, so the arena never fought. The bot now also reads the game's selected squad, asks the game to select the squad if the click did not, logs both states, and restores your squad only when both agree it is back.
+- **Daily Rewards waits for a claim button to become clickable.** A lit Scarab free token bubble with a button that was still opening made the task reopen the shop every few minutes; it now waits a moment and goes quiet for 3 hours when the claim cannot be confirmed.
+- **Meteorite Research logs why it could not confirm one-level purchasing** (quantity, button state, level text, cost, balance) so a stuck research can be diagnosed from the log.
 - **Strange Dust To Keep (Alchemist and Magic Quarters).** The Alchemist's dust experiments and guardian Enlightenment both spend Strange Dust, which kept some accounts near zero and unable to reach the 1,000 dust Tier 2 soulstones need. Each now has a reserve setting that is never spent into. It defaults to 0, so nothing changes until you set it.
 - **Chaos Rift leaves war machine tokens alone.** Moonstone purchases use expedition tokens, which the guide ranks below war machine levels. The rift now skips a purchase that would take tokens a war machine level is waiting for.
 - **Firestone Research default order follows the guide again.** Raining Gold first, then Trainer Skills, Expeditioner and Attribute damage. Firestone Finder moves down (the guide calls it weak in this tree) and health and armor go last. Lists you never edited move once; edited lists are left alone, and Recommended restores it.
