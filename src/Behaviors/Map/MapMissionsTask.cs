@@ -14,6 +14,11 @@ using MelonLoader;
 
 namespace Firebot.Behaviors.Map;
 
+// On Mono (macOS) the game declares types with these names in the global namespace,
+// which would otherwise win over the usings above.
+using MapMission = Firebot.GameModel.Features.Map.MapMission;
+using MissionRewardsPopup = Firebot.GameModel.Features.Map.Missions.MissionRewardsPopup;
+
 public class MapMissionsTask : BotTask
 {
     public override GameFeature RequiredFeature => GameFeature.WorldMap;

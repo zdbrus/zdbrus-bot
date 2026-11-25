@@ -10,6 +10,8 @@ INSTALL
 3. Extract this whole zip into the folder containing Firestone.exe and replace files.
    Keep the three Il2CppInterop DLLs in MelonLoader\net6; without them the game can close at startup.
 4. Start Firestone through Steam or Epic. If you used Firebot before, remove Mods\firebot.dll.
+macOS: this zip contains the Windows build. Mac players build from source; see the macOS section
+of the README on GitHub.
 
 FEATURES
 See the release notes for the full list. Highlights include notification-bubble tasks, daily rewards,

@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Firebot.Behaviors.Extra;
+#if !MONO
 using Il2Cpp;
+#endif
 using UnityEngine;
 
 namespace Firebot.Planner;

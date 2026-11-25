@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Firebot.Core;
 using Firebot.Core.Tasks;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
@@ -509,7 +511,11 @@ public class WarMachineUpgradeTask : BotTask
     private List<int> Targets()
     {
         var owned = new Dictionary<int, WarMachine>();
+#if MONO
+        var list = global::GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.warMachineList;
+#else
         var list = Il2Cpp.GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.warMachineList;
+#endif
         for (var i = 0; list != null && i < list.Count; i++)
             if (list[i] != null) owned[(int)list[i].machineCode] = list[i];
 
@@ -519,7 +525,11 @@ public class WarMachineUpgradeTask : BotTask
             var pick = raw.Trim();
             if (pick.Equals("squad", StringComparison.OrdinalIgnoreCase))
             {
+#if MONO
+                var squad = global::GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList;
+#else
                 var squad = Il2Cpp.GameInitialize.HandlerLoader?.warMachineHandler?.warMachineData?.formationList;
+#endif
                 for (var i = 0; squad != null && i < squad.Count; i++)
                     foreach (var kv in owned)
                         if (squad[i] != null && (kv.Value.code == squad[i].code || kv.Value.machineCode.ToString() == squad[i].code) &&

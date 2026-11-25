@@ -3,7 +3,9 @@ using System;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+#if !MONO
 using Il2Cpp;
+#endif
 using UnityEngine;
 
 namespace Firebot.Planner;

@@ -4,7 +4,6 @@ using Firebot.Behaviors.Extra;
 using Firebot.Core;
 using Firebot.UI.Config;
 using Firebot.UI.Widgets;
-using Il2CppTMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;

@@ -7,6 +7,10 @@ using Firebot.Infrastructure;
 
 namespace Firebot.Behaviors.Guild;
 
+// On Mono (macOS) the game declares types with these names in the global namespace,
+// which would otherwise win over the usings above.
+using Expedition = Firebot.GameModel.Features.Guild.Expeditions.Expedition;
+
 public class ExpeditionTask : BotTask
 {
     public override GameFeature RequiredFeature => GameFeature.Guilds;

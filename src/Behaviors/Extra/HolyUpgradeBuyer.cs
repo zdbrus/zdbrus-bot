@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Firebot.Core;
+#if !MONO
 using Il2Cpp;
+#endif
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
 

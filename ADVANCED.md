@@ -173,6 +173,31 @@ The folder you want is the one containing `Firestone.exe`: that is where the Mel
 
    See [RELEASING.md](RELEASING.md) for staging builds, package contents, and the draft-release checklist.
 
+### macOS
+
+The macOS game is a Mono build, so the bot is compiled against the game's own managed assemblies instead of the IL2CPP ones. `src/Directory.Build.props` selects this automatically on macOS through the `GameRuntime` property (`Il2Cpp` on Windows, `Mono` on macOS; override with `-p:GameRuntime=...`). The Mono build:
+
+- targets `netstandard2.1` (implemented by Unity's Mono) and references MelonLoader's `net35` assemblies;
+- defines the `MONO` symbol;
+- references `System.Text.Json` from NuGet and copies its DLLs to `UserLibs/`, because Mono does not ship it;
+- publicizes the game assemblies with `Krafs.Publicizer`, because Il2CppInterop exposes private game members as public and the code uses them.
+
+1. Set up the game folder (see the README → *macOS*). The build only needs the game installed; the setup is what lets you test it in-game.
+2. Install the [.NET SDK](https://dotnet.microsoft.com/download) (no administrator rights needed with `dotnet-install.sh --install-dir ~/.dotnet`).
+3. Build:
+
+   ```bash
+   dotnet build src -c Release
+   ```
+
+   `GameRoot` defaults to `~/Library/Application Support/Steam/steamapps/common/Firestone`. The build copies `ZdbrusBot.dll` to `Mods/` and the NuGet DLLs to `UserLibs/`.
+
+Notes for code changes:
+
+- On Mono the game declares some of its types in the global namespace. Where a name matches a bot type (`Expedition`, `Guardian`, `MapMission`, `MissionRewardsPopup`), the task files alias it inside their namespace.
+- Fully qualified `Il2CppSystem.*`, `Il2CppTMPro.*` and `Il2CppHolydayStudios.*` names work on both runtimes (the Mono build aliases them). Other Il2CppInterop APIs (`.Pointer`, `TryCast`, `Il2CppType`, `Il2Cpp.`-qualified game types) need a `#if MONO` alternative.
+- A Mono build can only be produced against the macOS game's assemblies, so it has to be built on a Mac with the game installed.
+
 ---
 
 ## Contributing

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Il2CppTMPro;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
 using UnityEngine.UI;

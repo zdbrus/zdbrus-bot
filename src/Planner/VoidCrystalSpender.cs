@@ -6,7 +6,9 @@ using System.Text.Json;
 using Firebot.Behaviors.Extra;
 using Firebot.BotActions;
 using Firebot.Core;
+#if !MONO
 using Il2Cpp;
+#endif
 using MelonLoader;
 using UnityEngine;
 using Logger = Firebot.Core.Logger;
