@@ -86,14 +86,6 @@ internal static class ConfigRegistry
         ["temple_prestige/min_gain_percent"] = new NumberRange(0f, 100000f, true),
         ["temple_prestige/stall_minutes"] = new NumberRange(30f, 60f, true),
         ["temple_prestige/boss_attempts"] = new NumberRange(2f, 5f, true),
-        ["boss_retry/stage_fallback"] =
-            "After a lost boss, or too long at one stage, step back a few stages to farm.\n" +
-            "The next try comes after Minutes Between Tries. Default: off.",
-
-        ["boss_retry/fallback_minutes"] =
-            "Fall back after this many minutes at one stage, even without a lost boss.\n" +
-            "0 = only after a lost boss. Allowed range: 0 to 240.",
-
         ["temple_prestige/check_minutes"] = new NumberRange(1f, 60f, true),
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
         ["temple_prestige/efficiency_percent"] = new NumberRange(0f, 200f, true),
@@ -497,6 +489,18 @@ internal static class ConfigRegistry
             "Seconds the bot waits after you click, type, scroll or move the mouse.\n" +
             "A screen you opened is left alone 3x as long. F2 RUN ignores this.\n" +
             "Allowed range: 5 to 120. Default: 20.",
+
+        ["boss_retry/stage_fallback"] =
+            "After a lost boss, or too long at one stage, step back a few stages to farm.\n" +
+            "The next try comes after Minutes Between Tries. Default: off.",
+
+        ["boss_retry/fallback_stages"] =
+            "How many stages to step back. Each step must lower the stage you are on, or it stops.\n" +
+            "Allowed range: 1 to 20. Default: 3.",
+
+        ["boss_retry/fallback_minutes"] =
+            "Fall back after this many minutes at one stage, even without a lost boss.\n" +
+            "0 = only after a lost boss. Allowed range: 0 to 240.",
 
         ["temple_prestige/check_minutes"] =
             "How often the bot reads the stage for a prestige decision. The temple opens only when\n" +
