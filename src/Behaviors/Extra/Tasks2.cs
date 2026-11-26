@@ -1247,8 +1247,9 @@ public class BossRetryTask : BotTask
     }
 
     /// <summary>
-    ///     The battle screen's own "previous stage" arrow. Matched by name, and only inside the battle HUD: the
-    ///     object has to say both that it goes back and that it is about the stage.
+    ///     The battle screen's own "previous stage" arrow. First by name (it has to say both that it goes back and
+    ///     that it is about the stage), then by position: the arrow sits next to the stage number, so the nearest
+    ///     button to the left of the label that shows the current stage is the one.
     /// </summary>
     private static Transform FindPreviousStageControl()
     {
@@ -1268,6 +1269,71 @@ public class BossRetryTask : BotTask
             if (best == null || name.Contains("stage")) best = t;
         }
 
+        return best ?? FindArrowBesideStageNumber(root);
+    }
+
+    private static Transform FindArrowBesideStageNumber(Transform root)
+    {
+        if (!PlayerStats.TryGetCurrentStage(out var stage)) return null;
+        var label = FindStageLabel(root, stage);
+        if (label == null) return null;
+        var at = label.position;
+        Transform best = null;
+        var bestDistance = float.MaxValue;
+        foreach (var t in root.GetComponentsInChildren<Transform>(false))
+        {
+            if (t == null || t == label || !Ui.Clickable(t)) continue;
+            var name = t.name.ToLowerInvariant();
+            if (name.Contains("fight") || name.Contains("boss") || name.Contains("close") || name.Contains("next") ||
+                name.Contains("right") || name.Contains("up")) continue;
+            if (!string.IsNullOrEmpty(FirstText(t))) continue; // an arrow carries no words
+            var dx = at.x - t.position.x;
+            var dy = Math.Abs(at.y - t.position.y);
+            if (dx <= 0f || dy > dx) continue; // left of the number and roughly level with it
+            var distance = dx + dy * 2f;
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = t;
+            }
+        }
+
         return best;
+    }
+
+    /// <summary>The visible label that shows the current stage number (not a price, timer or other count).</summary>
+    private static Transform FindStageLabel(Transform root, int stage)
+    {
+        Transform best = null;
+        var bestLength = int.MaxValue;
+        foreach (var t in root.GetComponentsInChildren<Transform>(false))
+        {
+            if (t == null || !t.gameObject.activeInHierarchy) continue;
+            var text = Ui.Text(t);
+            if (string.IsNullOrEmpty(text) || text.Length > 16) continue;
+            var matches = false;
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, @"\d+"))
+                if (int.TryParse(m.Value, out var n) && n == stage)
+                    matches = true;
+            if (!matches || text.Contains(":") || text.Contains("%") || text.Contains("/")) continue;
+            if (text.Length < bestLength)
+            {
+                bestLength = text.Length;
+                best = t;
+            }
+        }
+
+        return best;
+    }
+
+    private static string FirstText(Transform button)
+    {
+        foreach (var t in button.GetComponentsInChildren<Transform>(false))
+        {
+            var text = Ui.Text(t);
+            if (!string.IsNullOrEmpty(text)) return text;
+        }
+
+        return string.Empty;
     }
 }
