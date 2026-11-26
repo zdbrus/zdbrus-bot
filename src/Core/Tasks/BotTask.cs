@@ -273,6 +273,20 @@ public abstract class BotTask
 
     public abstract IEnumerator Execute();
 
+    /// <summary>
+    ///     Asked by the scheduler before it clears the screen for this task. True means the task already knows,
+    ///     from what it can read without any menu, that a run would do nothing; it has rescheduled itself, and the
+    ///     scheduler skips the run, so the screen the player has open is never closed for a check that clicks
+    ///     nothing (issue #8: Temple Prestige closed menus every minute).
+    /// </summary>
+    internal virtual bool SkipWithoutScreen() => false;
+
+    /// <summary>
+    ///     False for a task that works from the battle screen with whatever menu is open (Boss Retry): the
+    ///     scheduler then runs it without the cleanup before and after, so it never closes the player's screen.
+    /// </summary>
+    internal virtual bool NeedsCleanScreen => true;
+
     /// <summary>Releases native actions that can outlive a stopped coroutine.</summary>
     internal virtual void OnStopped() { }
 

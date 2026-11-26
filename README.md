@@ -77,15 +77,18 @@ Talents follow a staged plan first (F1 > Talents > Guide plan; clear it to use o
 | **Guild** | Expeditions, free pickaxes, guild crystal, Chaos Rift (hits, eclipse stones, tomes, holy upgrades for the guardians you choose), personal tree, hero awakening, forbidden knowledge |
 | **Map** | Map missions (claims, free speedups, skips when every squad is busy), Warfront loot, Liberation missions (Easy 1 star, Normal 2 stars, or both) |
 | **Battle** | Arena (chooses the lowest readable opponent power within your limit and verifies the preview), war machine levels and blueprints for any machines you pick or your active squad, switches to your arena squad for arena fights and back, clicks coal miners and double-beer dragons the moment they appear |
-| **Events** | Event challenge rewards, seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
+| **Events** | Event rewards on every tab (mini event challenges, Decorated Heroes, New Player event), seasonal exchange shops (e.g. pumpkins for pickaxes and chests) |
 | **Character** | Spends talent points the moment you earn them (and saves them) |
-| **Progress** | Retries the stage boss after a lost fight; repeated attempts at one stage can trigger a free prestige |
+| **Progress** | Retries the stage boss after a lost fight; optional Stage Fallback steps back a few stages after a lost boss or too long at one stage; repeated attempts at one stage can trigger a free prestige |
 | **Prestige** | Free Temple prestige when growth efficiency drops, after repeated boss attempts at one stage, or when the fallback stall timer expires; status and controls have their own F1 tab |
 
 Mystery Box claims are retried if the offer or claim cannot be confirmed. Opening boxes requires a
 readable amount and a free opening control with no visible price marker; otherwise the boxes are kept.
 Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
-even if its notification remains lit or the game restarts. Notification cooldowns and separate
+even if its notification remains lit or the game restarts. Below your **Pickaxe Claim Threshold** it
+comes back when enough pickaxes should have built up, not for every new pickaxe. Chaos Rift opens only
+when its bubbles light (or more stones are left than one visit hits); a visit with nothing to hit or
+buy mutes the rift for 3 hours. Notification cooldowns and separate
 Chaos Rift and Mystery Box retries also continue after a restart. Like other task schedules, these
 waits are shared across accounts on the same installation, so switching accounts can carry one over.
 
@@ -120,7 +123,9 @@ Open **F1 > Prestige** to enable the task and see its last decision, run reading
 growth efficiency is the primary trigger: two hourly samples below the configured share of the run's
 average boost growth (75% by default) can prestige without waiting for a timer. If growth does not
 trigger, repeated boss attempts at the same stage can trigger next (3 by default; choose 2–5). The
-no-progress timer is the final fallback, selectable as 30 minutes or 1 hour. All triggers still respect
+no-progress timer is the final fallback, selectable as 30 minutes or 1 hour. **Check Every (Minutes)**
+(10 by default, 1 to 60) sets how often the bot reads the stage; it opens the Temple only when a trigger
+is close, and a ready stall timer or growth sample is never delayed by a longer interval. All triggers still respect
 your minimum gold boost and run age. The growth rule is an estimate, not a guaranteed optimum. If the
 live stage, run age (including the game's `minutes:seconds` clock), boost format, or verified free
 control cannot be read, the bot does not prestige. A `+0%` boost is treated as a valid zero sample,
@@ -145,9 +150,27 @@ Large balances may be split across visits to respect **Max Task Runtime**.
 Compatible tasks in the same town or guild reuse that hub, while still closing finished activities
 and blocking popups. The bot returns to battle for battle tasks and idle upgrade windows;
 AutoUpgrade runs separately, not as the last task of a fixed cycle.
-With **Balance** selected, AutoUpgrade uses gaps between tasks even when the next check is less than
-30 seconds away, then finishes its short pass before handing over to a waiting task. Ready and running
-tasks still take priority. **Focus** still pauses as soon as a task is approaching.
+With **Balance** selected, AutoUpgrade goes round the selected slots one press each, again and again,
+until none can be bought (up to 20 rounds a burst), so every slot is maxed as far as gold allows. It uses
+gaps between tasks even when the next check is less than 30 seconds away, finishes its first round
+before handing over to a waiting task, and stops further rounds when a task is ready. **Focus** still
+pauses as soon as a task is approaching.
+
+### The bot waits for you
+
+After you click, type, scroll or move the mouse, the bot waits **Wait For Player** seconds (F1 > General,
+20 by default, 5 to 120) before it opens or closes anything, on any screen. A screen you opened yourself
+is left alone three times as long. AutoUpgrade and the idle cleanup wait too, and checks that can be done
+without a menu (Temple Prestige, Boss Retry) no longer close your screen. F2 RUN still goes right away.
+
+### Stage Fallback
+
+Under **F1 > Boss Retry**, turn on **Stage Fallback** (off by default) to step back **Stages To Fall Back**
+stages (3 by default, 1 to 20) after a lost boss, or after **Max Minutes At One Stage** (30 by default, 0 =
+only after a lost boss). The next try comes after **Minutes Between Tries**. Every step must lower the
+live stage read from the game, or the fallback stops and the bot presses Boss as before. If the battle
+screen's previous-stage control is not recognised, the log says so once; press F9 on the battle screen
+and attach the screen map to a GitHub issue.
 
 Priority chips show their order as numbers. Tap an item to remove it and tap it again to add it at the
 end. Firestone Research, Personal Tree, Meteorite Research, Forbidden Knowledge, Talents, Oracle

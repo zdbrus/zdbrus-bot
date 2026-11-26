@@ -91,6 +91,45 @@ public class DailyRewardsTask : BotTask
             result, label, 1.5f);
     }
 
+    private const string StoreRoot = P.Menus + "/Store";
+    private const string StoreTabs = StoreRoot + "/submenuButtons/grid";
+
+    /// <summary>
+    ///     The Mystery Box item, wherever the store shows it: the open tab first, then each tab named after the
+    ///     value or extreme-value bundles.
+    /// </summary>
+    private static IEnumerator FindMysteryBox(Action<string> found)
+    {
+        // The bubble may open the bundle screen itself rather than the store: whatever it opened is searched too.
+        var box = Ui.FindVisibleDescendant(StoreRoot + "/bg/submenus", "mysteryBox") ??
+                  Ui.FindVisibleDescendant(P.Popups, "mysteryBox") ??
+                  Ui.FindVisibleDescendant(P.Menus, "mysteryBox");
+        if (box == null)
+            foreach (var tab in Ui.VisibleChildren(StoreTabs).ToList())
+            {
+                var name = tab.name.ToLowerInvariant();
+                if (!name.Contains("extreme") && !name.Contains("valuebundle")) continue;
+                var path = StoreTabs + "/" + tab.name;
+                if (!Ui.Clickable(path)) continue;
+                yield return Ui.Click(path, MenuOpenDelay);
+                yield return Ui.WaitUntil(
+                    () => Ui.FindVisibleDescendant(StoreRoot + "/bg/submenus", "mysteryBox") != null, _ => { }, 3f);
+                box = Ui.FindVisibleDescendant(StoreRoot + "/bg/submenus", "mysteryBox");
+                if (box != null) break;
+            }
+
+        found(box);
+    }
+
+    /// <summary>The box's claim button or claimed marker, under either layout the game has used.</summary>
+    private static string MysteryBoxControl(string box, string control)
+    {
+        foreach (var holder in new[] { "/Graphics/", "/claimBg/", "/Graphics/claimBg/", "/" })
+            if (Ui.Find(box + holder + control) != null)
+                return box + holder + control;
+        return box + "/Graphics/" + control;
+    }
+
     public override IEnumerator Execute()
     {
         var mysteryReady = _now() >= _mysteryRetryAfter;
@@ -109,22 +148,38 @@ public class DailyRewardsTask : BotTask
                 yield return Ui.WaitUntil(() => Ui.Visible(MysteryBoxButton) || Ui.Visible(MysteryBoxClaimed),
                     _ => { }, 3f);
             }
+
+            // Game 9.1 moved the free Mystery Box to the Extreme Value Bundle screen (issue #8). The box is found by
+            // name on whichever store tab shows it, trying the bundle tabs in turn.
+            var mysteryButton = MysteryBoxButton;
+            var mysteryClaimed = MysteryBoxClaimed;
+            if (!Ui.Visible(mysteryButton) && !Ui.Visible(mysteryClaimed))
+            {
+                string box = null;
+                yield return FindMysteryBox(value => box = value);
+                if (box != null)
+                {
+                    mysteryButton = MysteryBoxControl(box, "purchaseButton");
+                    mysteryClaimed = MysteryBoxControl(box, "claimedBG");
+                }
+            }
+
             var confirmed = false;
-            var alreadyClaimed = Ui.Visible(MysteryBoxClaimed);
+            var alreadyClaimed = Ui.Visible(mysteryClaimed);
             if (alreadyClaimed)
                 Logger.Info("[Daily Rewards] Mystery Box already claimed; waiting for the next one.");
-            else if (Ui.Clickable(MysteryBoxButton) &&
-                     !Ui.HasPriceMarker(Ui.Find(MysteryBoxButton), allowFreePriceHolder: true))
+            else if (Ui.Clickable(mysteryButton) &&
+                     !Ui.HasPriceMarker(Ui.Find(mysteryButton), allowFreePriceHolder: true))
             {
                 var rewardWasVisible = Ui.Visible(P.RewardsClose);
                 var clicked = false;
-                yield return Ui.ClickIf(MysteryBoxButton,
-                    () => !Ui.Visible(MysteryBoxClaimed) &&
-                          !Ui.HasPriceMarker(Ui.Find(MysteryBoxButton), allowFreePriceHolder: true),
+                yield return Ui.ClickIf(mysteryButton,
+                    () => !Ui.Visible(mysteryClaimed) &&
+                          !Ui.HasPriceMarker(Ui.Find(mysteryButton), allowFreePriceHolder: true),
                     value => clicked = value, 1.5f, "Mystery Box");
                 if (clicked)
                     yield return Ui.WaitUntil(
-                        () => Ui.Visible(MysteryBoxClaimed) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                        () => Ui.Visible(mysteryClaimed) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
                         value => confirmed = value, 2f);
                 if (!confirmed) Logger.Warning("[Daily Rewards] The Mystery Box claim could not be confirmed.");
             }

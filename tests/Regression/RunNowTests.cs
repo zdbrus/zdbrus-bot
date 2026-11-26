@@ -10,9 +10,13 @@ internal static class RunNowTests
     public static void WaitsForPlayer()
     {
         Check(Firebot.Core.UserActivityPolicy.ShouldWait(3f, true, false), "A recent click with a screen open must hold the task.");
-        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(30f, true, false), "A quiet player must not hold the task.");
-        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(3f, false, false), "No open screen means nothing of the player's to close.");
+        Check(Firebot.Core.UserActivityPolicy.ShouldWait(3f, false, false), "A player clicking the battle or map screen must hold the task too.");
+        Check(Firebot.Core.UserActivityPolicy.ShouldWait(45f, true, false), "A screen the player opened is theirs for longer than the quiet window.");
+        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(45f, false, false), "A quiet player with nothing open must not hold the task.");
+        Check(!Firebot.Core.UserActivityPolicy.ShouldWait(70f, true, false), "A player gone quiet past the open-screen window must not hold the task.");
         Check(!Firebot.Core.UserActivityPolicy.ShouldWait(3f, true, true), "A task started with RUN must never wait.");
+        Check(Firebot.Core.UserActivityPolicy.ShouldWait(50f, false, false, 60f), "The Wait For Player setting must widen the window.");
+        Check(Firebot.Core.UserActivityPolicy.ShouldWait(4f, false, false, 1f), "A setting below the minimum must be raised to it.");
     }
 
     public static void KeepsStrangeDust()

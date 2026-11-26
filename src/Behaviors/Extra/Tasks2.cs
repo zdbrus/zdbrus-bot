@@ -1124,30 +1124,150 @@ public class OpenChestsTask : BotTask
 /// <summary>
 ///     After a lost boss fight the game keeps farming the stage until someone presses "Boss". This presses it again
 ///     every few minutes, once the heroes have had time to level. Losing costs nothing.
+///     <para>
+///         With Stage Fallback on (issue #6) a lost boss, or too long at one stage, steps back a few stages to farm
+///         where the team wins, and the next try comes after "Minutes Between Tries".
+///     </para>
 /// </summary>
 public class BossRetryTask : BotTask
 {
     private const string Fight = P.Battle + "/rightSideUI/fightBossButton";
     private MelonPreferences_Entry<int> _minutes;
+    private MelonPreferences_Entry<bool> _fallback;
+    private MelonPreferences_Entry<int> _fallbackStages;
+    private MelonPreferences_Entry<int> _fallbackMinutes;
+    private int _lastAttemptStage;
+    private int _trackedStage;
+    private DateTime _stageSince;
+    private bool _noControlLogged;
     protected override bool EnabledByDefault => true;
+
+    /// <summary>Pressing "Boss" works with a menu open, so the player's screen is never closed for it.</summary>
+    internal override bool NeedsCleanScreen => false;
 
     protected override void OnConfigure(MelonPreferences_Category c)
     {
         _minutes = c.CreateEntry("every_minutes", 1, "Minutes Between Tries", "How long to farm before trying the boss again.");
+        _fallback = c.CreateEntry("stage_fallback", false, "Stage Fallback",
+            "After a lost boss, or too long at one stage, step back a few stages to farm, then try again after " +
+            "Minutes Between Tries. Default: off.");
+        _fallbackStages = c.CreateEntry("fallback_stages", 3, "Stages To Fall Back",
+            "How many stages to step back. 1 to 20. Default: 3.");
+        _fallbackMinutes = c.CreateEntry("fallback_minutes", 30, "Max Minutes At One Stage",
+            "Fall back after this long at the same stage even without a lost boss. 0 = only after a lost boss. " +
+            "Up to 240. Default: 30.");
     }
 
     public override IEnumerator Execute()
     {
-        NextRunTime = DateTime.Now.AddMinutes(Math.Max(1, _minutes.Value));
-        if (!Ui.Clickable(Fight)) yield break;
+        var now = DateTime.Now;
+        NextRunTime = now.AddMinutes(Math.Max(1, _minutes.Value));
         var stageKnown = PlayerStats.TryGetCurrentStage(out var stage);
+        if (stageKnown && stage != _trackedStage)
+        {
+            _trackedStage = stage;
+            _stageSince = now;
+        }
+
+        if (!Ui.Clickable(Fight)) yield break;
         if (!stageKnown)
             Logger.Warning("[Boss Retry] Stage data unavailable; this retry will not count toward prestige.");
+
+        var reason = stageKnown
+            ? StageFallbackPolicy.Decide(_fallback.Value, stage, _lastAttemptStage, true, _stageSince, now,
+                _fallbackMinutes.Value)
+            : StageFallbackReason.None;
+        if (reason != StageFallbackReason.None)
+        {
+            var target = StageFallbackPolicy.Target(stage, _fallbackStages.Value);
+            Logger.Info(reason == StageFallbackReason.LostBoss
+                ? $"[Boss Retry] Lost the boss at stage {stage}; falling back to stage {target}."
+                : $"[Boss Retry] {_fallbackMinutes.Value} minutes at stage {stage}; falling back to stage {target}.");
+            var reached = stage;
+            yield return FallBack(stage, target, value => reached = value);
+            _lastAttemptStage = 0;
+            if (reached < stage)
+            {
+                _trackedStage = reached;
+                _stageSince = DateTime.Now;
+                Logger.Info($"[Boss Retry] Now farming stage {reached}; next try in {Math.Max(1, _minutes.Value)} minute(s).");
+                yield break;
+            }
+        }
+
         yield return Ui.Click(Fight, 1f, stageKnown ? $"fight boss at stage {stage}" : "fight boss (stage unavailable)");
         if (stageKnown)
         {
+            _lastAttemptStage = stage;
             var attempts = BossAttemptTracker.RecordAttempt(stage);
             Logger.Info($"[Boss Retry] Attempt {attempts} at stage {stage}.");
         }
+    }
+
+    /// <summary>
+    ///     Presses the battle screen's previous-stage control until the target is reached. Each press must lower
+    ///     the live stage, read from the game itself, or the fallback stops: an unrecognised control is never
+    ///     pressed twice.
+    /// </summary>
+    private IEnumerator FallBack(int stage, int target, Action<int> reached)
+    {
+        var control = FindPreviousStageControl();
+        if (control == null)
+        {
+            if (!_noControlLogged)
+            {
+                _noControlLogged = true;
+                Logger.Warning("[Boss Retry] Stage Fallback could not find a previous-stage control on the battle " +
+                               "screen; pressing Boss instead. Press F9 on the battle screen and attach the screen map " +
+                               "to a GitHub issue so it can be supported.");
+            }
+
+            reached(stage);
+            yield break;
+        }
+
+        var current = stage;
+        for (var press = 0; press < (stage - target) * 2 && current > target; press++)
+        {
+            if (!Ui.Clickable(control)) break;
+            var before = current;
+            yield return Ui.Click(control, 1f, $"previous stage ({before} to {before - 1})");
+            var changed = false;
+            yield return Ui.WaitUntil(() => PlayerStats.TryGetCurrentStage(out var now) && now < before,
+                value => changed = value, 3f);
+            if (!changed || !PlayerStats.TryGetCurrentStage(out current) || current >= before)
+            {
+                Logger.Warning($"[Boss Retry] '{control.name}' did not lower the stage; Stage Fallback stopped at {before}.");
+                current = before;
+                break;
+            }
+        }
+
+        reached(current);
+    }
+
+    /// <summary>
+    ///     The battle screen's own "previous stage" arrow. Matched by name, and only inside the battle HUD: the
+    ///     object has to say both that it goes back and that it is about the stage.
+    /// </summary>
+    private static Transform FindPreviousStageControl()
+    {
+        var root = Ui.Find(P.Battle);
+        if (root == null) return null;
+        Transform best = null;
+        foreach (var t in root.GetComponentsInChildren<Transform>(false))
+        {
+            if (t == null || !Ui.Clickable(t)) continue;
+            var name = t.name.ToLowerInvariant();
+            var parent = t.parent != null ? t.parent.name.ToLowerInvariant() : "";
+            var back = name.Contains("previous") || name.Contains("prev") || name.Contains("back") ||
+                       name.Contains("left") || name.Contains("down");
+            var aboutStage = name.Contains("stage") || name.Contains("level") || name.Contains("wave") ||
+                             parent.Contains("stage") || parent.Contains("level") || parent.Contains("wave");
+            if (!back || !aboutStage || name.Contains("close")) continue;
+            if (best == null || name.Contains("stage")) best = t;
+        }
+
+        return best;
     }
 }

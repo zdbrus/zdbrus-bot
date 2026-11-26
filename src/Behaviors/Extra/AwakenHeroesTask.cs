@@ -30,6 +30,54 @@ public class AwakenHeroesTask : BotTask
 
     internal static bool ValidQuantity(int quantity) => quantity is 1 or 2 or 5 or 10 or 20;
 
+    /// <summary>
+    ///     The batch price. The text has moved inside the button between game versions; when the usual spot is
+    ///     empty, the first active number named like a cost inside the button is used (issue #8: the screen opened
+    ///     and closed with nothing pressed because the price read as missing).
+    /// </summary>
+    private static double Cost()
+    {
+        var cost = Ui.NumberAt(Button + "/costText");
+        if (cost > 0) return cost;
+        var button = Ui.Find(Button);
+        if (button == null) return -1;
+        foreach (var t in button.GetComponentsInChildren<Transform>(false))
+        {
+            if (t == null || !t.name.ToLowerInvariant().Contains("cost")) continue;
+            var value = Ui.NumberOf(t);
+            if (value > 0) return value;
+        }
+
+        return -1;
+    }
+
+    /// <summary>The Arcane Crystal balance, from the counter wherever the screen keeps it.</summary>
+    private static double CrystalBalance()
+    {
+        var have = Ui.NumberAt(Crystals);
+        if (have >= 0) return have;
+        var counter = Ui.FindVisibleDescendant(A, "currencyInteraction (ArcaneCrystal)");
+        return counter == null ? -1 : Ui.NumberAt(counter + "/quantity");
+    }
+
+    /// <summary>The button is priced in Arcane Crystals (never gems), under either icon name.</summary>
+    private static bool PricedInCrystals()
+    {
+        if (Ui.Visible(Button + "/arcaneCrystalIcon")) return true;
+        var button = Ui.Find(Button);
+        if (button == null) return false;
+        var crystal = false;
+        foreach (var t in button.GetComponentsInChildren<Transform>(false))
+        {
+            if (t == null) continue;
+            var name = t.name.ToLowerInvariant();
+            if (name.Contains("gem")) return false;
+            if (name.Contains("arcane") || name.Contains("crystal")) crystal = true;
+        }
+
+        return crystal;
+    }
+
     internal override void OnStopped()
     {
         _autoRun?.Dispose();
@@ -75,12 +123,13 @@ public class AwakenHeroesTask : BotTask
         }
 
         var receipt = new AutoPlayReceipt();
-        bool Affordable() => Ui.Visible(A) && Ui.Visible(Button + "/arcaneCrystalIcon") &&
+        bool Affordable() => Ui.Visible(A) && PricedInCrystals() &&
                              (int)mech.awakeningQuantity == quantity &&
-                             AutoPlayReceipt.Affordable(Ui.NumberAt(Crystals), Ui.NumberAt(Button + "/costText"));
+                             AutoPlayReceipt.Affordable(CrystalBalance(), Cost());
         if (!Affordable())
         {
-            Logger.Info($"[Awakening] No affordable x{quantity} batch; crystals {Ui.NumberAt(Crystals)}, cost {Ui.NumberAt(Button + "/costText")}.");
+            Logger.Info($"[Awakening] No affordable x{quantity} batch; crystals {CrystalBalance()}, cost {Cost()}, " +
+                        $"crystal price {(PricedInCrystals() ? "shown" : "not shown")}.");
             yield return Ui.Click(A + "/closeButton", 0.5f);
             yield break;
         }
@@ -92,8 +141,7 @@ public class AwakenHeroesTask : BotTask
                 Logger.Info("[Awakening] Auto stopped: no next affordable selected batch, changed settings, or unconfirmed spending.");
                 return false;
             }
-            receipt.Expect(() => Ui.NumberAt(Crystals), Ui.NumberAt(Crystals),
-                Ui.NumberAt(Button + "/costText"), quantity);
+            receipt.Expect(CrystalBalance, CrystalBalance(), Cost(), quantity);
             return true;
         }
 
@@ -144,7 +192,7 @@ public class AwakenHeroesTask : BotTask
             if (receipt.Pending && !receipt.Invalid)
                 yield return Ui.WaitUntil(receipt.Observe, _ => { }, 8f);
             if (receipt.Pending) Logger.Warning("[Awakening] The final batch's crystal use remains unconfirmed.");
-            Logger.Info($"[Awakening] Auto confirmed {receipt.Confirmed} awakening(s) at x{quantity}; crystals now {Ui.NumberAt(Crystals)}.");
+            Logger.Info($"[Awakening] Auto confirmed {receipt.Confirmed} awakening(s) at x{quantity}; crystals now {CrystalBalance()}.");
         }
         finally { OnStopped(); }
 

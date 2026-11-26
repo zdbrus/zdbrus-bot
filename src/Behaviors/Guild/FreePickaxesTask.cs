@@ -16,6 +16,12 @@ public class FreePickaxesTask : BotTask
 
     private MelonPreferences_Entry<int> _pickaxeClaimThreshold;
 
+    /// <summary>
+    ///     The longest time-to-next-pickaxe seen so far: the closest reading to the game's full interval. It can
+    ///     only under-estimate the interval, so the bot comes back early rather than late.
+    /// </summary>
+    private TimeSpan _intervalEstimate = TimeSpan.Zero;
+
     private int PickaxeClaimThreshold => _pickaxeClaimThreshold?.Value ?? 1;
     internal override IEnumerable<string> HandledNotificationNames => new[] { "FreePickaxes" };
 
@@ -81,11 +87,34 @@ public class FreePickaxesTask : BotTask
         }
         else
         {
-            Logger.Info($"[Free Pickaxes] Waiting for {PickaxeClaimThreshold} pickaxes; " +
-                        $"{before} available.");
+            // Below the threshold the bubble is lit for every single pickaxe. Come back when enough should have
+            // built up, instead of opening the shop for each one (issue #8).
+            var at = PickaxePlan.NextCheck(DateTime.Now, FreePickaxes.NextRunTime, before, PickaxeClaimThreshold,
+                ref _intervalEstimate);
+            NextRunTime = at;
+            if (BubbleQuietUntil < at) BubbleQuietUntil = at;
+            Logger.Info($"[Free Pickaxes] Waiting for {PickaxeClaimThreshold} pickaxes; {before} available. " +
+                        $"Checking again at {at:HH:mm}.");
+            yield return GuildShop.Close;
+            yield break;
         }
 
         NextRunTime = FreePickaxes.NextRunTime;
         yield return GuildShop.Close;
+    }
+}
+/// <summary>When to look at the free pickaxes again while waiting for the claim threshold.</summary>
+internal static class PickaxePlan
+{
+    public static DateTime NextCheck(DateTime now, DateTime nextPickaxe, int have, int threshold, ref TimeSpan interval)
+    {
+        var untilNext = nextPickaxe > now ? nextPickaxe - now : TimeSpan.Zero;
+        if (untilNext > interval && untilNext < TimeSpan.FromDays(1)) interval = untilNext;
+        if (untilNext <= TimeSpan.Zero) return now.AddMinutes(10);
+
+        var needed = Math.Max(1, threshold - have);
+        var at = nextPickaxe + TimeSpan.FromTicks(interval.Ticks * (needed - 1));
+        var latest = now.AddHours(12);
+        return at > latest ? latest : at;
     }
 }

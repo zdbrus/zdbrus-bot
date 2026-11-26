@@ -32,6 +32,7 @@ public class TemplePrestigeTask : BotTask
     private const string ConfirmEmpower = Confirmation + "/bg/confirmButton";
     private const string EmpowerQuestion = "Are you sure that you want to empower the temple?";
     private MelonPreferences_Entry<int> _stallMinutes;
+    private MelonPreferences_Entry<int> _checkMinutes;
     private MelonPreferences_Entry<int> _bossAttempts;
     private MelonPreferences_Entry<int> _minGain;
     private MelonPreferences_Entry<int> _minHours;
@@ -54,6 +55,9 @@ public class TemplePrestigeTask : BotTask
             "Replaced by the 30-minute or 1-hour fallback setting.", is_hidden: true);
         _stallMinutes = c.CreateEntry("stall_minutes", 30, "Fallback Stall Timer",
             "Fallback reset delay after no new highest stage.");
+        _checkMinutes = c.CreateEntry("check_minutes", 10, "Check Every (Minutes)",
+            "How often the bot reads the stage to decide on a prestige. It opens the temple only when a trigger is close. " +
+            "1 to 60 minutes. Default: 10.");
         _bossAttempts = c.CreateEntry("boss_attempts", 3, "Boss Attempts Before Reset",
             "Reset after this many boss attempts at the same stage.");
         _minGain = c.CreateEntry("min_gain_percent", 100, "Minimum Gold Boost %",
@@ -146,10 +150,55 @@ public class TemplePrestigeTask : BotTask
         => Ui.Visible(PrestigeComplete) ||
            (PlayerStats.TryGetCurrentStage(out var current) && current < stage);
 
+    /// <summary>The configured check interval, kept inside its supported range.</summary>
+    internal TimeSpan CheckInterval => TimeSpan.FromMinutes(Math.Clamp(_checkMinutes?.Value ?? 10, 1, 60));
+
+    /// <summary>
+    ///     The stage, the stall timer, the boss tries and the hourly sample clock are all readable without the
+    ///     temple. When none of them calls for the preview, the run is settled here and nothing is opened or closed.
+    /// </summary>
+    internal override bool SkipWithoutScreen()
+    {
+        if (Ui.Visible(EmpowerPopup) || Ui.Visible(T)) return false;
+        if (_stallMinutes.Value is < 30 or > 60 || _bossAttempts.Value is < 2 or > 5 ||
+            _minGain.Value < 0 || _minHours.Value < 0 || _efficiency.Value < 0)
+            return false;
+        if (!TryGetStall(out var stage, out var stalled)) return false;
+
+        var isStalled = stalled >= _stallMinutes.Value / 60d;
+        var bossAttempts = BossAttemptTracker.CountAtStage(stage);
+        var hasSampleTime = DateTime.TryParse(_lastGainAt.Value, CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind, out var sampledAt);
+        var sampleDue = _efficiency.Value > 0 && (!hasSampleTime || sampledAt > DateTime.Now ||
+                        DateTime.Now - sampledAt >= TimeSpan.FromHours(1));
+        if (isStalled || sampleDue || bossAttempts >= _bossAttempts.Value) return false;
+
+        BubbleQuietUntil = DateTime.Now.AddMinutes(15);
+        NextRunTime = NextQuickCheck(stalled, hasSampleTime ? sampledAt : (DateTime?)null);
+        var reading = $"Stage {stage} | {stalled:0.0}h without a new best | boss tries {bossAttempts}/{_bossAttempts.Value}";
+        Report("Waiting for progress or the next growth sample.", reading);
+        return true;
+    }
+
+    /// <summary>
+    ///     The next check: the configured interval, but never later than the moment the stall timer or the hourly
+    ///     sample comes due, so a longer interval does not delay a prestige that is ready.
+    /// </summary>
+    private DateTime NextQuickCheck(double stalledHours, DateTime? sampledAt)
+    {
+        var now = DateTime.Now;
+        var next = now + CheckInterval;
+        var stallDue = now + TimeSpan.FromHours(Math.Max(0, _stallMinutes.Value / 60d - stalledHours));
+        if (stallDue < next) next = stallDue;
+        if (_efficiency.Value > 0 && sampledAt.HasValue && sampledAt.Value.AddHours(1) < next)
+            next = sampledAt.Value.AddHours(1);
+        return next < now.AddSeconds(30) ? now.AddSeconds(30) : next;
+    }
+
     public override IEnumerator Execute()
     {
         BubbleQuietUntil = DateTime.Now.AddMinutes(15);
-        NextRunTime = DateTime.Now.AddMinutes(1);
+        NextRunTime = DateTime.Now + CheckInterval;
         if (Ui.Visible(Confirmation))
         {
             Report("An existing confirmation needs attention; left untouched.");
@@ -186,6 +235,7 @@ public class TemplePrestigeTask : BotTask
         var stageReading = $"Stage {stage} | {stalled:0.0}h without a new best | boss tries {bossAttempts}/{_bossAttempts.Value}";
         if (!isStalled && !sampleDue && !bossRetriesReached)
         {
+            NextRunTime = NextQuickCheck(stalled, hasSampleTime ? sampledAt : (DateTime?)null);
             Report("Waiting for progress or the next growth sample.", stageReading);
             Logger.Debug($"Temple: {stageReading}; fallback timer is {_stallMinutes.Value} minutes.");
             yield break;

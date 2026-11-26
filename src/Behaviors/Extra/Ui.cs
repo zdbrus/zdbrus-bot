@@ -63,6 +63,30 @@ internal static class Ui
         return t.TryGetComponent(out Button b) && b.enabled && b.interactable;
     }
 
+    /// <summary>The full scene path of a transform, usable with <see cref="Find" />.</summary>
+    public static string PathOf(Transform t)
+    {
+        if (t == null) return null;
+        var parts = new List<string>();
+        for (var c = t; c != null; c = c.parent) parts.Add(c.name);
+        parts.Reverse();
+        return string.Join("/", parts);
+    }
+
+    /// <summary>
+    ///     The first active object called <paramref name="name" /> anywhere under <paramref name="rootPath" />, as a
+    ///     path. For a control the game moves between tabs or lists from one update to the next.
+    /// </summary>
+    public static string FindVisibleDescendant(string rootPath, string name)
+    {
+        var root = Find(rootPath);
+        if (root == null || !root.gameObject.activeInHierarchy) return null;
+        foreach (var t in root.GetComponentsInChildren<Transform>(false))
+            if (t != null && t != root && string.Equals(t.name, name, StringComparison.OrdinalIgnoreCase))
+                return PathOf(t);
+        return null;
+    }
+
     public static bool HasPriceMarker(Transform button, bool allowFreePriceHolder = false)
     {
         if (button == null) return true;

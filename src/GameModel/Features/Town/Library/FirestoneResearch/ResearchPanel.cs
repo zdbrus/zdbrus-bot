@@ -45,8 +45,11 @@ public class ResearchPanel : GameElement
                         value => changed = value, "Firestone research free finish");
                     if (changed)
                     {
+                        // Every finished slot is handled in one visit: stopping after the first left the second
+                        // slot idle until the next visit (issue #8).
                         Debug("[INFO] Research free-finish state changed.");
-                        yield break;
+                        hadEmptySlot = HasEmptySlot;
+                        claimWasClickable = claimButton.IsClickable();
                     }
                 }
 
@@ -56,11 +59,7 @@ public class ResearchPanel : GameElement
                 yield return claimButton.ClickUntil(
                     () => !claimButton.IsClickable() || (!hadEmptySlot && HasEmptySlot),
                     value => claimed = value, "Firestone research claim");
-                if (claimed)
-                {
-                    Debug("[INFO] Research claim control or slot state changed.");
-                    yield break;
-                }
+                if (claimed) Debug("[INFO] Research claim control or slot state changed.");
             }
     }
 

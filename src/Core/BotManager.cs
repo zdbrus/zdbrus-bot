@@ -90,6 +90,10 @@ public static class BotManager
 
     /// <summary>The last scan found the game's tutorial running, and held every task back for it.</summary>
     private static bool _tutorialHold;
+    private static bool _playerWaitLogged;
+
+    /// <summary>The player has used the game within the quiet window (refreshed every scan). AutoUpgrade reads it too.</summary>
+    public static bool PlayerBusy { get; private set; }
 
     /// <summary>
     ///     Stops the bot when the task it is running has stopped advancing, and reports a scan that never came
@@ -292,14 +296,28 @@ public static class BotManager
             _tutorialHold = GameTutorial.ShouldHold;
             if (_tutorialHold) readyTask = null;
 
-            // The player is using a screen of their own (Tree of Life, a hero, the shop): leave it open until they
-            // have been quiet for a moment, instead of sweeping it shut for the next task.
+            // The player is using the game (Tree of Life, a hero, the shop, scrolling the map): leave it alone until
+            // they have been quiet for a moment, instead of sweeping their screen shut for the next task. Any
+            // input counts, not only input with a menu up: closing the map or a battle view under a player who is
+            // clicking it was the other half of "the bot interrupts everything I do" (issue #8).
+            var playerScreenOpen = Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus).Any();
+            var playerBusy = UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
+                playerScreenOpen, false, PlayerQuietSeconds);
+            PlayerBusy = playerBusy;
             if (readyTask != null && !IsTaskExecuting &&
                 UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
-                    Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus).Any() &&
-                    !Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle),
-                    readyTask.RunNowRequested))
+                    playerScreenOpen && !Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle),
+                    readyTask.RunNowRequested, PlayerQuietSeconds))
+            {
+                if (!_playerWaitLogged)
+                {
+                    _playerWaitLogged = true;
+                    Logger.Debug($"[Bot] {readyTask.SectionTitle} is due; waiting while you use the game.");
+                }
+
                 readyTask = null;
+            }
+            else if (readyTask != null) _playerWaitLogged = false;
 
             // Story dialogue, "New hero!" and the chapter reward sit on top of everything and have no close button
             // for the sweep. Cleared between tasks too, but a new account can go a long time with no task due.
@@ -315,7 +333,9 @@ public static class BotManager
                 if (_tutorialHold) readyTask = null;
             }
 
-            if (readyTask == null && retainedHub && !_tutorialHold && !plannerBusy)
+            // The idle cleanup closes whatever is open to get back to the upgrade screen. When the player has been
+            // using the game since the last task, what is open is theirs: keep the hub flag and try again later.
+            if (readyTask == null && retainedHub && !_tutorialHold && !plannerBusy && !playerBusy)
             {
                 var pauseForNearTask = _shouldPauseAutoUpgrade;
                 _shouldPauseAutoUpgrade = true;
@@ -326,6 +346,26 @@ public static class BotManager
                     IsTaskExecuting = false;
                     _shouldPauseAutoUpgrade = pauseForNearTask;
                     retainedHub = false;
+                }
+            }
+
+            // A task that can tell without opening anything that it has nothing to do is settled here, before the
+            // cleanup that would close the player's screen for it.
+            if (readyTask != null && !readyTask.RunNowRequested)
+            {
+                var skipped = false;
+                try { skipped = readyTask.SkipWithoutScreen(); }
+                catch (Exception e)
+                {
+                    Logger.Error($"[FAILED] {readyTask.SectionTitle} quick check threw: {e.GetType().Name} - {e.Message}");
+                }
+
+                if (skipped)
+                {
+                    readyTask.LastRunTime = DateTime.Now;
+                    readyTask.EnsureScheduled();
+                    ScheduleStore.Save(Tasks);
+                    readyTask = null;
                 }
             }
 
@@ -344,13 +384,18 @@ public static class BotManager
                 {
                     // Already on this task's screen (the player or the last task left it open): keep it and let the
                     // task carry on from there, instead of closing everything and walking back from town.
-                    if (Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle))
+                    var cleanScreen = readyTask.NeedsCleanScreen;
+                    if (!cleanScreen)
+                    {
+                        // Works over whatever is open; the hub kept by the last task stays kept.
+                    }
+                    else if (Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle))
                         Logger.Debug($"[Bot] {readyTask.SectionTitle}: already on its screen, starting from there.");
                     else
                         yield return RunSafe(Watchdog.Clear($"before {readyTask.SectionTitle}",
                                 TaskNavigation.HubFor(readyTask.GetType().Name)),
                             $"Watchdog cleanup before {readyTask.SectionTitle}");
-                    retainedHub = false;
+                    if (cleanScreen) retainedHub = false;
 
                     // Stopwatch, completion line and table are all diagnostics: with debug off none of
                     // them is needed, and the console stays quiet in normal use. The guard is single for
@@ -406,10 +451,13 @@ public static class BotManager
                         }
                     }
 
-                    var hub = TaskNavigation.HubFor(readyTask.GetType().Name);
-                    yield return RunSafe(Watchdog.Clear($"after {readyTask.SectionTitle}", hub),
-                        $"Watchdog cleanup after {readyTask.SectionTitle}");
-                    retainedHub = hub != TaskHub.None;
+                    if (cleanScreen)
+                    {
+                        var hub = TaskNavigation.HubFor(readyTask.GetType().Name);
+                        yield return RunSafe(Watchdog.Clear($"after {readyTask.SectionTitle}", hub),
+                            $"Watchdog cleanup after {readyTask.SectionTitle}");
+                        retainedHub = hub != TaskHub.None;
+                    }
                 }
                 finally
                 {

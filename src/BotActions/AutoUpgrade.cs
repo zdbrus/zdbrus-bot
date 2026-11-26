@@ -21,6 +21,12 @@ public static class AutoUpgrade
     private const float IdlePollSeconds = 0.5f;
     private const int FocusBurstLimit = 20;
 
+    /// <summary>
+    ///     Balance goes round the selected slots one press each, again and again, until none can be bought or this
+    ///     many rounds have passed. One press per slot per burst was issue #8: a slot gained one step a minute.
+    /// </summary>
+    private const int BalancedRoundLimit = 20;
+
     private static readonly WaitForSeconds GapBetweenButtonsWait = new(GapBetweenButtonsSeconds);
     private static readonly WaitForSeconds IdlePollWait = new(IdlePollSeconds);
     private static readonly List<CachedGameButton> ButtonsBuffer = new();
@@ -279,6 +285,12 @@ public static class AutoUpgrade
             ReportHold(hold);
 
             if (hold != null) _pausedSince = null;
+            else if (BotManager.PlayerBusy)
+            {
+                // The player is using the game: no menu is opened or closed under them. The next burst comes
+                // after the usual wait.
+                _pausedSince = null;
+            }
             else if (!BotManager.ShouldPauseAutoUpgrade())
             {
                 _pausedSince = null;
@@ -289,7 +301,7 @@ public static class AutoUpgrade
 
             // Not during a hold: the tutorial's own upgrade step is done in this menu, and closing it under the
             // player breaks the step.
-            if (hold == null && Upgrades.IsVisible) yield return Upgrades.Close;
+            if (hold == null && !BotManager.PlayerBusy && Upgrades.IsVisible) yield return Upgrades.Close;
 
             var wait = Math.Max(10, _everySeconds?.Value ?? 60);
             var until = Time.unscaledTime + wait;
@@ -352,21 +364,32 @@ public static class AutoUpgrade
 
 
         var visibleButtons = 0;
-        foreach (var buyUpgradeBtn in buttons)
+        var rounds = priorityMode == UncappedUpgradeMode.Balanced ? BalancedRoundLimit : 1;
+        for (var round = 0; round < rounds && !ShouldStopSweep(priorityMode); round++)
         {
-            if (ShouldStopSweep(priorityMode)) break;
-            if (!buyUpgradeBtn.IsVisible()) continue;
-            visibleButtons++;
-            var limit = priorityMode == UncappedUpgradeMode.Focus ? FocusBurstLimit : 1;
-            for (var attempt = 0; attempt < limit && !ShouldStopSweep(priorityMode) &&
-                 buyUpgradeBtn.IsVisible() && buyUpgradeBtn.IsClickable(); attempt++)
+            // The first round always finishes, as before; further rounds give way to a waiting task.
+            if (round > 0 && BotManager.ShouldPauseAutoUpgrade()) break;
+            var pressed = 0;
+            foreach (var buyUpgradeBtn in buttons)
             {
-                _activeHold = buyUpgradeBtn;
-                yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);
-                _activeHold = null;
-                yield return GapBetweenButtonsWait;
+                if (ShouldStopSweep(priorityMode)) break;
+                if (!buyUpgradeBtn.IsVisible()) continue;
+                if (round == 0) visibleButtons++;
+                var limit = priorityMode == UncappedUpgradeMode.Focus ? FocusBurstLimit : 1;
+                for (var attempt = 0; attempt < limit && !ShouldStopSweep(priorityMode) &&
+                     buyUpgradeBtn.IsVisible() && buyUpgradeBtn.IsClickable(); attempt++)
+                {
+                    _activeHold = buyUpgradeBtn;
+                    yield return buyUpgradeBtn.HoldButton(HoldPerButtonSeconds);
+                    _activeHold = null;
+                    pressed++;
+                    yield return GapBetweenButtonsWait;
+                }
+                if (!UncappedUpgradePolicy.ContinueAfterTarget(priorityMode, true)) break;
             }
-            if (!UncappedUpgradePolicy.ContinueAfterTarget(priorityMode, true)) break;
+
+            // A round where nothing could be bought means every selected slot is out of reach for now.
+            if (pressed == 0) break;
         }
 
         if (visibleButtons == 0 && !BotManager.ShouldPauseAutoUpgrade())

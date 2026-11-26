@@ -24,14 +24,17 @@ Battle Pass skips scrolling when its rewards marker is present but hidden.
 Mystery Box claims are retried when the offer or claim cannot be confirmed. Boxes are opened only
 when their amount is readable and the opening control shows no price; otherwise they are kept.
 Free Pickaxes waits at least ten minutes before retrying an unreadable quantity or an unconfirmed claim
-even if its notification remains lit or the game restarts. Notification cooldowns and separate
+even if its notification remains lit or the game restarts. Below the claim threshold it comes back when
+enough pickaxes should have built up, not for every new one. Chaos Rift opens only when its bubbles
+light; a visit with nothing to hit or buy mutes it for 3 hours. Notification cooldowns and separate
 Chaos Rift and Mystery Box retries also continue after a restart. Like other task schedules, these
 waits are shared across accounts on the same installation, so switching accounts can carry one over.
 F1 > Prestige shows the last decision and controls. Growth efficiency is the primary free-prestige
 trigger: two hourly samples below the configured share of average growth can trigger without waiting
 for a timer (75% by default; 0 disables growth). If it does not trigger, repeated boss attempts at one
 stage can trigger next (3 by default; choose 2–5); the no-progress fallback is selectable at 30 minutes
-or 1 hour. All triggers require the minimum boost and run age. The growth rule is an estimate; unreadable
+or 1 hour. "Check Every (Minutes)" (default 10, 1 to 60) sets how often the stage is read; the Temple
+opens only when a trigger is close, and a ready trigger is never delayed. All triggers require the minimum boost and run age. The growth rule is an estimate; unreadable
 stage/boost values or a run age the bot cannot read (including the game's minutes:seconds clock) stop
 the reset. A +0% boost is a valid zero sample and is checked hourly instead of reopening the Temple on
 every task check. Stage checks use game data, so opening the Temple and
@@ -49,9 +52,17 @@ buying crystals. Both Auto activities turn off when finished or when the bot sto
 may be split across visits to respect Max Task Runtime.
 Compatible town and guild tasks reuse their hub. Popup cleanup remains, and the bot returns to
 battle for battle tasks and idle upgrade windows. AutoUpgrade is a separate worker, not the last task.
-With Balance selected, it uses gaps between tasks even when the next check is less than 30 seconds away,
-then finishes its short pass before handing over. Ready and running tasks still take priority;
-Focus still pauses as soon as a task is approaching.
+With Balance selected, it goes round the selected slots again and again (up to 20 rounds a burst) until
+none can be bought, so each slot is maxed as far as gold allows. It uses gaps between tasks, finishes its
+first round before handing over, and stops further rounds when a task is ready. Focus still pauses as
+soon as a task is approaching.
+Wait For Player (F1 > General, default 20 seconds): after you click, type, scroll or move the mouse the
+bot opens or closes nothing for that long, on any screen; a screen you opened stays yours 3x as long.
+AutoUpgrade and the idle cleanup wait too. Temple Prestige and Boss Retry checks no longer close screens.
+Stage Fallback (F1 > Boss Retry, off by default): after a lost boss, or after Max Minutes At One Stage
+(default 30; 0 = only after a lost boss), step back Stages To Fall Back (default 3) and try again after
+Minutes Between Tries. Each step must lower the live stage or the fallback stops. If the previous-stage
+control is not recognised the log says so once; send an F9 battle screen map in a GitHub issue.
 Numbered priority chips keep your chosen order: tap to remove an item, then tap it to add it last.
 Clear empties a list; Recommended puts back the guide order (Aurora's Steam Complete Guide).
 F2 > RUN runs any enabled task right away, and starts the bot if it was stopped.

@@ -1,15 +1,32 @@
 namespace Firebot.Core;
 
-/// <summary>When a due task should wait because the player is using a screen of their own.</summary>
+/// <summary>When a due task should wait because the player is using the game themselves.</summary>
 public static class UserActivityPolicy
 {
-    /// <summary>Seconds after the last click, key or scroll during which the player is treated as busy.</summary>
-    public const float QuietSeconds = 12f;
+    /// <summary>Default seconds after the last click, key, scroll or mouse move during which the player is busy.</summary>
+    public const float QuietSeconds = 20f;
+
+    public const float QuietSecondsMin = 5f;
+    public const float QuietSecondsMax = 120f;
 
     /// <summary>
-    ///     True when a task should wait: the player touched the game a moment ago and a screen is open, so that
-    ///     screen is probably theirs. A task the player asked for with RUN never waits.
+    ///     A screen the player opened stays theirs this many times longer than the plain quiet window: reading a
+    ///     hero, the shop or the tree without touching the mouse is normal, and closing it under them is what
+    ///     players notice most.
     /// </summary>
-    public static bool ShouldWait(float secondsSinceInput, bool screenOpen, bool runRequested)
-        => !runRequested && screenOpen && secondsSinceInput < QuietSeconds;
+    public const float OpenScreenFactor = 3f;
+
+    /// <summary>
+    ///     True when a task (or the idle cleanup) should wait. The player touched the game a moment ago, on any
+    ///     screen, or a screen the bot did not open is still up and they touched the game within the longer
+    ///     open-screen window. A task the player asked for with RUN never waits.
+    /// </summary>
+    public static bool ShouldWait(float secondsSinceInput, bool screenOpen, bool runRequested,
+        float quietSeconds = QuietSeconds)
+    {
+        if (runRequested) return false;
+        if (quietSeconds < QuietSecondsMin) quietSeconds = QuietSecondsMin;
+        if (secondsSinceInput < quietSeconds) return true;
+        return screenOpen && secondsSinceInput < quietSeconds * OpenScreenFactor;
+    }
 }

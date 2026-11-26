@@ -48,6 +48,10 @@ internal static class Program
             Test("zero prestige boost waits for hourly sampling without blocking boss checks", PrestigeZeroGainSampling);
             Test("blocked prestige previews preserve the hourly sample and retry safely", PrestigeBlockedPreview);
             Test("free pickaxe claims distinguish unreadable data from success", LogIssueTests.FreePickaxeClaims);
+            Test("Stage Fallback decides on a lost boss or time at one stage (#6)", IssueEightTests.StageFallbackDecisions);
+            Test("free pickaxes wait for the threshold instead of every pickaxe (#8)", IssueEightTests.PickaxesWaitForThreshold);
+            Test("Chaos Rift is not reopened when there is nothing to do (#8)", IssueEightTests.ChaosRiftIdleVisits);
+            Test("Temple Prestige checks without closing screens, on its own interval (#6, #8)", IssueEightTests.TempleChecksWithoutScreen);
             Test("closed Chaos Rift leaves guardian upgrade notifications active", LogIssueTests.ChaosRiftCooldown);
             Test("Mystery Box store claims distinguish claimed and unreadable states", LogIssueTests.MysteryBoxClaims);
             Test("Mystery Box openings require free controls and readable confirmation", LogIssueTests.MysteryBoxOpening);
@@ -1067,14 +1071,29 @@ if ($Mode -eq 'blocked') {
         Check(ExecuteEvents.Targets.Count == 0, "Focused spending fell through an unaffordable top slot.");
 
         RunCycle("balanced");
-        Check(ExecuteEvents.Targets.Count == 1 && ExecuteEvents.Targets[0].EndsWith("/customUpgrade/buyButton"),
-            "Balanced spending did not continue to an affordable lower slot.");
+        Check(ExecuteEvents.Targets.Count == 20 &&
+              ExecuteEvents.Targets.All(path => path.EndsWith("/customUpgrade/buyButton")),
+            "Balanced spending did not keep buying an affordable lower slot (issue #8: one click per slot).");
 
         hero.interactable = true;
         RunCycle("balanced");
-        Check(ExecuteEvents.Targets.SequenceEqual(new[]
-            { list + "/heroSlot/lvlUpButton", list + "/customUpgrade/buyButton" }),
-            "Balanced spending ignored the chosen order.");
+        Check(ExecuteEvents.Targets.Count == 40 && ExecuteEvents.Targets.Take(4).SequenceEqual(new[]
+            { list + "/heroSlot/lvlUpButton", list + "/customUpgrade/buyButton",
+                list + "/heroSlot/lvlUpButton", list + "/customUpgrade/buyButton" }),
+            "Balanced spending ignored the chosen order or did not go round the slots.");
+
+        var heroPresses = 0;
+        ExecuteEvents.OnDown = target =>
+        {
+            if (target != null && target.transform.FullPath.EndsWith("/heroSlot/lvlUpButton") && ++heroPresses >= 3)
+                hero.interactable = false;
+        };
+        RunCycle("balanced");
+        ExecuteEvents.OnDown = null;
+        Check(ExecuteEvents.Targets.Count(path => path.EndsWith("/heroSlot/lvlUpButton")) == 3 &&
+              ExecuteEvents.Targets.Count(path => path.EndsWith("/customUpgrade/buyButton")) == 20,
+            "Balanced spending did not max each slot it could still afford.");
+        hero.interactable = true;
 
         order.Value = "2,1,0";
         BotManager.PauseAutoUpgrade = false;

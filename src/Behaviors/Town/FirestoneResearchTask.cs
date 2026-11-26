@@ -57,6 +57,15 @@ public class FirestoneResearchTask : BotTask
 
         var blocked = false;
         yield return RunSelection(value => blocked = value);
+
+        // A slot that finished while the first one was being refilled (or whose claim showed late) is claimed and
+        // refilled in the same visit, so both slots are running when the bot leaves.
+        if (!blocked)
+        {
+            yield return panel.Claim();
+            if (ResearchPanel.HasEmptySlot) yield return RunSelection(value => blocked = value);
+        }
+
         NextRunTime = panel.NextRunTime();
         if (blocked && NextRunTime > DateTime.Now.AddMinutes(15))
             NextRunTime = DateTime.Now.AddMinutes(15);

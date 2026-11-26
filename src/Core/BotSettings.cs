@@ -23,6 +23,7 @@ public static class BotSettings
     private static MelonPreferences_Entry<KeyCode> _panelKey;
     private static MelonPreferences_Entry<KeyCode> _statusKey;
     private static MelonPreferences_Entry<float> _freeSpeedupSeconds;
+    private static MelonPreferences_Entry<float> _playerQuietSeconds;
 
     // Valid ranges declared here, not scattered across the Clamp calls: the UI uses these exact same
     // constants for the sliders, so it never offers a value the code would silently clamp away.
@@ -74,6 +75,11 @@ public static class BotSettings
     public static bool AutoScreenMap => _autoScreenMap?.Value ?? true;
     public static bool AutoCollectDrops => _autoCollect?.Value ?? true;
     public static bool AutoUpdate => _autoUpdate?.Value ?? true;
+
+    /// <summary>Seconds the bot keeps its hands off after the player clicks, types, scrolls or moves the mouse.</summary>
+    public static float PlayerQuietSeconds => _playerQuietSeconds == null
+        ? UserActivityPolicy.QuietSeconds
+        : Mathf.Clamp(_playerQuietSeconds.Value, UserActivityPolicy.QuietSecondsMin, UserActivityPolicy.QuietSecondsMax);
 
     public static KeyCode ShortcutKey =>
         Enum.IsDefined(typeof(KeyCode), _shortcutKey.Value) && _shortcutKey.Value != KeyCode.None
@@ -132,6 +138,12 @@ public static class BotSettings
         _maxTaskRuntime = _category.CreateEntry("max_task_runtime", 120.0f, "Max Task Runtime",
             "Maximum time (in seconds) a single task is allowed to run before it is aborted." +
             "\nClamped between 10.0 and 3600.0 seconds.");
+
+        _playerQuietSeconds = _category.CreateEntry("player_quiet_seconds", UserActivityPolicy.QuietSeconds,
+            "Wait For Player",
+            "Seconds the bot waits after you click, type, scroll or move the mouse before it opens or closes anything." +
+            "\nA screen you opened yourself is left alone three times as long. F2 RUN ignores this." +
+            "\nClamped between 5 and 120 seconds. Default: 20.");
 
         _debugMode = _category.CreateEntry("debug_mode", false, "Enable Debug Mode",
             "Enables verbose logging and StackTrace display in the console for easier bug identification.");

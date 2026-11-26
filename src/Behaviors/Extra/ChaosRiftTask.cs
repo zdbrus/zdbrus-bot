@@ -28,7 +28,10 @@ public class ChaosRiftTask : BotTask
     private MelonPreferences_Entry<string> _holyPriorityMode;
     private readonly Func<DateTime> _now;
     private DateTime _riftRetryAfter;
+    private DateTime _idleQuietUntil;
+    private bool _moreHitsPending;
     private int _hits;
+    private int _purchases;
 
     public ChaosRiftTask() : this(() => DateTime.Now) { }
 
@@ -38,7 +41,13 @@ public class ChaosRiftTask : BotTask
     }
 
     protected override string NotificationPath => P.Notifications + "/ChaosRift";
-    protected override bool UseScheduledTime => true;
+    /// <summary>
+    ///     The timer only brings the task back while there is known work: more stones than one visit may hit, or
+    ///     a closed rift to retry. Otherwise the game's own bubbles say when there is something to hit, buy or
+    ///     upgrade, with the six-hour safety check behind them. An hourly timer used to open the rift even with
+    ///     nothing in it (issue #8).
+    /// </summary>
+    protected override bool UseScheduledTime => _moreHitsPending || _riftRetryAfter > _now();
     private static readonly string[] NotificationNames =
         { "ChaosRift", "ChaosRiftSupplies", "GuardianHolyUpgrade" };
 
@@ -49,20 +58,24 @@ public class ChaosRiftTask : BotTask
         {
             if (_riftRetryAfter > _now())
                 yield return new KeyValuePair<string, DateTime>("RiftRetryAfter", _riftRetryAfter);
+            if (_idleQuietUntil > _now())
+                yield return new KeyValuePair<string, DateTime>("RiftIdleUntil", _idleQuietUntil);
         }
     }
 
     internal override void RestoreRetryDeadline(string name, DateTime when)
     {
         if (name == "RiftRetryAfter") _riftRetryAfter = when;
+        else if (name == "RiftIdleUntil") _idleQuietUntil = when;
     }
 
     protected override bool IsNotificationVisibleCore()
     {
         var now = _now();
         return IsEnabled && now >= BubbleQuietUntil &&
-               ((now >= _riftRetryAfter && (Ui.Visible(P.Notifications + "/ChaosRift") ||
-                                            Ui.Visible(P.Notifications + "/ChaosRiftSupplies"))) ||
+               ((now >= _riftRetryAfter && now >= _idleQuietUntil &&
+                 (Ui.Visible(P.Notifications + "/ChaosRift") ||
+                  Ui.Visible(P.Notifications + "/ChaosRiftSupplies"))) ||
                 (_holyUpgrades?.Value == true && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade")));
     }
 
@@ -93,8 +106,10 @@ public class ChaosRiftTask : BotTask
             yield break;
         }
 
-        NextRunTime = _now().AddHours(1);
+        NextRunTime = _now().AddHours(6);
+        _moreHitsPending = false;
         _hits = 0;
+        _purchases = 0;
         if (Ui.Visible(P.Notifications + "/ChaosRift"))
             yield return Ui.Click(P.Notifications + "/ChaosRift", 2f);
         else
@@ -138,12 +153,27 @@ public class ChaosRiftTask : BotTask
             }
         }
 
-        if (_holyUpgrades.Value)
+        // The game lights the guardian bubble when a holy upgrade is affordable; without it there is nothing to
+        // buy in Magic Quarters, so the screen is not opened just to look.
+        if (_holyUpgrades.Value && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade"))
         {
             yield return Ui.Click(UI + "/actionButtons/upgrades", 2f);
             yield return HolyUpgrades();
         }
-        if (_hits >= 30) NextRunTime = _now().AddMinutes(2);
+
+        if (_hits >= 30)
+        {
+            _moreHitsPending = true;
+            NextRunTime = _now().AddMinutes(2);
+        }
+        else if (_hits == 0 && _purchases == 0)
+        {
+            // A lit rift or supplies bubble with nothing the bot may hit or buy (every stone used, tokens kept for a
+            // war machine): look again in three hours instead of every time the bubble backoff runs out.
+            _idleQuietUntil = _now().AddHours(3);
+            Logger.Info("[Chaos Rift] Nothing to hit or buy; checking the rift again in 3 hours.");
+        }
+
         yield return Ui.Click(R + "/closeButton");
     }
 
@@ -229,6 +259,7 @@ public class ChaosRiftTask : BotTask
             }
 
             purchased++;
+            _purchases++;
             if (Ui.MissingCurrency) yield break;
             yield return Ui.CloseRewards();
         }

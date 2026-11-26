@@ -385,6 +385,7 @@ namespace Firebot.Core
         public static bool IsTaskExecuting;
         public static bool PauseAutoUpgrade;
         public static bool TaskApproaching;
+        public static bool PlayerBusy;
         public static void Initialize() { }
         public static void Start() => IsRunning = true;
         public static void Stop() => IsRunning = false;
@@ -698,6 +699,16 @@ namespace Firebot.Behaviors.Extra
             if (root == null) yield break;
             for (var i = 0; i < root.childCount; i++)
                 if (root.GetChild(i).gameObject.activeInHierarchy) yield return root.GetChild(i);
+        }
+        public static string PathOf(Transform t) => t?.FullPath;
+        public static string FindVisibleDescendant(string rootPath, string name)
+        {
+            var root = Find(rootPath);
+            if (root == null || !root.gameObject.activeInHierarchy) return null;
+            foreach (var t in root.GetComponentsInChildren<Transform>(false))
+                if (t != null && t != root && string.Equals(t.name, name, StringComparison.OrdinalIgnoreCase))
+                    return t.FullPath;
+            return null;
         }
         public static bool Clickable(string path) => Clickable(Find(path));
         public static bool Clickable(Transform target) => target != null && target.gameObject.activeInHierarchy &&

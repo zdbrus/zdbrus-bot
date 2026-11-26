@@ -112,12 +112,26 @@ public class TavernTask : BotTask
         if (_buyTokens.Value)
         {
             yield return Ui.Click(Tavern + "/actionButtons/shop", 1.5f);
+            if (!Ui.Visible(Market)) yield return Ui.WaitFor(Market, 3f);
+            if (!Ui.Visible(Market))
+                Logger.Warning("[Tavern] The tavern market did not open; no beer was traded.");
+            var boughtAny = 0;
             for (var i = 0; i < 20 && Ui.Visible(Market); i++)
             {
                 var beer = Ui.NumberAt(Market + "/lower/counters/currencyInteraction (Beer)/quantity");
                 var tokensBefore = Ui.NumberAt(Tokens);
                 var cost = Ui.NumberAt(Market + "/items/gameTokenWithBeer/purchaseButtonOffer/currencyHolder/purchaseCost");
-                if (cost <= 0 || beer < cost) break;
+                if (cost <= 0 || beer < 0)
+                {
+                    // Silent before (issue #8): an unreadable price or balance now says so in the log.
+                    Logger.Warning($"[Tavern] Beer trade skipped: beer {beer}, price {cost} could not both be read.");
+                    break;
+                }
+                if (beer < cost)
+                {
+                    if (boughtAny == 0) Logger.Info($"[Tavern] Not enough beer for a token: {beer} of {cost}.");
+                    break;
+                }
                 var beerBefore = beer;
                 var bought = false;
                 var offer = Market + "/items/gameTokenWithBeer/purchaseButtonOffer";
@@ -130,8 +144,11 @@ public class TavernTask : BotTask
                     Logger.Warning("[Tavern] Token purchase made no observable currency change; stopping purchases.");
                     break;
                 }
+                boughtAny++;
                 yield return Ui.CloseRewards();
             }
+
+            if (boughtAny > 0) Logger.Info($"[Tavern] Traded beer for tokens {boughtAny} time(s).");
 
             yield return Ui.Click(Market + "/closeButton");
         }
@@ -143,21 +160,35 @@ public class TavernTask : BotTask
 
             var plays = 0;
             var rng = new System.Random();
-            while (plays < 20 && Ui.NumberAt(Tokens) > 0 && Ui.Clickable(Play))
+            while (plays < 20 && Ui.NumberAt(Tokens) > 0)
             {
+                // The deal and card flips take a few seconds; the play button comes back after them. Leaving as soon
+                // as it was hidden is what ended the game after the first deal (issue #8).
+                if (!Ui.Clickable(Play)) yield return Ui.WaitUntil(() => Ui.Clickable(Play), _ => { }, 10f);
+                if (!Ui.Clickable(Play)) break;
                 var tokensBefore = Ui.NumberAt(Tokens);
                 yield return Ui.Click(Play, 2f);
                 // In manual mode the game waits for a card to be picked.
                 var cards = Ui.VisibleChildren(Tavern + "/cardHolder").Where(Ui.Clickable).ToList();
                 if (cards.Count > 0) yield return Ui.Click(cards[rng.Next(cards.Count)], 3f, "tavern card");
-                yield return Ui.CloseRewards();
-                if (Ui.NumberAt(Tokens) >= tokensBefore)
+                var spent = false;
+                yield return Ui.WaitUntil(() =>
                 {
-                    Logger.Warning("[Tavern] A play did not reduce the token counter; stopping.");
+                    var now = Ui.NumberAt(Tokens);
+                    return now >= 0 && now < tokensBefore;
+                }, value => spent = value, 8f);
+                yield return Ui.CloseRewards();
+                if (!spent)
+                {
+                    Logger.Warning($"[Tavern] A play did not reduce the token counter ({tokensBefore} -> " +
+                                   $"{Ui.NumberAt(Tokens)}); stopping.");
                     break;
                 }
                 plays++;
             }
+
+            if (plays > 0) Logger.Info($"[Tavern] Played {plays} card game(s).");
+            else if (Ui.NumberAt(Tokens) <= 0) Logger.Info("[Tavern] No game tokens to play with.");
 
             if (plays == 20) NextRunTime = DateTime.Now.AddMinutes(2);
         }
@@ -752,7 +783,81 @@ public class EventChallengesTask : BotTask
 
     private const string List = P.Events + "/EventManager/bg/verticalLayout/Scroll View/Viewport/Content/activeEvents";
     private const string Mini = P.Events + "/MiniEvents/bg";
-    private const string Challenges = Mini + "/submenus/challenges/bg/challengesLayout";
+    private static readonly string[] ClaimNames = { "claimbutton", "claimallbutton", "claimbtn", "collectbutton" };
+
+    /// <summary>The event screen that appeared after an event was clicked, as a path, or null.</summary>
+    private static string OpenedEventScreen(HashSet<string> before)
+    {
+        var opened = Ui.VisibleChildren(P.Events)
+            .FirstOrDefault(t => !before.Contains(t.name) && t.name != "EventManager");
+        if (opened != null) return P.Events + "/" + opened.name;
+        var menu = Ui.VisibleChildren(P.Menus).FirstOrDefault(t => t.name.ToLowerInvariant().Contains("event"));
+        return menu != null ? P.Menus + "/" + menu.name : null;
+    }
+
+    /// <summary>A free claim control on the screen: named as a claim, clickable, and showing no price.</summary>
+    private static Transform FindClaim(string screen, HashSet<Transform> tried)
+    {
+        var root = Ui.Find(screen);
+        if (root == null) return null;
+        foreach (var t in root.GetComponentsInChildren<Transform>(false))
+        {
+            if (t == null || tried.Contains(t)) continue;
+            if (Array.IndexOf(ClaimNames, t.name.ToLowerInvariant()) < 0) continue;
+            if (Ui.Clickable(t) && !Ui.HasPriceMarker(t, true)) return t;
+        }
+
+        return null;
+    }
+
+    /// <summary>Claims every free reward on the screen's current tab, then on each of its other tabs.</summary>
+    private static IEnumerator ClaimEverywhere(string screen, Action<int, int> counted)
+    {
+        var ok = 0;
+        var bad = 0;
+        var tabs = new List<string> { null };
+        var tabRoot = Ui.FindVisibleDescendant(screen, "submenuButtons");
+        if (tabRoot != null) tabs.AddRange(Ui.VisibleChildren(tabRoot).Select(t => tabRoot + "/" + t.name));
+
+        foreach (var tab in tabs)
+        {
+            if (!Ui.Visible(screen)) break;
+            if (tab != null)
+            {
+                var button = Ui.Clickable(tab) ? tab : Ui.FindVisibleDescendant(tab, "button");
+                if (button == null || !Ui.Clickable(button)) continue;
+                yield return Ui.Click(button, 1.2f);
+            }
+
+            var tried = new HashSet<Transform>();
+            for (var guard = 0; guard < 30; guard++)
+            {
+                var claim = FindClaim(screen, tried);
+                if (claim == null) break;
+                tried.Add(claim);
+                var rewardWasVisible = Ui.Visible(P.RewardsClose);
+                var changed = false;
+                yield return Ui.ClickUntil(claim,
+                    () => !Ui.Clickable(claim) || (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
+                    value => changed = value, "event reward", 1.5f);
+                if (changed) ok++;
+                else bad++;
+                yield return Ui.CloseRewards();
+            }
+        }
+
+        counted(ok, bad);
+    }
+
+    private static IEnumerator CloseEventScreen(string screen)
+    {
+        foreach (var close in new[] { screen + "/closeButton", screen + "/bg/closeButton" })
+            if (Ui.Clickable(close))
+            {
+                yield return Ui.Click(close, 1.5f);
+                yield break;
+            }
+    }
 
     public override IEnumerator Execute()
     {
@@ -770,29 +875,26 @@ public class EventChallengesTask : BotTask
 
             var entry = Ui.VisibleChildren(List).Where(t => t.name.StartsWith("eventInteraction")).Skip(i).FirstOrDefault();
             if (entry == null) break;
+            var before = Ui.VisibleChildren(P.Events).Select(t => t.name).ToHashSet();
             yield return Ui.Click(entry, 2f);
-            if (!Ui.Visible(Mini)) continue;
 
-            yield return Ui.Click(Mini + "/submenuButtons/challenges", 1.5f);
-            foreach (var ch in Ui.VisibleChildren(Challenges).ToList())
+            // Mini events keep their rewards on the challenges tab. Other events (Decorated Heroes, the New Player
+            // event: issue #8) open their own screen with their own tabs, so every tab of whatever opened is
+            // checked for free claim buttons.
+            var screen = Ui.Visible(Mini) ? Mini : OpenedEventScreen(before);
+            if (screen == null)
             {
-                var claim = ch.Find("unlocked/reward/claimButton");
-                if (!Ui.Clickable(claim)) continue;
-                var rewardWasVisible = Ui.Visible(P.RewardsClose);
-                var claimChanged = false;
-                yield return Ui.ClickUntil(claim,
-                    () => !Ui.Clickable(claim) ||
-                          (!rewardWasVisible && Ui.Visible(P.RewardsClose)),
-                    value => claimChanged = value, "event challenge reward", 1.5f);
-                if (claimChanged) confirmed++;
-                else unconfirmed++;
-                yield return Ui.CloseRewards();
+                Logger.Info($"[Events] '{entry.name}' opened no screen the bot recognises; skipped.");
+                continue;
             }
 
-            yield return Ui.Click(Mini + "/closeButton", 1.5f);
+            if (screen == Mini) yield return Ui.Click(Mini + "/submenuButtons/challenges", 1.5f);
+            yield return ClaimEverywhere(screen, (ok, bad) => { confirmed += ok; unconfirmed += bad; });
+            yield return CloseEventScreen(screen);
         }
 
-        yield return Ui.Click(P.Events + "/EventManager/bg/closeButton");
+        if (Ui.Visible(P.Events + "/EventManager/bg/closeButton"))
+            yield return Ui.Click(P.Events + "/EventManager/bg/closeButton");
         Logger.Info($"[Events] Claim controls changed for {confirmed} reward(s); " +
                     $"{unconfirmed} claim(s) unconfirmed. Reward receipt is not independently verified.");
     }
