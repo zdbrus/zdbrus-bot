@@ -61,9 +61,9 @@ public abstract class StringUtils
         count = 0;
         if (string.IsNullOrWhiteSpace(input)) return false;
         var text = input.Trim();
-        if (!Regex.IsMatch(text, @"^(?:[xX]\s*)?(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)$"))
+        if (!Regex.IsMatch(text, @"^(?:[xX]\s*)?(?:[0-9]+|[0-9]{1,3}(?:[,.][0-9]{3})+)$"))
             return false;
         if (text[0] is 'x' or 'X') text = text[1..].TrimStart();
-        return long.TryParse(text.Replace(",", ""), NumberStyles.None, CultureInfo.InvariantCulture, out count);
+        return long.TryParse(text.Replace(",", "").Replace(".", ""), NumberStyles.None, CultureInfo.InvariantCulture, out count);
     }
 }

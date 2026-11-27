@@ -277,23 +277,7 @@ internal static class Ui
 
     public static double NumberOf(Transform t) => Parse(Text(t));
 
-    public static double Parse(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return -1;
-        var slash = text.IndexOf('/');
-        if (slash >= 0) text = text[..slash];
-        var m = Regex.Match(text.Replace(",", ""), @"(\d+(?:\.\d+)?)\s*([KMB]?)", RegexOptions.IgnoreCase);
-        if (!m.Success) return -1;
-        var value = double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
-        switch (m.Groups[2].Value.ToUpperInvariant())
-        {
-            case "K": value *= 1e3; break;
-            case "M": value *= 1e6; break;
-            case "B": value *= 1e9; break;
-        }
-
-        return value;
-    }
+    public static double Parse(string text) => GameNumber.Parse(text);
 
     public static IEnumerable<Transform> VisibleChildren(string path)
     {

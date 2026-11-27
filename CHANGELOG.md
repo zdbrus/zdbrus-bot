@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.73 (2026-11-27)
+From issue #10.
+- **Numbers with a dot for thousands are read correctly.** The game prints numbers with the PC's own format, so a German, Dutch or Spanish system shows 1,528 beer as "1.528". The bot read that as one and a half, so the Tavern said "Not enough beer: 1.528 of 1500" and never traded. Counts and costs now read dot and comma thousands the same way (this also fixes counts such as mystery boxes and pickaxes on those systems).
+- **Pressing the bot's own hotkeys no longer holds the schedule.** F1 to F15 and your three configured keys used to count as "the player is using the game", so pressing F7 or F2 delayed every task by the Wait For Player time.
+
 ## 0.7.72 (2026-11-27)
 - **Chaos Rift no longer reopens every three minutes.** From an overnight log: the Guardian holy upgrade bubble stayed lit, and because the rift screen covers that bubble during the visit, the visit never started the three hour wait for it. The bubble lit the rift again as soon as the visit ended, 26 times in a row. A visit started with that bubble lit now starts its wait straight away.
 

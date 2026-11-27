@@ -91,6 +91,35 @@ internal static class IssueEightTests
             "Below the threshold the pickaxe bubble still reopened the shop for the next pickaxe.");
     }
 
+    public static void GameNumbersFollowTheSystemFormat()
+    {
+        var en = new System.Globalization.CultureInfo("en-US");
+        var de = new System.Globalization.CultureInfo("de-DE");
+        void Is(string text, System.Globalization.CultureInfo culture, double expected)
+        {
+            var got = Firebot.Core.GameNumber.Parse(text, culture);
+            Check(Math.Abs(got - expected) < 1e-6, $"'{text}' ({culture.Name}) read as {got}, expected {expected}.");
+        }
+
+        Is("1.528", de, 1528);       // issue #10: beer shown with a dot for thousands
+        Is("1.528", en, 1528);       // same text under another culture: still thousands, three digits follow
+        Is("1,528", en, 1528);
+        Is("1.528 / 1.500", de, 1528);
+        Is("1.234.567", de, 1234567);
+        Is("1.528,5", de, 1528.5);
+        Is("1,528.5", en, 1528.5);
+        Is("1,5K", de, 1500);
+        Is("1.5K", en, 1500);
+        Is("2.5M", en, 2.5e6);
+        Is("0.125", en, 0.125);
+        Is("12.5%", en, 12.5);
+        Is("12.500%", en, 12.5);
+        Is("50", en, 50);
+        Is("x 7", en, 7);
+        Is("", en, -1);
+        Is("none", en, -1);
+    }
+
     public static void ChaosRiftHolyBubbleBehindRift()
     {
         GameObject.Clear();
