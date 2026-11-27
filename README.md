@@ -161,14 +161,16 @@ pauses as soon as a task is approaching.
 After you click, type, scroll or move the mouse, the bot waits **Wait For Player** seconds (F1 > General,
 20 by default, 5 to 120) before it opens or closes anything, on any screen. A screen you opened yourself
 is left alone three times as long. AutoUpgrade and the idle cleanup wait too, and checks that can be done
-without a menu (Temple Prestige, Boss Retry) no longer close your screen. F2 RUN still goes right away.
+without a menu (Temple Prestige) no longer close your screen. Boss Retry only presses Boss, so it never waits.
+F2 RUN still goes right away.
 
 ### Stage Fallback
 
 Under **F1 > Boss Retry**, turn on **Stage Fallback** (off by default) to step back **Stages To Fall Back**
 stages (3 by default, 1 to 20) after a lost boss, or after **Max Minutes At One Stage** (30 by default, 0 =
 only after a lost boss). The next try comes after **Minutes Between Tries**. Every step must lower the
-live stage read from the game, or the fallback stops and the bot presses Boss as before. If the battle
+live stage read from the game, or the fallback stops and the bot presses Boss as before. The arrow is the
+battle screen's own one next to the stage number. If the battle
 screen's previous-stage control is not recognised, the log says so once; press F9 on the battle screen
 and attach the screen map to a GitHub issue.
 

@@ -1132,6 +1132,7 @@ public class OpenChestsTask : BotTask
 public class BossRetryTask : BotTask
 {
     private const string Fight = P.Battle + "/rightSideUI/fightBossButton";
+    private const string GoBackStage = P.Battle + "/topSideUI/stageProgression/goBackStage";
     private MelonPreferences_Entry<int> _minutes;
     private MelonPreferences_Entry<bool> _fallback;
     private MelonPreferences_Entry<int> _fallbackStages;
@@ -1234,7 +1235,26 @@ public class BossRetryTask : BotTask
             yield return Ui.Click(control, 1f, $"previous stage ({before} to {before - 1})");
             var changed = false;
             yield return Ui.WaitUntil(() => PlayerStats.TryGetCurrentStage(out var now) && now < before,
-                value => changed = value, 3f);
+                value => changed = value, 2f);
+
+            // The arrow is a hold-to-repeat control (RepeatAction): the game may listen for the pointer going
+            // down and up, not for Button.onClick. Try a real press, then a short hold, before giving up.
+            if (!changed)
+            {
+                Ui.PointerClick(control);
+                yield return Ui.WaitUntil(() => PlayerStats.TryGetCurrentStage(out var now) && now < before,
+                    value => changed = value, 2f);
+                if (changed) Logger.Info("[Boss Retry] The previous-stage arrow answers a pointer press.");
+            }
+
+            if (!changed)
+            {
+                yield return Ui.PointerHold(control, 0.6f);
+                yield return Ui.WaitUntil(() => PlayerStats.TryGetCurrentStage(out var now) && now < before,
+                    value => changed = value, 3f);
+                if (changed) Logger.Info("[Boss Retry] The previous-stage arrow answers a pointer hold.");
+            }
+
             if (!changed || !PlayerStats.TryGetCurrentStage(out current) || current >= before)
             {
                 Logger.Warning($"[Boss Retry] '{control.name}' did not lower the stage; Stage Fallback stopped at {before}.");
@@ -1253,6 +1273,8 @@ public class BossRetryTask : BotTask
     /// </summary>
     private static Transform FindPreviousStageControl()
     {
+        var exact = Ui.Find(GoBackStage);
+        if (Ui.Clickable(exact)) return exact;
         var root = Ui.Find(P.Battle);
         if (root == null) return null;
         Transform best = null;

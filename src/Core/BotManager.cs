@@ -304,7 +304,8 @@ public static class BotManager
             var playerBusy = UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
                 playerScreenOpen, false, PlayerQuietSeconds);
             PlayerBusy = playerBusy;
-            if (readyTask != null && !IsTaskExecuting &&
+            // A task that never closes the player's screen (Boss Retry only presses "Boss") has nothing to wait for.
+            if (readyTask != null && !IsTaskExecuting && readyTask.NeedsCleanScreen &&
                 UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
                     playerScreenOpen && !Behaviors.Extra.Ui.MenuOpenFor(readyTask.SectionTitle),
                     readyTask.RunNowRequested, PlayerQuietSeconds))

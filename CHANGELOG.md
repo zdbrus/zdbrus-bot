@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.7.67 (2026-11-26)
+Follow-up to issue #6 from Odin099's screen map and report.
+- **Stage Fallback finds the real arrow.** The battle screen's arrow next to the stage number is `goBackStage`, a hold-to-repeat control. The bot now looks for it by that exact path, and if a normal click does not lower the stage it tries a pointer press and then a short hold. Every step must still lower the live stage or the fallback stops.
+- **Boss Retry no longer waits for you.** Since 0.7.66 it sat on "ready" while you were using the game, and only RUN started it. Pressing Boss never closes your screen, so it now ignores Wait For Player.
+
 ## 0.7.66 (2026-11-25)
 Fixes and requests from GitHub issues #6 and #8 (thanks, Odin099).
 - **The bot waits for you on every screen.** Before, it only held off when a menu was open and you had clicked in the last 12 seconds, and the idle cleanup and AutoUpgrade did not wait at all. Now any click, key, scroll or mouse move holds tasks, the idle cleanup and AutoUpgrade for **Wait For Player** seconds (F1 > General, 20 by default), and a screen you opened yourself stays yours three times as long. F2 RUN still goes right away.

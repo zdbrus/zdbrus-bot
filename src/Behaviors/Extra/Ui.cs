@@ -128,6 +128,36 @@ internal static class Ui
         }
     }
 
+    /// <summary>Holds the pointer down on a hold-to-repeat control for a moment, then releases it.</summary>
+    public static IEnumerator PointerHold(Transform t, float seconds)
+    {
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (t == null || es == null) yield break;
+        var data = new UnityEngine.EventSystems.PointerEventData(es)
+            { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, clickCount = 1 };
+        try
+        {
+            UnityEngine.EventSystems.ExecuteEvents.Execute(t.gameObject, data,
+                UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+        }
+        catch (Exception e)
+        {
+            Logger.Debug("[Extra] Pointer hold failed on " + t.name + ": " + e.Message);
+            yield break;
+        }
+
+        yield return new WaitForSeconds(seconds);
+        try
+        {
+            UnityEngine.EventSystems.ExecuteEvents.Execute(t.gameObject, data,
+                UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+        }
+        catch (Exception e)
+        {
+            Logger.Debug("[Extra] Pointer release failed on " + t.name + ": " + e.Message);
+        }
+    }
+
     public static IEnumerator ClickIf(string path, Func<bool> condition, Action<bool> clicked, float wait = -1,
         string label = null)
     {
