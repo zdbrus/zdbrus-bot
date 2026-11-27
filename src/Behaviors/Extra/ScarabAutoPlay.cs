@@ -81,11 +81,22 @@ internal sealed class ScarabAutoPlay : IDisposable
         {
             var currency = Currency();
             var expected = currency == ScarabSpinCurrency.Noble ? CurrencyCode.NoblesToken : CurrencyCode.PharaohsToken;
-            if (!_enabled() || !BotManager.IsRunning || !receipt.Observe() || !Affordable() ||
-                selection.SelectedCurrency != expected || !selection.HasEnoughTokens ||
-                selection.TokensNeeded != Ui.NumberAt(CostPath(currency)))
+            var enabled = _enabled();
+            var running = BotManager.IsRunning;
+            var observed = receipt.Observe();
+            var affordable = Affordable();
+            var needed = selection.TokensNeeded;
+            var cost = Ui.NumberAt(CostPath(currency));
+            if (!enabled || !running || !observed || !affordable ||
+                selection.SelectedCurrency != expected || !selection.HasEnoughTokens || needed != cost)
             {
-                Logger.Info("[Scarab] Auto stopped at the token permission, balance, mode, or receipt boundary.");
+                Logger.Info("[Scarab] Auto stopped at the token permission, balance, mode, or receipt boundary: " +
+                            $"enabled={enabled}, botRunning={running}, receiptOk={observed}, affordable={affordable}, " +
+                            $"currency={currency}, native={selection.SelectedCurrency} (expected {expected}), " +
+                            $"enoughTokens={selection.HasEnoughTokens}, tokensNeeded={needed}, costShown={cost}, " +
+                            $"quantity={mech.currentPlayQuantity}, screenVisible={Ui.Visible(S)}, " +
+                            $"nobleIcon={Ui.Visible(Play + "/layout/nobleTokenIcon")}, " +
+                            $"pharaohIcon={Ui.Visible(Play + "/layout/pharaohTokenIcon")}.");
                 return false;
             }
             var path = BalancePath(currency);

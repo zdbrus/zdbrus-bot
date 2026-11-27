@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.69 (2026-11-26)
+- **Scarab Auto says why it stopped.** The log line "Auto stopped at the token permission, balance, mode, or receipt boundary" now lists every value it checked (tokens, cost, currency, quantity, which icon is showing), so a Scarab Game that opens and plays nothing can be pinned down from `Latest.log`. No behaviour change.
+
 ## 0.7.68 (2026-11-26)
 Fixes from issue #9.
 - **Tasks leave the guild and town screens again.** The screen a task leaves open on purpose was counted as "a screen you opened", so the cleanup after it waited three times as long as Wait For Player, and any mouse movement held it back. That hub is now the bot's own: it is closed after a 10 second pause in your input (or Wait For Player if that is shorter), and it no longer delays the next task.
