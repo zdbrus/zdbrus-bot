@@ -37,14 +37,32 @@ public static class TimeParser
         return duration == TimeSpan.Zero ? DateTime.MinValue : DateTime.Now.Add(duration).AddSeconds(bufferSeconds);
     }
 
+    private static readonly Regex UnitRegex = new(
+        @"(?:(?<d>\d+)\s*d(?![a-z]))?\s*(?:(?<h>\d+)\s*h(?![a-z]))?\s*(?:(?<m>\d+)\s*m(?![a-z]))?\s*(?:(?<s>\d+)\s*s(?![a-z]))?",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>Timers written with units ("6h 59m", "12m 5s", "2d 3h") instead of colons.</summary>
+    internal static TimeSpan ParseUnits(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return TimeSpan.Zero;
+        foreach (Match m in UnitRegex.Matches(raw))
+        {
+            if (!m.Success || m.Length == 0) continue;
+            int Get(string g) => m.Groups[g].Success ? int.Parse(m.Groups[g].Value) : 0;
+            var span = new TimeSpan(Get("d"), Get("h"), Get("m"), Get("s"));
+            if (span > TimeSpan.Zero) return span;
+        }
+
+        return TimeSpan.Zero;
+    }
+
     private static TimeSpan Parse(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return TimeSpan.Zero;
 
         var match = TimeRegex.Match(raw.Trim());
 
-        if (!match.Success)
-            return TimeSpan.Zero;
+        if (!match.Success) return ParseUnits(raw);
 
         int days = 0, hours = 0, minutes = 0, seconds = 0;
 

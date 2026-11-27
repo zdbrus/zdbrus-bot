@@ -91,7 +91,7 @@ internal static class ConfigRegistry
         ["temple_prestige/min_hours_played"] = new NumberRange(0f, 72f, true),
         ["temple_prestige/efficiency_percent"] = new NumberRange(0f, 200f, true),
         ["event_exchange/keep_currency"] = new NumberRange(0f, 100000f, true),
-        ["auto_upgrade/every_seconds"] = new NumberRange(10f, 600f, true),
+        ["auto_upgrade/every_seconds"] = new NumberRange(1f, 600f, true),
         ["boss_retry/every_minutes"] = new NumberRange(1f, 60f, true),
         ["boss_retry/fallback_stages"] = new NumberRange(1f, 20f, true),
         ["boss_retry/fallback_minutes"] = new NumberRange(0f, 240f, true)
@@ -621,6 +621,10 @@ internal static class ConfigRegistry
         ["auto_upgrade/upgrade_target_slots"] =
             "Numbers show upgrade order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "An empty list uses all slots in screen order.",
+
+        ["auto_upgrade/keep_menu_open"] =
+            "Leaves upgrades open between bursts, so Upgrade Every can be 1 second.\n" +
+            "Tasks close it when they need the screen. Default: off.",
 
         ["auto_upgrade/priority_mode"] =
             "Balance upgrades selected slots in order each burst.\n" +

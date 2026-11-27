@@ -1,5 +1,15 @@
 ﻿# Changelog
 
+## 0.7.74 (2026-11-27)
+From issue #10.
+- **The bot no longer turns itself off after a long idle.** Returning to the upgrades after an idle stretch did not reset the stall timer, so the next step looked 500 seconds old and the bot stopped.
+- **Auto Upgrade is much faster.** Each button is held 0.1 s with 0.05 s between buttons (was 0.5 s each).
+- **Auto Upgrade no longer blocks itself.** Its own open menu was counted as a screen you opened, so it did not close and did not run again.
+- **New: Keep Upgrades Open.** Leaves the upgrades menu open between bursts so Upgrade Every can go down to 1 second. Tasks close it when they need the screen. Off by default.
+- **Stage Fallback takes every stage you asked for.** It now waits for the arrow to come back after each step instead of stopping after one.
+- **Tasks leave the town and arena screens sooner.** The wait for your input before cleaning up is 3 seconds at most.
+- **Expedition reads the real timer.** It waits for the timer text to fill in, and timers written as "6h 59m" are understood. If it cannot read one it checks again in 10 minutes instead of guessing 7 hours.
+
 ## 0.7.73 (2026-11-27)
 From issue #10.
 - **Numbers with a dot for thousands are read correctly.** The game prints numbers with the PC's own format, so a German, Dutch or Spanish system shows 1,528 beer as "1.528". The bot read that as one and a half, so the Tavern said "Not enough beer: 1.528 of 1500" and never traded. Counts and costs now read dot and comma thousands the same way (this also fixes counts such as mystery boxes and pickaxes on those systems).

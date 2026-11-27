@@ -305,14 +305,17 @@ public static class BotManager
             // clicking it was the other half of "the bot interrupts everything I do" (issue #8).
             // The hub screen a task leaves open on purpose is the bot's, not the player's: it must not count as
             // "a screen you opened", or the tasks and the cleanup after it wait three times as long for nothing.
-            var playerScreenOpen = !retainedHub && Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus).Any();
+            var botUpgrades = BotActions.AutoUpgrade.OwnsMenu;
+            var playerScreenOpen = !retainedHub &&
+                                   Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus)
+                                       .Any(c => !(botUpgrades && c.name == "Upgrades"));
             var playerBusy = UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
                 playerScreenOpen, false, PlayerQuietSeconds);
             PlayerBusy = playerBusy;
             PlayerScreenOpen = playerScreenOpen;
-            // Leaving the hub the bot itself left open only needs a short pause in the player's input.
+            // Leaving the hub the bot itself left open only needs a short pause in the player's input (3 seconds).
             var cleanupBusy = UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput, false, false,
-                Math.Min(PlayerQuietSeconds, 10f));
+                Math.Min(PlayerQuietSeconds, 3f));
             // A task that never closes the player's screen (Boss Retry only presses "Boss") has nothing to wait for.
             if (readyTask != null && !IsTaskExecuting && readyTask.NeedsCleanScreen &&
                 UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
@@ -350,6 +353,10 @@ public static class BotManager
                 var pauseForNearTask = _shouldPauseAutoUpgrade;
                 _shouldPauseAutoUpgrade = true;
                 IsTaskExecuting = true;
+                // The stall watch measures from the last step. After a long idle stretch that was the previous task,
+                // minutes ago, and the watch stopped the bot before the cleanup took its first step (issue #10:
+                // "A task has not advanced for 511s", right after the last task finished).
+                _lastStepAt = DateTime.Now;
                 try { yield return RunSafe(Watchdog.ForceClearAll("idle: return for upgrades"), "Idle cleanup"); }
                 finally
                 {

@@ -16,8 +16,10 @@ namespace Firebot.BotActions;
 
 public static class AutoUpgrade
 {
-    private const float HoldPerButtonSeconds = 0.5f;
-    private const float GapBetweenButtonsSeconds = 0.5f;
+    // A press only has to register: the game buys on the press itself. 0.5 s held plus 0.5 s gap made one upgrade
+    // a second, so a prestige's hundreds of upgrades took minutes (issue #10).
+    private const float HoldPerButtonSeconds = 0.1f;
+    private const float GapBetweenButtonsSeconds = 0.05f;
     private const float IdlePollSeconds = 0.5f;
     private const int FocusBurstLimit = 20;
 
@@ -43,6 +45,8 @@ public static class AutoUpgrade
     private static MelonPreferences_Entry<string> _upgradeMode;
     private static MelonPreferences_Entry<string> _priorityMode;
     private static MelonPreferences_Entry<int> _everySeconds;
+    private static MelonPreferences_Entry<bool> _keepOpen;
+    private static bool _menuOpenedByBot;
 
     private static bool IsEnabled => _isEnabled?.Value ?? false;
 
@@ -52,6 +56,12 @@ public static class AutoUpgrade
     /// </summary>
     public static bool IsActive => IsEnabled && _isRunning && _autoUpgradeRoutineHandle != null;
     public static bool IsBalancedCycleActive => _balancedSweepActive;
+
+    /// <summary>
+    ///     The upgrades menu is open because this burst opened it. It is not a screen the player opened, so it must not
+    ///     hold the next burst or its own closing back (issue #10: the menu stayed open and nothing more was bought).
+    /// </summary>
+    public static bool OwnsMenu => _menuOpenedByBot && Upgrades.IsVisible;
 
     public static bool ShouldWaitForTask(bool taskReady, bool taskApproaching) =>
         taskReady || (taskApproaching &&
@@ -116,6 +126,14 @@ public static class AutoUpgrade
             60,
             "Upgrade Every (seconds)",
             "Seconds between upgrade bursts. Each burst opens upgrades, buys, and closes the menu so other tasks keep working."
+        );
+
+        _keepOpen = section.CreateEntry(
+            "keep_menu_open",
+            false,
+            "Keep Upgrades Open",
+            "Leaves the upgrades menu open between bursts and lets Upgrade Every go down to 1 second, so an upgrade " +
+            "is bought as soon as you can afford it. Tasks still close it when they need the screen. Default: off."
         );
 
         _upgradeTargetSlots = section.CreateEntry(
@@ -285,7 +303,7 @@ public static class AutoUpgrade
             ReportHold(hold);
 
             if (hold != null) _pausedSince = null;
-            else if (BotManager.PlayerBusy && BotManager.PlayerScreenOpen)
+            else if (BotManager.PlayerBusy && BotManager.PlayerScreenOpen && !OwnsMenu)
             {
                 // The player has a screen of their own open and is using it: no menu is opened or closed under
                 // them. Playing on the battle screen does not hold the upgrades back, or nothing is bought after
@@ -302,9 +320,12 @@ public static class AutoUpgrade
 
             // Not during a hold: the tutorial's own upgrade step is done in this menu, and closing it under the
             // player breaks the step.
-            if (hold == null && !(BotManager.PlayerBusy && BotManager.PlayerScreenOpen) && Upgrades.IsVisible) yield return Upgrades.Close;
+            var keepOpen = _keepOpen?.Value == true;
+            if (hold == null && !(BotManager.PlayerBusy && BotManager.PlayerScreenOpen && !OwnsMenu) && Upgrades.IsVisible &&
+                (!keepOpen || BotManager.ShouldPauseAutoUpgrade()))
+                yield return Upgrades.Close;
 
-            var wait = Math.Max(10, _everySeconds?.Value ?? 60);
+            var wait = Math.Max(keepOpen ? 1 : 10, _everySeconds?.Value ?? 60);
             var until = Time.unscaledTime + wait;
             while (_isRunning && Time.unscaledTime < until)
             {
@@ -345,6 +366,7 @@ public static class AutoUpgrade
                 yield break;
             }
 
+            _menuOpenedByBot = true;
             yield return Upgrades.SetUpgradeLevel(_upgradeMode?.Value ?? "milestone");
             yield return IdlePollWait;
         }

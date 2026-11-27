@@ -1230,7 +1230,17 @@ public class BossRetryTask : BotTask
         var current = stage;
         for (var press = 0; press < (stage - target) * 2 && current > target; press++)
         {
-            if (!Ui.Clickable(control)) break;
+            // Right after a step the game can leave the arrow switched off for a moment while the stage changes. Wait
+            // for it instead of stopping after one stage (issue #10: 2 stages asked, 1 taken).
+            var ready = Ui.Clickable(control);
+            if (!ready)
+                yield return Ui.WaitUntil(() => Ui.Clickable(control), value => ready = value, 3f);
+            if (!ready)
+            {
+                Logger.Warning($"[Boss Retry] '{control.name}' stayed unavailable; Stage Fallback stopped at {current}.");
+                break;
+            }
+
             var before = current;
             yield return Ui.Click(control, 1f, $"previous stage ({before} to {before - 1})");
             var changed = false;

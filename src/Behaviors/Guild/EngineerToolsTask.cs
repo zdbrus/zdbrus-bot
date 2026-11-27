@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using Firebot.Behaviors.Extra;
 using Firebot.Core;
 using Firebot.Core.Tasks;
 using Firebot.GameModel.Features.Guild.Expeditions;
@@ -19,7 +21,22 @@ public class ExpeditionTask : BotTask
         yield return Expedition.Claim;
         yield return Expedition.Start;
 
-        NextRunTime = Expedition.IsExpeditionActive ? Expedition.CurrentRunTime : Expedition.NextRunTime;
+        // The timer text fills in a moment after the screen changes. Read it only once it parses, so a blank label
+        // never becomes a guess (issue #10: a fixed 7 hours instead of the real expedition length).
+        var read = DateTime.MinValue;
+        yield return Ui.WaitUntil(() =>
+        {
+            read = Expedition.IsExpeditionActive ? Expedition.CurrentRunTime : Expedition.NextRunTime;
+            return read > DateTime.Now;
+        }, _ => { }, 5f);
+
+        if (read > DateTime.Now)
+            NextRunTime = read;
+        else
+        {
+            Logger.Warning("[Expeditions] Could not read the expedition timer; checking again in 10 minutes.");
+            NextRunTime = DateTime.Now.AddMinutes(10);
+        }
 
         yield return Expedition.Close;
     }

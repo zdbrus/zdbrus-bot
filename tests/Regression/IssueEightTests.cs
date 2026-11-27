@@ -120,6 +120,27 @@ internal static class IssueEightTests
         Is("none", en, -1);
     }
 
+    public static void TimersInUnitsAreRead()
+    {
+        void Is(string text, TimeSpan expected)
+        {
+            var got = Firebot.Utilities.TimeParser.ParseExpectedTime(text) == DateTime.MinValue
+                ? TimeSpan.Zero
+                : Firebot.Utilities.TimeParser.ParseExpectedTime(text) - DateTime.Now;
+            Check(Math.Abs((got - expected).TotalSeconds) < 5, $"'{text}' read as {got}, expected {expected}.");
+        }
+
+        Is("03:40:52", new TimeSpan(3, 40, 52));
+        Is("2d 03:40:52", new TimeSpan(2, 3, 40, 52));
+        Is("6h 59m", new TimeSpan(6, 59, 0));
+        Is("6h 59m 30s", new TimeSpan(6, 59, 30));
+        Is("12m 5s", new TimeSpan(0, 12, 5));
+        Is("2d 3h", new TimeSpan(2, 3, 0, 0));
+        Is("Next in 45s", new TimeSpan(0, 0, 45));
+        Is("", TimeSpan.Zero);
+        Is("soon", TimeSpan.Zero);
+    }
+
     public static void ChaosRiftHolyBubbleBehindRift()
     {
         GameObject.Clear();
