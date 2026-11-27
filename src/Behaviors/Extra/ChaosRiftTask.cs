@@ -111,6 +111,10 @@ public class ChaosRiftTask : BotTask
         _moreHitsPending = false;
         _hits = 0;
         _purchases = 0;
+        // The guardian bubble that brought this visit can sit behind the rift screen, so the holy branch below never
+        // sees it and never starts its own wait; the bubble then lit the rift again every three minutes.
+        if (_holyUpgrades.Value && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade"))
+            _holyQuietUntil = _now().AddHours(3);
         if (Ui.Visible(P.Notifications + "/ChaosRift"))
             yield return Ui.Click(P.Notifications + "/ChaosRift", 2f);
         else

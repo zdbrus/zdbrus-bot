@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.72 (2026-11-27)
+- **Chaos Rift no longer reopens every three minutes.** From an overnight log: the Guardian holy upgrade bubble stayed lit, and because the rift screen covers that bubble during the visit, the visit never started the three hour wait for it. The bubble lit the rift again as soon as the visit ended, 26 times in a row. A visit started with that bubble lit now starts its wait straight away.
+
 ## 0.7.71 (2026-11-26)
 - **Close Stuck Game (Seconds) has its own slider range.** In 0.7.70 the F1 slider for it was capped at 60 instead of 300 and had no description text sized for the box. Behaviour is otherwise the same.
 

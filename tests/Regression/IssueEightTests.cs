@@ -91,6 +91,50 @@ internal static class IssueEightTests
             "Below the threshold the pickaxe bubble still reopened the shop for the next pickaxe.");
     }
 
+    public static void ChaosRiftHolyBubbleBehindRift()
+    {
+        GameObject.Clear();
+        Ui.Texts.Clear();
+        Ui.Numbers.Clear();
+        Logger.Messages.Clear();
+        var now = DateTime.Now;
+        var task = new ChaosRiftTask(() => now);
+        task.InitializeConfig("test");
+        task.SetEnabledFromStatus(true);
+        var settings = MelonPreferences.Categories["chaos_rift"].Entries;
+        ((MelonPreferences_Entry<bool>)settings["buy_eclipse_stones"]).Value = false;
+        ((MelonPreferences_Entry<bool>)settings["buy_tomes"]).Value = false;
+        ((MelonPreferences_Entry<string>)settings["holy_guardians"]).Value = "";
+
+        var rift = GameObject.CreatePath("menus/ChaosRift");
+        rift.activeSelf = false;
+        var guardian = GameObject.CreatePath("notifications/GuardianHolyUpgrade");
+        var riftBubble = GameObject.CreatePath("notifications/ChaosRift");
+        // Opening the rift covers the guardian bubble; closing it shows the bubble again, still lit.
+        riftBubble.AddComponent<Button>().onClick.Action = () =>
+        {
+            rift.activeSelf = true;
+            guardian.activeSelf = false;
+            riftBubble.activeSelf = false;
+        };
+        GameObject.CreatePath("menus/ChaosRift/closeButton").AddComponent<Button>().onClick.Action = () =>
+        {
+            rift.activeSelf = false;
+            guardian.activeSelf = true;
+        };
+        GameObject.CreatePath("menus/ChaosRift/UIElements/godParent/hitButton").AddComponent<Button>();
+        Ui.Numbers["menus/ChaosRift/UIElements/counters/currencyInteraction (MoonStone)/quantity"] = 0;
+        Ui.Numbers["menus/ChaosRift/UIElements/counters/currencyInteraction (EclipseStone)/quantity"] = 0;
+
+        Check(task.IsNotificationVisible(), "The guardian bubble fixture is not visible.");
+        Run(task.Execute());
+        Check(guardian.activeSelf && !rift.activeSelf, "The rift fixture did not close with the guardian bubble lit.");
+        Check(!task.IsNotificationVisible(),
+            "A guardian bubble that was hidden by the rift screen reopened the rift right away.");
+        now = now.AddHours(3).AddMinutes(1);
+        Check(task.IsNotificationVisible(), "The guardian bubble stayed muted after its three hours.");
+    }
+
     public static void ChaosRiftIdleVisits()
     {
         GameObject.Clear();

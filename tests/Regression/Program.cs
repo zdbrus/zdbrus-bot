@@ -51,6 +51,7 @@ internal static class Program
             Test("Stage Fallback decides on a lost boss or time at one stage (#6)", IssueEightTests.StageFallbackDecisions);
             Test("free pickaxes wait for the threshold instead of every pickaxe (#8)", IssueEightTests.PickaxesWaitForThreshold);
             Test("Chaos Rift is not reopened when there is nothing to do (#8)", IssueEightTests.ChaosRiftIdleVisits);
+            Test("a guardian bubble hidden by the rift screen does not reopen it every 3 minutes", IssueEightTests.ChaosRiftHolyBubbleBehindRift);
             Test("Temple Prestige checks without closing screens, on its own interval (#6, #8)", IssueEightTests.TempleChecksWithoutScreen);
             Test("closed Chaos Rift leaves guardian upgrade notifications active", LogIssueTests.ChaosRiftCooldown);
             Test("Mystery Box store claims distinguish claimed and unreadable states", LogIssueTests.MysteryBoxClaims);
