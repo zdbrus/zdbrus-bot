@@ -18,8 +18,8 @@ public static class AutoUpgrade
 {
     // A press only has to register: the game buys on the press itself. 0.5 s held plus 0.5 s gap made one upgrade
     // a second, so a prestige's hundreds of upgrades took minutes (issue #10).
-    private const float HoldPerButtonSeconds = 0.1f;
-    private const float GapBetweenButtonsSeconds = 0.05f;
+    private const float HoldPerButtonSeconds = 0.05f;
+    private const float GapBetweenButtonsSeconds = 0.02f;
     private const float IdlePollSeconds = 0.5f;
     private const int FocusBurstLimit = 20;
 
@@ -61,7 +61,18 @@ public static class AutoUpgrade
     ///     The upgrades menu is open because this burst opened it. It is not a screen the player opened, so it must not
     ///     hold the next burst or its own closing back (issue #10: the menu stayed open and nothing more was bought).
     /// </summary>
-    public static bool OwnsMenu => _menuOpenedByBot && Upgrades.IsVisible;
+    public static bool OwnsMenu
+    {
+        get
+        {
+            if (!_menuOpenedByBot) return false;
+            if (Upgrades.IsVisible) return true;
+
+            // Closed since: a menu the player opens next is theirs.
+            _menuOpenedByBot = false;
+            return false;
+        }
+    }
 
     public static bool ShouldWaitForTask(bool taskReady, bool taskApproaching) =>
         taskReady || (taskApproaching &&

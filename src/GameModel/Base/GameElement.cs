@@ -100,6 +100,30 @@ public class GameElement
         return success;
     }
 
+    /// <summary>
+    ///     Where the element sits on screen, and how tall it is, for ordering things the way the player sees them.
+    ///     False when it cannot be read.
+    /// </summary>
+    public bool TryGetScreenPosition(out float x, out float y, out float height)
+    {
+        x = y = height = 0f;
+        var currentRoot = Root;
+        if (currentRoot == null) return false;
+        try
+        {
+            var position = currentRoot.position;
+            x = position.x;
+            y = position.y;
+            if (currentRoot is RectTransform rect)
+                height = Mathf.Abs(rect.rect.height * rect.lossyScale.y);
+            return float.IsFinite(x) && float.IsFinite(y);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     public bool TryGetComponent<T>(out T component) where T : Component
     {
         component = null;

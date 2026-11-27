@@ -18,6 +18,29 @@ public static class GameNumber
     private static readonly Regex DotThousands = new(@"^[1-9]\d{0,2}(\.\d{3})+$", RegexOptions.Compiled);
     private static readonly Regex CommaThousands = new(@"^[1-9]\d{0,2}(,\d{3})+$", RegexOptions.Compiled);
 
+    private static readonly Regex DisplayDotThousands =
+        new(@"^(?<pre>[+\s]*)(?<n>[1-9]\d{0,2}(?:\.\d{3})+)(?<post>\s*%?)$", RegexOptions.Compiled);
+
+    private static readonly Regex DisplayCommaDecimal =
+        new(@"^(?<pre>[+\s]*)(?<a>\d+),(?<b>\d{1,2})(?<post>\s*[KMBT]\s*%?)$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>
+    ///     Puts a number the way the strict readers expect it (comma thousands, dot decimals) when the PC prints it
+    ///     the other way round: "40.341" is 40341 and "1,5K" is 1.5K. Anything else comes back unchanged.
+    /// </summary>
+    public static string ToInvariantDisplay(string text)
+    {
+        var t = (text ?? string.Empty).Trim();
+        var m = DisplayDotThousands.Match(t);
+        if (m.Success)
+            return m.Groups["pre"].Value + m.Groups["n"].Value.Replace(".", ",") + m.Groups["post"].Value;
+        m = DisplayCommaDecimal.Match(t);
+        return m.Success
+            ? m.Groups["pre"].Value + m.Groups["a"].Value + "." + m.Groups["b"].Value + m.Groups["post"].Value
+            : t;
+    }
+
     public static double Parse(string text, CultureInfo culture = null)
     {
         if (string.IsNullOrWhiteSpace(text)) return -1;

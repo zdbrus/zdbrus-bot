@@ -66,7 +66,7 @@ internal static class PrestigePolicy
     public static bool TryParseGain(string text, out double gain)
     {
         gain = 0;
-        var match = GainPattern.Match((text ?? string.Empty).Trim());
+        var match = GainPattern.Match(GameNumber.ToInvariantDisplay(text));
         if (!match.Success ||
             !double.TryParse(match.Groups["number"].Value.Replace(",", ""), NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture, out var value))

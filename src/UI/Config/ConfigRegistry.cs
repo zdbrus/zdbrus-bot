@@ -492,9 +492,9 @@ internal static class ConfigRegistry
             "Allowed range: 10 to 300. Default: 30.",
 
         ["firebot_settings/player_quiet_seconds"] =
-            "Seconds the bot waits after you click, type, scroll or move the mouse.\n" +
-            "A screen you opened is left alone 3x as long. F2 RUN ignores this.\n" +
-            "Allowed range: 5 to 120. Default: 20.",
+            "Seconds the bot waits after you click, type or move the mouse.\n" +
+            "A screen you opened waits 3x as long. F2 RUN ignores this.\n" +
+            "Range: 5 to 120. Default: 20.",
 
         ["boss_retry/stage_fallback"] =
             "After a lost boss, or too long at one stage, step back a few stages to farm.\n" +
@@ -509,8 +509,8 @@ internal static class ConfigRegistry
             "0 = only after a lost boss. Allowed range: 0 to 240.",
 
         ["temple_prestige/check_minutes"] =
-            "How often the bot reads the stage for a prestige decision. The temple opens only when\n" +
-            "a trigger is close; a ready stall timer or growth sample is never delayed. 1 to 60.",
+            "How often the bot reads the stage to decide on a prestige.\n" +
+            "The temple opens only when a trigger is close. Range: 1 to 60.",
 
         ["temple_prestige/boss_attempts"] =
             "Reset after this many boss attempts at the same stage, if the minimum boost and run age are met.",

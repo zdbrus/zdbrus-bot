@@ -3,12 +3,19 @@
 ## 0.7.74 (2026-11-27)
 From issue #10.
 - **The bot no longer turns itself off after a long idle.** Returning to the upgrades after an idle stretch did not reset the stall timer, so the next step looked 500 seconds old and the bot stopped.
-- **Auto Upgrade is much faster.** Each button is held 0.1 s with 0.05 s between buttons (was 0.5 s each).
+- **Auto Upgrade is much faster.** Each button is held 0.05 s with 0.02 s between buttons (was 0.5 s each), so a pass over 7 slots takes about half a second instead of 7.
 - **Auto Upgrade no longer blocks itself.** Its own open menu was counted as a screen you opened, so it did not close and did not run again.
 - **New: Keep Upgrades Open.** Leaves the upgrades menu open between bursts so Upgrade Every can go down to 1 second. Tasks close it when they need the screen. Off by default.
 - **Stage Fallback takes every stage you asked for.** It now waits for the arrow to come back after each step instead of stopping after one.
 - **Tasks leave the town and arena screens sooner.** The wait for your input before cleaning up is 3 seconds at most.
-- **Expedition reads the real timer.** It waits for the timer text to fill in, and timers written as "6h 59m" are understood. If it cannot read one it checks again in 10 minutes instead of guessing 7 hours.
+- **Expedition reads the real timer and runs when it ends.** It waits for the timer text to fill in, understands timers written as "6h 59m", and is scheduled for the real end time instead of the end time plus the six-hour bubble margin that showed as 7 hours. If it cannot read a timer it checks again in 10 minutes.
+- **Tasks no longer sit on "Ready" behind an upgrade pass.** The first Auto Upgrade round has to finish before a waiting task starts, and at one press per second a round of 7 slots held every task for 7 seconds or more. The faster presses cut that to about a second.
+- **A stopped or frozen game no longer turns the bot off.** If the game stops updating (minimised, a hitch while it talks to the server, the PC asleep) the stall timer starts over instead of reporting a task that "has not advanced" for minutes.
+- **After a task, the hub closes within about a second** instead of two scan ticks later when nothing else is due.
+- **Numbers on PCs that group thousands with dots are read everywhere.** Chaos Rift shop prices and balances ("costs 5; have 1.187" was 5000 and 1,187), Arena power and rank, and the prestige gain preview now follow the same reading as the Tavern.
+- **Firestone Research numbers follow the screen.** Node 1 is the top left, counting left to right and then down, as the setting text says. Tree 2 moves its nodes around, so counting by the game's object names picked the wrong ones. If positions cannot be read the old order is used.
+- **Two F1 descriptions fit their box again** (Player Quiet Seconds and Temple Prestige check interval).
+- **Auto Upgrade no longer treats a menu you open yourself as its own** once the bot's own menu has closed.
 
 ## 0.7.73 (2026-11-27)
 From issue #10.

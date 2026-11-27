@@ -498,6 +498,11 @@ namespace Firebot.GameModel.Base
         }
 
         public virtual bool IsVisible() => Root != null && Root.gameObject.activeInHierarchy;
+        public bool TryGetScreenPosition(out float x, out float y, out float height)
+        {
+            x = y = height = 0f;
+            return false;
+        }
         public IEnumerable<GameElement> GetChildren()
         {
             if (Root == null) yield break;

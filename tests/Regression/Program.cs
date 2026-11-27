@@ -51,6 +51,8 @@ internal static class Program
             Test("Stage Fallback decides on a lost boss or time at one stage (#6)", IssueEightTests.StageFallbackDecisions);
             Test("free pickaxes wait for the threshold instead of every pickaxe (#8)", IssueEightTests.PickaxesWaitForThreshold);
             Test("Chaos Rift is not reopened when there is nothing to do (#8)", IssueEightTests.ChaosRiftIdleVisits);
+            Test("research nodes are numbered by screen position (#10)", IssueEightTests.ResearchNodesAreNumberedByScreenPosition);
+            Test("arena and prestige numbers on dot-thousands PCs are read (#10)", IssueEightTests.NumbersOnDotThousandsPcsAreRead);
             Test("timers written in units are read (#10)", IssueEightTests.TimersInUnitsAreRead);
             Test("game numbers read dot and comma thousands (#10)", IssueEightTests.GameNumbersFollowTheSystemFormat);
             Test("a guardian bubble hidden by the rift screen does not reopen it every 3 minutes", IssueEightTests.ChaosRiftHolyBubbleBehindRift);

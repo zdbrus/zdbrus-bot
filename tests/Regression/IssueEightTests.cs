@@ -120,6 +120,38 @@ internal static class IssueEightTests
         Is("none", en, -1);
     }
 
+    public static void ResearchNodesAreNumberedByScreenPosition()
+    {
+        // Names scrambled against the screen: expect top row left to right, then the next row.
+        var spots = new (float x, float y, float h)[]
+        {
+            (200f, 100f, 90f), (0f, 305f, 90f), (100f, 300f, 90f), (0f, 100f, 90f), (100f, 102f, 90f), (200f, 298f, 90f)
+        };
+        var order = Firebot.GameModel.Features.Town.Library.FirestoneResearch.Node.ScreenOrder(spots);
+        Check(order != null && string.Join(",", order) == "1,2,5,3,4,0",
+            $"Screen order was {(order == null ? "null" : string.Join(",", order))}.");
+        var same = new (float x, float y, float h)[] { (0f, 0f, 1f), (0f, 0f, 1f), (0f, 0f, 1f) };
+        Check(Firebot.GameModel.Features.Town.Library.FirestoneResearch.Node.ScreenOrder(same) == null,
+            "Nodes with no spread were sorted.");
+    }
+
+    public static void NumbersOnDotThousandsPcsAreRead()
+    {
+        Check(Firebot.Behaviors.Extra.ArenaPowerPolicy.TryParsePower("40.341", out var power) && power == 40341,
+            $"Arena power 40.341 read as {power}.");
+        Check(Firebot.Behaviors.Extra.ArenaPowerPolicy.TryParsePower("1,5K", out power) && power == 1500,
+            $"Arena power 1,5K read as {power}.");
+        Check(Firebot.Behaviors.Extra.ArenaPowerPolicy.TryParsePower("1.5K", out power) && power == 1500,
+            $"Arena power 1.5K read as {power}.");
+        Check(Firebot.Behaviors.Extra.ArenaPowerPolicy.TryParseRank("1.234", out var rank) && rank == 1234,
+            $"Arena rank 1.234 read as {rank}.");
+        Check(!Firebot.Behaviors.Extra.ArenaPowerPolicy.TryParseRank("1.23", out _), "Rank 1.23 was accepted.");
+        Check(Firebot.Core.PrestigePolicy.TryParseGain("+409.340%", out var gain) && gain == 409340,
+            $"Prestige gain +409.340% read as {gain}.");
+        Check(Firebot.Core.PrestigePolicy.TryParseGain("+1,5K%", out gain) && gain == 1500,
+            $"Prestige gain +1,5K% read as {gain}.");
+    }
+
     public static void TimersInUnitsAreRead()
     {
         void Is(string text, TimeSpan expected)

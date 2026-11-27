@@ -15,6 +15,10 @@ public class ExpeditionTask : BotTask
 
     protected override string NotificationPath => Paths.BattleLoc.NotificationsLoc.ExpeditionsBtn;
 
+    // The expedition has a real end time on screen. Without this the task waited for its bubble and treated the
+    // timer as only a six-hour safety check, which read as a fixed 7 hours (issue #10).
+    protected override bool UseScheduledTime => true;
+
     public override IEnumerator Execute()
     {
         yield return Notifications.Expeditions;
@@ -34,7 +38,7 @@ public class ExpeditionTask : BotTask
             NextRunTime = read;
         else
         {
-            Logger.Warning("[Expeditions] Could not read the expedition timer; checking again in 10 minutes.");
+            Logger.Debug("[Expeditions] Could not read the expedition timer; checking again in 10 minutes.");
             NextRunTime = DateTime.Now.AddMinutes(10);
         }
 

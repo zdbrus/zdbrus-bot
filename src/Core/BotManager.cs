@@ -98,6 +98,15 @@ public static class BotManager
     /// <summary>A screen is open that the bot did not leave open itself (the player's own).</summary>
     public static bool PlayerScreenOpen { get; private set; }
 
+    private static DateTime _lastWatchTick = DateTime.MinValue;
+
+    /// <summary>
+    ///     Longest gap between two game updates that still counts as the bot being alive. A longer one means the
+    ///     whole game stopped updating (minimised, a hitch while it talks to the server, the PC asleep), and the
+    ///     time the stall watch measures in that gap is the game's, not the task's.
+    /// </summary>
+    private const double GameFrozenGapSeconds = 15;
+
     /// <summary>
     ///     Stops the bot when the task it is running has stopped advancing, and reports a scan that never came
     ///     back.
@@ -118,7 +127,21 @@ public static class BotManager
     /// </summary>
     public static void WatchForStall()
     {
+        var tick = DateTime.Now;
+        var gap = _lastWatchTick == DateTime.MinValue ? TimeSpan.Zero : tick - _lastWatchTick;
+        _lastWatchTick = tick;
         if (!IsRunning) return;
+
+        if (gap.TotalSeconds > GameFrozenGapSeconds)
+        {
+            // Nothing in the mod could have advanced while the game was not updating: start the stall clock over
+            // instead of stopping the bot for a pause it did not cause (issue #10: "has not advanced for 511s").
+            _lastStepAt = tick;
+            if (IsTaskExecuting)
+                Logger.Warning($"[Bot] The game did not update for {gap.TotalSeconds:0}s (minimised, frozen or the PC " +
+                               "slept). The task carries on.");
+            return;
+        }
 
         if (IsTaskExecuting)
         {
@@ -219,6 +242,7 @@ public static class BotManager
 
             BotTask notificationTask = null;
             BotTask readyTask = null;
+            var ranTask = false;
 
             // The scan is the one part of the loop nothing else guards. What a task throws is caught by RunSafe,
             // but an exception here — a game lookup failing while the UI is mid-rebuild, say — would end the
@@ -397,6 +421,7 @@ public static class BotManager
                 IsTaskExecuting = true;
                 _executingTask = readyTask;
                 _lastStepAt = DateTime.Now;
+                ranTask = true;
                 try
                 {
                     // Already on this task's screen (the player or the last task left it open): keep it and let the
@@ -487,8 +512,12 @@ public static class BotManager
             // The wait is scaled time, so this is the one moment where a stopped game clock shows. Armed
             // around the wait alone: WatchForStall reads it as "asleep past its due", and while the loop is
             // working there is no sleep to be late for.
-            _nextScanDueAt = DateTime.Now + TimeSpan.FromSeconds(ScanInterval);
-            yield return new WaitForSeconds(ScanInterval);
+            // Right after a task that left its hub open, look again soon: if nothing else is due the idle cleanup
+            // closes the hub then, instead of a full scan later (issue #10: tasks lingered on the town and arena
+            // screens for 5 to 20 seconds).
+            var scanWait = ranTask && retainedHub ? Math.Min(1f, ScanInterval) : ScanInterval;
+            _nextScanDueAt = DateTime.Now + TimeSpan.FromSeconds(scanWait);
+            yield return new WaitForSeconds(scanWait);
         }
     }
 

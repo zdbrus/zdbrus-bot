@@ -563,7 +563,7 @@ internal static class ArenaPowerPolicy
     public static bool TryParsePower(string text, out double power)
     {
         power = 0;
-        var match = PowerPattern.Match((text ?? string.Empty).Trim());
+        var match = PowerPattern.Match(GameNumber.ToInvariantDisplay(text));
         if (!match.Success ||
             !double.TryParse(match.Groups["number"].Value.Replace(",", ""), NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture, out var number)) return false;
@@ -599,7 +599,7 @@ internal static class ArenaPowerPolicy
     public static bool TryParseRank(string text, out long rank)
     {
         rank = 0;
-        text = (text ?? string.Empty).Trim();
+        text = GameNumber.ToInvariantDisplay(text);
         return IntegerPattern.IsMatch(text) &&
                long.TryParse(text.Replace(",", ""), NumberStyles.None, CultureInfo.InvariantCulture, out rank) &&
                rank > 0;
