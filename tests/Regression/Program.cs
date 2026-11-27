@@ -912,11 +912,18 @@ $ErrorActionPreference = 'Stop'
 $env:TEMP = $Work
 $network = Join-Path $Work 'network.txt'
 function Wait-Process {
-    param([int]$Id, [string]$ErrorAction)
+    param([int]$Id, [int]$Timeout, [string]$ErrorAction)
     if ($Mode -eq 'blocked') { throw 'wait blocked' }
+}
+function Stop-Process {
+    param([int]$Id, [switch]$Force, [string]$ErrorAction)
+    [IO.File]::WriteAllText((Join-Path $Work 'stopped.txt'), 'stopped')
 }
 function Get-Process {
     param([int]$Id, [string]$Name, [string]$ErrorAction)
+    if (($Mode -eq 'force' -and $Id -eq 91234 -and -not (Test-Path (Join-Path $Work 'stopped.txt')))) {
+        return [pscustomobject]@{ Id = 91234 }
+    }
     if (($Mode -eq 'blocked' -and $Id -eq 91234) -or ($Mode -eq 'restarted' -and $Name -eq 'FakeFirestone')) {
         [pscustomobject]@{ Id = 91234 }
     }
@@ -939,9 +946,16 @@ function Expand-Archive {
 $dll = Join-Path $Work 'old.dll'
 $log = Join-Path $Work 'update.log'
 [IO.File]::WriteAllText($dll, 'original')
-& $Script -GamePid 91234 -GameName 'FakeFirestone' -Dll $dll -Current '0.7.38' -LogFile $log
+if ($Mode -eq 'force') {
+    & $Script -GamePid 91234 -GameName 'FakeFirestone' -Dll $dll -Current '0.7.38' -LogFile $log -ForceAfter 5 -Install 0
+} else {
+    & $Script -GamePid 91234 -GameName 'FakeFirestone' -Dll $dll -Current '0.7.38' -LogFile $log
+}
 $result = [IO.File]::ReadAllText($log)
-if ($Mode -eq 'blocked') {
+if ($Mode -eq 'force') {
+    if (-not (Test-Path (Join-Path $Work 'stopped.txt')) -or (Test-Path $network) -or $result -notmatch 'closing it' -or
+        [IO.File]::ReadAllText($dll) -ne 'original') { exit 5 }
+} elseif ($Mode -eq 'blocked') {
     if ((Test-Path $network) -or $result -notmatch 'Update failed' -or [IO.File]::ReadAllText($dll) -ne 'original') { exit 2 }
 } elseif ($Mode -eq 'restarted') {
     if ($result -notmatch 'restarted before the update finished' -or [IO.File]::ReadAllText($dll) -ne 'original') { exit 3 }
@@ -950,7 +964,7 @@ if ($Mode -eq 'blocked') {
         [IO.File]::ReadAllText($dll + '.bak') -ne 'original') { exit 4 }
 }
 ");
-        foreach (var mode in new[] { "blocked", "restarted", "success" })
+        foreach (var mode in new[] { "blocked", "restarted", "success", "force" })
         {
             var work = Path.Combine(root, mode);
             Directory.CreateDirectory(work);

@@ -47,7 +47,7 @@ enable it once in F1 or press its hotkey to retry. An empty skill combo cannot s
 
 > Coming from Firebot? Delete `Mods\firebot.dll` so only one bot runs. Your old settings are moved over automatically.
 >
-> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update uses separate PowerShell helpers to check GitHub while the game is open and install a newer DLL after it closes. F1 shows the check status and a Releases button. Wait for `UserData\ZdbrusBot_update.log` to report the result before reopening; if the game restarts too early, the update is skipped until the next close. The previous DLL is kept as `.bak`, and the three Il2CppInterop files are not changed. Turn Auto Update off in F1 > General.
+> The download includes three fixed `Il2CppInterop` files the current game needs. Keep them installed; without them the game can close during startup. Auto Update uses separate PowerShell helpers to check GitHub while the game is open and install a newer DLL after it closes. F1 shows the check status and a Releases button. Wait for `UserData\ZdbrusBot_update.log` to report the result before reopening; if the game restarts too early, the update is skipped until the next close. The previous DLL is kept as `.bak`, and the three Il2CppInterop files are not changed. Turn Auto Update off in F1 > General. The same helper closes Firestone if it is still running 30 seconds after you quit (F1 > General > Close Stuck Game, 0 turns it off), so a game that hangs on exit cannot block the update.
 
 ## Keys
 

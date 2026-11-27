@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.70 (2026-11-26)
+- **A game that will not close no longer blocks the update.** The updater waits for Firestone to exit before installing, so a game that hangs on shutdown meant no update and a "Stop" button on Steam for as long as it lingered. The same helper now closes Firestone if it is still running 30 seconds after you quit, then installs the update. New setting F1 > General > Close Stuck Game (Seconds): 10 to 300, 0 turns it off. It works even with Auto Update off.
+
 ## 0.7.69 (2026-11-26)
 - **Scarab Auto says why it stopped.** The log line "Auto stopped at the token permission, balance, mode, or receipt boundary" now lists every value it checked (tokens, cost, currency, quantity, which icon is showing), so a Scarab Game that opens and plays nothing can be pinned down from `Latest.log`. No behaviour change.
 

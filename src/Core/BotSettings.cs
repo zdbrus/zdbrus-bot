@@ -12,6 +12,7 @@ public static class BotSettings
     private static MelonPreferences_Entry<bool> _autoStart;
     private static MelonPreferences_Entry<bool> _enableAllOnLaunch;
     private static MelonPreferences_Entry<bool> _autoUpdate;
+    private static MelonPreferences_Entry<int> _quitForceSeconds;
     private static MelonPreferences_Entry<float> _startBotDelay;
     private static MelonPreferences_Entry<float> _scanInterval;
     private static MelonPreferences_Entry<float> _interactionDelay;
@@ -76,6 +77,16 @@ public static class BotSettings
     public static bool AutoCollectDrops => _autoCollect?.Value ?? true;
     public static bool AutoUpdate => _autoUpdate?.Value ?? true;
 
+    /// <summary>Seconds after quitting before the helper closes a game that is still running; 0 turns it off.</summary>
+    public static int QuitForceSeconds
+    {
+        get
+        {
+            var v = _quitForceSeconds?.Value ?? 30;
+            return v <= 0 ? 0 : Math.Min(300, Math.Max(10, v));
+        }
+    }
+
     /// <summary>Seconds the bot keeps its hands off after the player clicks, types, scrolls or moves the mouse.</summary>
     public static float PlayerQuietSeconds => _playerQuietSeconds == null
         ? UserActivityPolicy.QuietSeconds
@@ -120,6 +131,10 @@ public static class BotSettings
         _autoUpdate = _category.CreateEntry("auto_update", true, "Auto Update",
             "A separate helper checks GitHub for updates. After the game closes, it installs a newer release " +
             "and keeps the old DLL as .bak. Wait for UserData\\ZdbrusBot_update.log before reopening.");
+
+        _quitForceSeconds = _category.CreateEntry("quit_force_seconds", 30, "Close Stuck Game (Seconds)",
+            "If Firestone is still running this many seconds after you quit, the same helper closes it so Steam " +
+            "stops showing it and the update can install. 0 turns it off. Otherwise 10 to 300. Default: 30.");
 
         _startBotDelay = _category.CreateEntry("start_bot_delay", 10.0f, "Start Bot Delay",
             "The initial cooldown (in seconds) before the bot begins execution." +

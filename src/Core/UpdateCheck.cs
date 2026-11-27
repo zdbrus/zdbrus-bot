@@ -35,13 +35,21 @@ try {
 ";
 
     internal const string InstallerScript = @"
-param([int]$GamePid, [string]$GameName, [string]$Dll, [string]$Current, [string]$LogFile)
+param([int]$GamePid, [string]$GameName, [string]$Dll, [string]$Current, [string]$LogFile, [int]$ForceAfter = 0, [int]$Install = 1)
 $ErrorActionPreference = 'Stop'
 function Log($m) { Add-Content -Path $LogFile -Value ((Get-Date -Format 's') + ' ' + $m) }
 try {
+    if ($ForceAfter -gt 0) {
+        try { Wait-Process -Id $GamePid -Timeout $ForceAfter -ErrorAction SilentlyContinue } catch { }
+        if (Get-Process -Id $GamePid -ErrorAction SilentlyContinue) {
+            Log ('Firestone was still running ' + $ForceAfter + ' seconds after quitting; closing it.')
+            Stop-Process -Id $GamePid -Force -ErrorAction SilentlyContinue
+        }
+    }
     try { Wait-Process -Id $GamePid -ErrorAction Stop } catch {
         if (Get-Process -Id $GamePid -ErrorAction SilentlyContinue) { throw }
     }
+    if ($Install -eq 0) { return }
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $h = @{ 'User-Agent' = 'ZdbrusBot/' + $Current }
     $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/zdbrus/zdbrus-bot/releases/latest' -Headers $h -TimeoutSec 20
@@ -169,12 +177,13 @@ try {
         }
     }
 
-    public static void ScheduleOnExit()
+    /// <summary>Starts the helper that outlives the game: it can close a game that hangs on exit and install updates.</summary>
+    public static void ScheduleOnExit(bool install, int forceAfterSeconds)
     {
         try
         {
             var dll = Path.Combine(MelonEnvironment.MelonBaseDirectory, "Mods", "ZdbrusBot.dll");
-            if (!File.Exists(dll))
+            if (install && !File.Exists(dll))
             {
                 Logger.Debug("[Update] Mods\\ZdbrusBot.dll not found; auto-update skipped.");
                 return;
@@ -189,7 +198,8 @@ try {
             var game = Process.GetCurrentProcess();
             var psi = new ProcessStartInfo("powershell.exe",
                 $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{script}\" " +
-                $"-GamePid {game.Id} -GameName \"{game.ProcessName}\" -Dll \"{dll}\" -Current \"{Brand.Version}\" -LogFile \"{log}\"")
+                $"-GamePid {game.Id} -GameName \"{game.ProcessName}\" -Dll \"{dll}\" -Current \"{Brand.Version}\" -LogFile \"{log}\" " +
+                $"-ForceAfter {Math.Max(0, forceAfterSeconds)} -Install {(install ? 1 : 0)}")
             {
                 UseShellExecute = false,
                 CreateNoWindow = true

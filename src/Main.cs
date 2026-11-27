@@ -48,7 +48,8 @@ public class Main : MelonMod
         ArenaMatchupRecorder.Flush();
         Planner.PlannerServer.Stop();
         UpdateCheck.StopProbe();
-        if (BotSettings.AutoUpdate) UpdateCheck.ScheduleOnExit();
+        if (BotSettings.AutoUpdate || BotSettings.QuitForceSeconds > 0)
+            UpdateCheck.ScheduleOnExit(BotSettings.AutoUpdate, BotSettings.QuitForceSeconds);
     }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)
