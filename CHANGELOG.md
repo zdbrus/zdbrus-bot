@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.71 (2026-11-26)
+- **Close Stuck Game (Seconds) has its own slider range.** In 0.7.70 the F1 slider for it was capped at 60 instead of 300 and had no description text sized for the box. Behaviour is otherwise the same.
+
 ## 0.7.70 (2026-11-26)
 - **A game that will not close no longer blocks the update.** The updater waits for Firestone to exit before installing, so a game that hangs on shutdown meant no update and a "Stop" button on Steam for as long as it lingered. The same helper now closes Firestone if it is still running 30 seconds after you quit, then installs the update. New setting F1 > General > Close Stuck Game (Seconds): 10 to 300, 0 turns it off. It works even with Auto Update off.
 

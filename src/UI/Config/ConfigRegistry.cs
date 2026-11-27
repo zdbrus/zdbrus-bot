@@ -74,6 +74,7 @@ internal static class ConfigRegistry
             new NumberRange(BotSettings.FreeSpeedupSecondsMin, BotSettings.FreeSpeedupSecondsMax, false),
         ["firebot_settings/player_quiet_seconds"] =
             new NumberRange(UserActivityPolicy.QuietSecondsMin, UserActivityPolicy.QuietSecondsMax, false),
+        ["firebot_settings/quit_force_seconds"] = new NumberRange(0f, 300f, true),
         ["magic_quarters/guardian_index"] = new NumberRange(0f, 3f, true),
         ["magic_quarters/keep_strange_dust"] = new NumberRange(0f, 100000f, true),
         ["alchemist/keep_strange_dust"] = new NumberRange(0f, 100000f, true),
@@ -484,6 +485,11 @@ internal static class ConfigRegistry
         ["temple_prestige/stall_minutes"] =
             "Fallback reset delay after no new highest stage. Growth and repeated boss failures can trigger sooner.\n" +
             "The minimum boost and run age still apply.",
+
+        ["firebot_settings/quit_force_seconds"] =
+            "Closes Firestone if it is still running this long after you quit,\n" +
+            "so a hung exit cannot block the update. 0 turns it off.\n" +
+            "Allowed range: 10 to 300. Default: 30.",
 
         ["firebot_settings/player_quiet_seconds"] =
             "Seconds the bot waits after you click, type, scroll or move the mouse.\n" +
