@@ -29,6 +29,7 @@ public class ChaosRiftTask : BotTask
     private readonly Func<DateTime> _now;
     private DateTime _riftRetryAfter;
     private DateTime _idleQuietUntil;
+    private DateTime _holyQuietUntil;
     private bool _moreHitsPending;
     private int _hits;
     private int _purchases;
@@ -76,7 +77,7 @@ public class ChaosRiftTask : BotTask
                ((now >= _riftRetryAfter && now >= _idleQuietUntil &&
                  (Ui.Visible(P.Notifications + "/ChaosRift") ||
                   Ui.Visible(P.Notifications + "/ChaosRiftSupplies"))) ||
-                (_holyUpgrades?.Value == true && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade")));
+                (_holyUpgrades?.Value == true && now >= _holyQuietUntil && Ui.Visible(P.Notifications + "/GuardianHolyUpgrade")));
     }
 
     protected override void OnConfigure(MelonPreferences_Category c)
@@ -179,6 +180,9 @@ public class ChaosRiftTask : BotTask
 
     private IEnumerator HolyUpgrades()
     {
+        // The guardian bubble stays lit while an upgrade is merely affordable somewhere else; one look every three
+        // hours is enough, not one per bubble backoff.
+        _holyQuietUntil = _now().AddHours(3);
         if (!Ui.Visible(MQ))
         {
             Logger.Warning("[Chaos Rift] Magic Quarters did not open; holy upgrades skipped.");

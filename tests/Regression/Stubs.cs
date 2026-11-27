@@ -386,6 +386,7 @@ namespace Firebot.Core
         public static bool PauseAutoUpgrade;
         public static bool TaskApproaching;
         public static bool PlayerBusy;
+        public static bool PlayerScreenOpen;
         public static void Initialize() { }
         public static void Start() => IsRunning = true;
         public static void Stop() => IsRunning = false;

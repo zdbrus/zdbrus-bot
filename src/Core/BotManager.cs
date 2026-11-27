@@ -95,6 +95,9 @@ public static class BotManager
     /// <summary>The player has used the game within the quiet window (refreshed every scan). AutoUpgrade reads it too.</summary>
     public static bool PlayerBusy { get; private set; }
 
+    /// <summary>A screen is open that the bot did not leave open itself (the player's own).</summary>
+    public static bool PlayerScreenOpen { get; private set; }
+
     /// <summary>
     ///     Stops the bot when the task it is running has stopped advancing, and reports a scan that never came
     ///     back.
@@ -300,10 +303,16 @@ public static class BotManager
             // they have been quiet for a moment, instead of sweeping their screen shut for the next task. Any
             // input counts, not only input with a menu up: closing the map or a battle view under a player who is
             // clicking it was the other half of "the bot interrupts everything I do" (issue #8).
-            var playerScreenOpen = Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus).Any();
+            // The hub screen a task leaves open on purpose is the bot's, not the player's: it must not count as
+            // "a screen you opened", or the tasks and the cleanup after it wait three times as long for nothing.
+            var playerScreenOpen = !retainedHub && Behaviors.Extra.Ui.VisibleChildren(Behaviors.Extra.P.Menus).Any();
             var playerBusy = UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
                 playerScreenOpen, false, PlayerQuietSeconds);
             PlayerBusy = playerBusy;
+            PlayerScreenOpen = playerScreenOpen;
+            // Leaving the hub the bot itself left open only needs a short pause in the player's input.
+            var cleanupBusy = UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput, false, false,
+                Math.Min(PlayerQuietSeconds, 10f));
             // A task that never closes the player's screen (Boss Retry only presses "Boss") has nothing to wait for.
             if (readyTask != null && !IsTaskExecuting && readyTask.NeedsCleanScreen &&
                 UserActivityPolicy.ShouldWait(UserActivity.SecondsSinceInput,
@@ -336,7 +345,7 @@ public static class BotManager
 
             // The idle cleanup closes whatever is open to get back to the upgrade screen. When the player has been
             // using the game since the last task, what is open is theirs: keep the hub flag and try again later.
-            if (readyTask == null && retainedHub && !_tutorialHold && !plannerBusy && !playerBusy)
+            if (readyTask == null && retainedHub && !_tutorialHold && !plannerBusy && !cleanupBusy)
             {
                 var pauseForNearTask = _shouldPauseAutoUpgrade;
                 _shouldPauseAutoUpgrade = true;

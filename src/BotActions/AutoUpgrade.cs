@@ -285,10 +285,11 @@ public static class AutoUpgrade
             ReportHold(hold);
 
             if (hold != null) _pausedSince = null;
-            else if (BotManager.PlayerBusy)
+            else if (BotManager.PlayerBusy && BotManager.PlayerScreenOpen)
             {
-                // The player is using the game: no menu is opened or closed under them. The next burst comes
-                // after the usual wait.
+                // The player has a screen of their own open and is using it: no menu is opened or closed under
+                // them. Playing on the battle screen does not hold the upgrades back, or nothing is bought after
+                // a prestige. The next burst comes after the usual wait.
                 _pausedSince = null;
             }
             else if (!BotManager.ShouldPauseAutoUpgrade())
@@ -301,7 +302,7 @@ public static class AutoUpgrade
 
             // Not during a hold: the tutorial's own upgrade step is done in this menu, and closing it under the
             // player breaks the step.
-            if (hold == null && !BotManager.PlayerBusy && Upgrades.IsVisible) yield return Upgrades.Close;
+            if (hold == null && !(BotManager.PlayerBusy && BotManager.PlayerScreenOpen) && Upgrades.IsVisible) yield return Upgrades.Close;
 
             var wait = Math.Max(10, _everySeconds?.Value ?? 60);
             var until = Time.unscaledTime + wait;

@@ -160,7 +160,8 @@ pauses as soon as a task is approaching.
 
 After you click, type, scroll or move the mouse, the bot waits **Wait For Player** seconds (F1 > General,
 20 by default, 5 to 120) before it opens or closes anything, on any screen. A screen you opened yourself
-is left alone three times as long. AutoUpgrade and the idle cleanup wait too, and checks that can be done
+is left alone three times as long (the guild or town screen a task leaves open does not count: it is closed after a short pause).
+AutoUpgrade and the idle cleanup wait too, and checks that can be done
 without a menu (Temple Prestige) no longer close your screen. Boss Retry only presses Boss, so it never waits.
 F2 RUN still goes right away.
 

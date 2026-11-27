@@ -1,5 +1,12 @@
 ﻿# Changelog
 
+## 0.7.68 (2026-11-26)
+Fixes from issue #9.
+- **Tasks leave the guild and town screens again.** The screen a task leaves open on purpose was counted as "a screen you opened", so the cleanup after it waited three times as long as Wait For Player, and any mouse movement held it back. That hub is now the bot's own: it is closed after a 10 second pause in your input (or Wait For Player if that is shorter), and it no longer delays the next task.
+- **Tasks no longer sit on "Ready".** Same cause: the open hub made every due task wait 60 seconds instead of 20.
+- **Auto Upgrade works while you play.** 0.7.66 skipped every burst while you were using the mouse, so after a prestige almost nothing was bought. It now holds back only while you are busy on a screen of your own; playing on the battle screen no longer stops it.
+- **Chaos Rift stops reopening every few minutes.** The Magic Quarters bubble can stay lit while no holy upgrade is possible; after a look at it the bubble now waits three hours.
+
 ## 0.7.67 (2026-11-26)
 Follow-up to issue #6 from Odin099's screen map and report.
 - **Stage Fallback finds the real arrow.** The battle screen's arrow next to the stage number is `goBackStage`, a hold-to-repeat control. The bot now looks for it by that exact path, and if a normal click does not lower the stage it tries a pointer press and then a short hold. Every step must still lower the live stage or the fallback stops.

@@ -1,4 +1,4 @@
-ZDBRUS BOT 0.7.67 - auto-play mod for Firestone: Idle Clicker Online RPG
+ZDBRUS BOT 0.7.68 - auto-play mod for Firestone: Idle Clicker Online RPG
 Website: https://zdbrus.github.io/zdbrus-bot/
 Downloads and release notes: https://github.com/zdbrus/zdbrus-bot/releases
 Discord (help, bugs, suggestions): https://discord.gg/U4APWwTa7F
@@ -57,7 +57,7 @@ none can be bought, so each slot is maxed as far as gold allows. It uses gaps be
 first round before handing over, and stops further rounds when a task is ready. Focus still pauses as
 soon as a task is approaching.
 Wait For Player (F1 > General, default 20 seconds): after you click, type, scroll or move the mouse the
-bot opens or closes nothing for that long, on any screen; a screen you opened stays yours 3x as long.
+bot opens or closes nothing for that long, on any screen; a screen you opened stays yours 3x as long (the hub a task leaves open does not count, and is closed after a 10 second pause).
 AutoUpgrade and the idle cleanup wait too. Temple Prestige checks no longer close screens; Boss Retry never waits.
 Stage Fallback (F1 > Boss Retry, off by default): after a lost boss, or after Max Minutes At One Stage
 (default 30; 0 = only after a lost boss), step back Stages To Fall Back (default 3) and try again after
