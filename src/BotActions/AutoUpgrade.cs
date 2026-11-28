@@ -18,8 +18,8 @@ public static class AutoUpgrade
 {
     // A press only has to register: the game buys on the press itself. 0.5 s held plus 0.5 s gap made one upgrade
     // a second, so a prestige's hundreds of upgrades took minutes (issue #10).
-    private const float HoldPerButtonSeconds = 0.05f;
-    private const float GapBetweenButtonsSeconds = 0.02f;
+    private const float HoldPerButtonSeconds = 0.1f;
+    private const float GapBetweenButtonsSeconds = 0.05f;
     private const float IdlePollSeconds = 0.5f;
     private const int FocusBurstLimit = 20;
 

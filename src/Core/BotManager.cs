@@ -15,7 +15,12 @@ namespace Firebot.Core;
 
 public static class BotManager
 {
-    private const double AutoUpgradeMinExecutionWindowSeconds = 30d;
+    /// <summary>
+    ///     A task due within this many seconds holds the auto upgrade back. It was 30: with 35 tasks one is nearly
+    ///     always due inside 30 seconds, so a Focus-mode account bought nothing for a whole day (issue #10 follow-up).
+    ///     A task that is ready or running still takes priority at once; this only covers the last moments before it.
+    /// </summary>
+    private const double AutoUpgradeMinExecutionWindowSeconds = 3d;
 
     /// <summary>
     ///     Slack over the configured scan interval before the scheduler counts as not having woken up. A frame

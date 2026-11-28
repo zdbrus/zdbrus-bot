@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.75 (2026-11-27)
+- **Auto Upgrade buys again in Focus mode.** With many tasks enabled, some task is always due within 30 seconds, and Focus mode waited for it every time, so almost nothing was bought (in one 12 hour log it was allowed to run for about 1% of the time). It now only waits for a task that is ready, running or due in the next 3 seconds. Each press is held 0.1 s with a 0.05 s gap (still five times faster than 0.7.73). Balanced mode is unchanged.
+
 ## 0.7.74 (2026-11-27)
 From issue #10.
 - **The bot no longer turns itself off after a long idle.** Returning to the upgrades after an idle stretch did not reset the stall timer, so the next step looked 500 seconds old and the bot stopped.
