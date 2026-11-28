@@ -622,6 +622,10 @@ internal static class ConfigRegistry
             "Numbers show upgrade order. Tap to toggle; Recommended resets, Clear empties.\n" +
             "An empty list uses all slots in screen order.",
 
+        ["arena/fight_if_switch_fails"] =
+            "If the game will not switch to the Arena Squad, fight with the current squad.\n" +
+            "Off: skip the Arena and try again later. Default: on.",
+
         ["auto_upgrade/keep_menu_open"] =
             "Leaves upgrades open between bursts, so Upgrade Every can be 1 second.\n" +
             "Tasks close it when they need the screen. Default: off.",

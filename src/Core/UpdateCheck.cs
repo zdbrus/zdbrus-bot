@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -24,6 +25,7 @@ internal static class UpdateCheck
 
     private const string ProbeScript = @"
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/zdbrus/zdbrus-bot/releases/latest' -Headers @{ 'User-Agent' = 'ZdbrusBot' } -TimeoutSec 20
@@ -107,7 +109,7 @@ try {
             }
 
             var output = _probe.StandardOutput.ReadToEnd();
-            var error = _probe.StandardError.ReadToEnd().Trim();
+            var error = CleanError(_probe.StandardError.ReadToEnd());
             var result = UpdateStatusPolicy.Classify(Brand.Version, output, _probe.ExitCode, out var latest);
             _probe.Dispose();
             _probe = null;
@@ -124,6 +126,20 @@ try {
             StopProbe();
             FailProbe(e.Message, now);
         }
+    }
+
+    /// <summary>
+    ///     PowerShell wraps redirected errors in CLIXML ("#< CLIXML" plus progress objects). Only the readable
+    ///     message lines are kept, so a failed check says "remote name could not be resolved" and not an XML blob.
+    /// </summary>
+    internal static string CleanError(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        var lines = raw.Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0 && !line.StartsWith("#<") && !line.StartsWith("<Objs") &&
+                           !line.StartsWith("</Objs"));
+        return string.Join(" ", lines);
     }
 
     private static void StartProbe(DateTime now)

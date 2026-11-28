@@ -161,6 +161,20 @@ public class MeteoriteResearchTask : BotTask
         for (var purchases = 0; purchases < 10; purchases++)
         {
             if (research.IsMaxLevel()) { result(PriorityTierAction.Advance); yield break; }
+            // The reserve decides first: when buying would dip below it there is nothing to confirm, and a hidden
+            // quantity button on a research that cannot be bought now is not a fault worth a warning.
+            var preCost = research.levelUpCost.GetDecrypted();
+            var preBalance = Balance();
+            // Only when the game is on one level at a time and offers no quantity button: then the cost shown is the
+            // price of a single level. Under a bulk selection it is the price of the bulk.
+            var perLevelCost = Popup?.currentResearchQuantityEnum == ResearchQuantity.ResearchX1 &&
+                               !Ui.Visible(Preview + "/unlocked/changeQuantityButton");
+            if (perLevelCost && double.IsFinite(preCost) && preCost > 0 && double.IsFinite(preBalance) && preBalance >= 0 &&
+                _keep.Value >= 0 && !PurchaseObservation.CanAffordWithReserve(preBalance, preCost, _keep.Value))
+            {
+                Logger.Info($"[Meteorite Research] Keeping reserve: have {preBalance}, cost {preCost}, keep {_keep.Value}.");
+                yield break;
+            }
             // Native cost is recalculated for the selected quantity. Never use a rounded UI price or a bulk buy.
             for (var attempts = 0; attempts < 8 && Selected(research) && !SingleQuantity && !OneLevelLeft(); attempts++)
             {

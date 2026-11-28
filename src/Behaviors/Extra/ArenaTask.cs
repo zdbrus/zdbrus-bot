@@ -44,6 +44,8 @@ public class ArenaTask : BotTask
     private MelonPreferences_Entry<bool> _recordMatchups;
     private MelonPreferences_Entry<string> _lastForced;
     private MelonPreferences_Entry<int> _arenaSquad;
+    private MelonPreferences_Entry<bool> _fightIfSwitchFails;
+    private int _warnedSwitchFailed;
     private double _deadline;
     private bool _fought;
     private int _warnedEmptySquad;
@@ -69,6 +71,9 @@ public class ArenaTask : BotTask
         _arenaSquad = c.CreateEntry("arena_squad", 0, "Arena Squad",
             "Squad (1, 2 or 3) to fight the arena with. The bot sets it active before arena fights and switches " +
             "back to your normal squad afterwards, so campaign keeps its own squad. 0 = don't switch.");
+        _fightIfSwitchFails = c.CreateEntry("fight_if_switch_fails", true, "Fight If Squad Switch Fails",
+            "When the game will not switch to the Arena Squad, fight with the current squad instead of skipping " +
+            "the Arena. Off: skip and try again later. Default: on.");
         _dailyFight = c.CreateEntry("one_fight_daily", true, "One Fight Per Day",
             "After 20:00, attempt the weakest opponent once if all are over the power limit and refresh is unavailable.");
         _lastForced = c.CreateEntry("last_forced_fight", "", "Last Forced Fight",
@@ -152,9 +157,22 @@ public class ArenaTask : BotTask
             yield return Planner.SquadApplier.SetActive(want, "arena");
             if (!Planner.SquadApplier.SwitchedTo(want))
             {
-                Retry($"Arena squad {want} did not become active; no fight was attempted.");
                 yield return RestoreSquad(before);
-                yield break;
+                if (_fightIfSwitchFails?.Value != true || Planner.SquadApplier.ActiveSlot() != before)
+                {
+                    Retry($"Arena squad {want} did not become active; no fight was attempted.");
+                    yield break;
+                }
+
+                if (_warnedSwitchFailed != want)
+                {
+                    Logger.Warning($"[Arena] The game did not switch to squad {want}, so the bot is fighting with " +
+                                   $"your current squad ({before}) instead. Set Arena Squad to 0 to stop the attempts.");
+                    _warnedSwitchFailed = want;
+                }
+
+                want = before;
+                swap = false;
             }
         }
 

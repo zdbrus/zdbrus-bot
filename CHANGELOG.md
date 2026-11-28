@@ -1,5 +1,12 @@
 ﻿# Changelog
 
+## 0.7.77 (2026-11-27)
+- **The Arena fights even when the game ignores the squad switch.** In the logs of two players the game never switched to the Arena Squad, so every Arena run ended with "no fight was attempted" and the Arena was never fought. The bot now fights with the squad that is active and says so in the log. New setting "Fight If Squad Switch Fails" (on by default); turn it off to skip the Arena instead, or set Arena Squad to 0 to stop the switch attempts.
+- **The squad switch logs what happens after the click** (is the squads screen still open, which popups are up, is the game waiting for its server), so the cause can be found from the next log.
+- **Open Chests opens Oracle's Gifts.** They were left in the bag as an unsupported chest. New setting "Open Oracle's Gifts" (on by default). Their reward screen has not been seen in the game yet, so check the log after the first run.
+- **Meteorite Research no longer warns "Could not confirm one-level purchasing" when it is only keeping its meteorite reserve.** It now says "Keeping reserve" and holds.
+- **A failed update check logs the readable reason** (for example "remote name could not be resolved") instead of PowerShell's "#< CLIXML" text.
+
 ## 0.7.76 (2026-11-27)
 - **Focus first no longer stops at the first slot.** It used to buy only the first selected slot and then save gold for it, so nothing else was upgraded. It now buys the first slot as many times as it can, moves on to the next slots, and repeats until nothing is affordable. Balance is unchanged.
 

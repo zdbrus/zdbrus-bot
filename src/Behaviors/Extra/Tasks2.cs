@@ -906,8 +906,16 @@ public class OpenChestsTask : BotTask
     {
         "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Titan", "Angel",
         "Wooden", "Iron", "Golden", "Diamond", "Opal", "Emerald", "Platinum", "Bloodstone",
-        "Comet", "Lunar", "Solar", "Nebula", "Cosmic", "Galaxy", "Stellar", "Constellation"
+        "Comet", "Lunar", "Solar", "Nebula", "Cosmic", "Galaxy", "Stellar", "Constellation",
+        "oraclesGift"
     };
+    // Oracle's gift has its own preview screen with the same opening options (screen map OraclesGiftOpenPreview).
+    private const string OraclesGiftId = "oraclesGift";
+    private const string OraclesGiftPreview = P.Popups + "/OraclesGiftOpenPreview/bg";
+
+    private static string PreviewFor(string chestName) =>
+        string.Equals(chestName, OraclesGiftId, StringComparison.OrdinalIgnoreCase) ? OraclesGiftPreview : Preview;
+
     private static readonly HashSet<string> SupportedChests = new(ChestIds, StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MelonPreferences_Entry<bool>> _open = new(StringComparer.OrdinalIgnoreCase);
     protected override bool EnabledByDefault => true;
@@ -916,7 +924,8 @@ public class OpenChestsTask : BotTask
     protected override void OnConfigure(MelonPreferences_Category c)
     {
         foreach (var id in ChestIds)
-            _open[id] = c.CreateEntry("open_" + id.ToLowerInvariant(), true, "Open " + id + " Chests",
+            _open[id] = c.CreateEntry("open_" + id.ToLowerInvariant(), true,
+                id == OraclesGiftId ? "Open Oracle's Gifts" : "Open " + id + " Chests",
                 "Tick to let the bot open this chest type (game id: " + id + "). Untick to keep them.");
         _openMysteryBoxes = c.CreateEntry("open_mysterybox", true, "Open Mystery Boxes",
             "Tick to let the bot open the free Mystery Boxes in your Bag. Untick to keep them.");
@@ -965,36 +974,40 @@ public class OpenChestsTask : BotTask
             foundChest = true;
             var name = chest.name;
             var beforeQuantity = Ui.NumberOf(chest.Find("quantity"));
+            var preview = PreviewFor(name);
             yield return Ui.Click(chest, 1.2f);
-            yield return Ui.WaitFor(Preview, 2f);
-            if (!Ui.Visible(Preview))
+            yield return Ui.WaitFor(preview, 2f);
+            if (!Ui.Visible(preview))
             {
                 Logger.Info($"[Chests] Button click on {name} showed no preview; sending a pointer click.");
                 Ui.PointerClick(chest);
-                yield return Ui.WaitFor(Preview, 4f);
+                yield return Ui.WaitFor(preview, 4f);
             }
 
-            if (!Ui.Visible(Preview))
+            if (!Ui.Visible(preview))
             {
                 Logger.Warning($"[Chests] Clicking {name} did not open its preview; stopping.");
                 break;
             }
 
-            if (Ui.Visible(Preview + "/chestRequirementBg"))
+            if (Ui.Visible(preview + "/chestRequirementBg"))
             {
                 Logger.Info($"[Chests] {name} has a requirement; keeping it.");
                 skip.Add(name.ToLowerInvariant());
                 kept[name] = "requirement";
-                yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                yield return Ui.Click(preview + "/closeButton", 0.6f);
                 continue;
             }
 
             // Keep one chest for the next daily quest: only the last eligible stack is touched, and it is opened
             // in steps that always leave at least one behind.
             var options = new[] { "openxMax", "openx10", "openx1" };
-            if (_keepForDaily?.Value == true)
+            // Oracle's gifts are not counted for the daily quest: they neither keep one back nor stop a plain chest
+            // from being the one that is kept.
+            if (_keepForDaily?.Value == true && PreviewFor(name) == Preview)
             {
                 var others = Ui.VisibleChildren(Content).Count(t => t.name != name &&
+                    !string.Equals(t.name, OraclesGiftId, StringComparison.OrdinalIgnoreCase) &&
                     SupportedChests.Contains(t.name) && !skip.Contains(t.name.ToLowerInvariant()) &&
                     Ui.NumberOf(t.Find("quantity")) > 0);
                 if (others == 0)
@@ -1005,7 +1018,7 @@ public class OpenChestsTask : BotTask
                         Logger.Info($"[Chests] Keeping the last {name} chest for tomorrow's daily quest.");
                         skip.Add(name.ToLowerInvariant());
                         kept[name] = "saved for the daily quest";
-                        yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                        yield return Ui.Click(preview + "/closeButton", 0.6f);
                         continue;
                     }
                     options = plan;
@@ -1017,7 +1030,7 @@ public class OpenChestsTask : BotTask
             {
                 foreach (var option in options)
                 {
-                    var b = Ui.Find(Preview + "/openingOptions/" + option);
+                    var b = Ui.Find(preview + "/openingOptions/" + option);
                     if (Ui.Clickable(b) && b.Find("chestIcon") != null && b.Find("chestIcon").gameObject.activeInHierarchy)
                     {
                         open = b;
@@ -1033,7 +1046,7 @@ public class OpenChestsTask : BotTask
                 Logger.Info($"[Chests] {name} has no safe free opening option; keeping it.");
                 skip.Add(name.ToLowerInvariant());
                 kept[name] = "no safe free opening option";
-                yield return Ui.Click(Preview + "/closeButton", 0.6f);
+                yield return Ui.Click(preview + "/closeButton", 0.6f);
                 continue;
             }
 
@@ -1057,7 +1070,7 @@ public class OpenChestsTask : BotTask
             }
 
             if (Ui.Clickable(Opening + "/closeButton")) yield return Ui.Click(Opening + "/closeButton", 1f);
-            if (Ui.Visible(Preview)) yield return Ui.Click(Preview + "/closeButton", 0.6f);
+            if (Ui.Visible(preview)) yield return Ui.Click(preview + "/closeButton", 0.6f);
 
             // Gear drops raise a "New items" popup whose Equip button is also its close button.
             for (var n = 0; n < 5 && Ui.Visible(NewItems); n++)

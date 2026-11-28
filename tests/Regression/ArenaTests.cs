@@ -366,10 +366,20 @@ internal static class ArenaTests
 
         f = Setup();
         f.IntSetting("arena_squad").Value = 2;
+        f.BoolSetting("fight_if_switch_fails").Value = false;
         SquadApplier.OnSet = slot => SquadApplier.Active = slot == 2 ? 3 : slot;
         Run(f.Task.Execute());
         Check(f.FightClicks == 0 && SquadApplier.Requests.SequenceEqual(new[] { 2, 1 }) && SquadApplier.Active == 1,
             "A failed squad switch was not stopped and restored.");
+
+        // Default: the game ignores the switch, so the Arena fights with the squad that is active instead of skipping.
+        SquadApplier.OnSet = null;
+        f = Setup();
+        f.IntSetting("arena_squad").Value = 2;
+        SquadApplier.OnSet = slot => SquadApplier.Active = slot == 2 ? 3 : slot;
+        Run(f.Task.Execute());
+        Check(f.FightClicks == 1 && SquadApplier.Active == 1,
+            "A failed squad switch did not fall back to fighting with the current squad.");
 
         f = Setup();
         f.IntSetting("arena_squad").Value = 2;

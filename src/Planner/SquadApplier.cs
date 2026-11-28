@@ -513,6 +513,7 @@ public static class SquadApplier
             var until = Time.unscaledTime + 5f;
             while (!Done() && Time.unscaledTime < until) yield return new WaitForSeconds(0.25f);
             if (attempt == 0 && !Done()) Logger.Debug($"[Squads] After the click: {SwitchState()}.");
+            if (!Done()) Logger.Debug($"[Squads] Attempt {attempt + 1} result: {ScreenState()}.");
         }
 
         if (!Done())
@@ -526,6 +527,23 @@ public static class SquadApplier
         if (Done()) Logger.Info($"[Squads] Squad {slot} is now active ({why}).");
         else Logger.Warning($"[Squads] Could not set squad {slot} active ({why}). {SwitchState()}.");
         yield return Watchdog.ForceClearAll($"after switching to squad {slot}");
+    }
+
+    /// <summary>
+    ///     What is on screen and what the game is doing right after a "Set active" click that changed nothing, so the
+    ///     log says whether the screen closed, a confirmation is open or the game is waiting for its server.
+    /// </summary>
+    private static string ScreenState()
+    {
+        try
+        {
+            var popups = string.Join(", ", Ui.VisibleChildren(P.Popups).Select(p => p.name));
+            var menus = string.Join(", ", Ui.VisibleChildren(P.Menus).Select(m => m.name));
+            var waiting = SafeWaiting(Mech());
+            return $"squads screen {(Ui.Visible(Squads) ? "open" : "closed")}, game waiting for server {waiting}, " +
+                   $"popups [{popups}], menus [{menus}], {SwitchState()}";
+        }
+        catch (Exception e) { return "state unreadable: " + e.Message; }
     }
 
     private static WarMachineFormation Formation(int slot)
