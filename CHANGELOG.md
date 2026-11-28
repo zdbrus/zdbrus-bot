@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 0.7.78 (2026-11-28)
+- **Updates install no matter how the game is closed.** The updater only started when the game announced its own quit, so closing it any other way (Steam stop, a crash, a window that was killed) left the old version in place, and one player waited 5 minutes for an update that never came. The helper now starts as soon as a newer release is found and installs when the game ends. The quit step is also guarded so an error while closing can no longer skip the update.
+
 ## 0.7.77 (2026-11-27)
 - **The Arena fights even when the game ignores the squad switch.** In the logs of two players the game never switched to the Arena Squad, so every Arena run ended with "no fight was attempted" and the Arena was never fought. The bot now fights with the squad that is active and says so in the log. New setting "Fight If Squad Switch Fails" (on by default); turn it off to skip the Arena instead, or set Arena Squad to 0 to stop the switch attempts.
 - **The squad switch logs what happens after the click** (is the squads screen still open, which popups are up, is the game waiting for its server), so the cause can be found from the next log.

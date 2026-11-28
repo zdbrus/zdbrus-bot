@@ -44,12 +44,19 @@ public class Main : MelonMod
 
     public override void OnApplicationQuit()
     {
-        SuspendAutomation();
-        ArenaMatchupRecorder.Flush();
-        Planner.PlannerServer.Stop();
-        UpdateCheck.StopProbe();
-        if (BotSettings.AutoUpdate || BotSettings.QuitForceSeconds > 0)
-            UpdateCheck.ScheduleOnExit(BotSettings.AutoUpdate, BotSettings.QuitForceSeconds);
+        // The updater helper goes first and each step is guarded: an error while shutting down must never stop the
+        // update from being scheduled (a quit that skipped it left players on an old version).
+        try
+        {
+            if (BotSettings.AutoUpdate || BotSettings.QuitForceSeconds > 0)
+                UpdateCheck.ScheduleOnExit(BotSettings.AutoUpdate, BotSettings.QuitForceSeconds);
+        }
+        catch { /* nothing more can be done while the game is closing */ }
+
+        try { SuspendAutomation(); } catch { }
+        try { ArenaMatchupRecorder.Flush(); } catch { }
+        try { Planner.PlannerServer.Stop(); } catch { }
+        try { UpdateCheck.StopProbe(); } catch { }
     }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)

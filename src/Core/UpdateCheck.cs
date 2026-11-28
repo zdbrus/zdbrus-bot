@@ -18,6 +18,7 @@ internal static class UpdateCheck
     public static UpdateStatus Status { get; private set; } = UpdateStatus.Disabled;
     public static string Newer { get; private set; }
 
+    private static bool _earlyHelperStarted;
     private static Process _probe;
     private static DateTime _probeStarted;
     private static DateTime _nextCheck;
@@ -119,7 +120,12 @@ try {
             if (result == UpdateStatus.Failed)
                 Logger.Warning($"[Update] Could not check the latest release: {(string.IsNullOrEmpty(error) ? "invalid release version" : error)}.");
             else if (result == UpdateStatus.Available)
+            {
                 Logger.Info($"[Update] {latest} is available; close the game and wait for the updater before reopening.");
+                // Do not rely on the game announcing its own quit: a helper started now waits for the game process
+                // to end, however it ends (window closed, Steam stop, crash), and then installs.
+                if (BotSettings.AutoUpdate) ScheduleOnExit(true, 0, true);
+            }
         }
         catch (Exception e)
         {
@@ -194,10 +200,15 @@ try {
     }
 
     /// <summary>Starts the helper that outlives the game: it can close a game that hangs on exit and install updates.</summary>
-    public static void ScheduleOnExit(bool install, int forceAfterSeconds)
+    public static void ScheduleOnExit(bool install, int forceAfterSeconds, bool early = false)
     {
         try
         {
+            // The early helper already installs when the game ends; the helper started at quit only forces a hung
+            // game to close, so two helpers never download and replace the DLL at the same time.
+            if (!early && _earlyHelperStarted) install = false;
+            if (early && _earlyHelperStarted) return;
+            if (!install && forceAfterSeconds <= 0) return;
             var dll = Path.Combine(MelonEnvironment.MelonBaseDirectory, "Mods", "ZdbrusBot.dll");
             if (install && !File.Exists(dll))
             {
@@ -208,7 +219,9 @@ try {
             var userData = Path.Combine(MelonEnvironment.MelonBaseDirectory, "UserData");
             Directory.CreateDirectory(userData);
             var script = Path.Combine(userData, "ZdbrusBot_update.ps1");
-            File.WriteAllText(script, InstallerScript);
+            // A helper that is still running may hold the script open, so rewrite it only when it differs.
+            if (!File.Exists(script) || File.ReadAllText(script) != InstallerScript)
+                File.WriteAllText(script, InstallerScript);
             var log = Path.Combine(userData, "ZdbrusBot_update.log");
 
             var game = Process.GetCurrentProcess();
@@ -221,10 +234,15 @@ try {
                 CreateNoWindow = true
             };
             Process.Start(psi);
+            if (early)
+            {
+                _earlyHelperStarted = true;
+                Logger.Debug("[Update] The updater is waiting for the game to close.");
+            }
         }
         catch (Exception e)
         {
-            Logger.Debug($"[Update] Could not start the updater: {e.Message}");
+            Logger.Warning($"[Update] Could not start the updater: {e.Message}");
         }
     }
 }
