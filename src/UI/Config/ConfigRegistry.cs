@@ -627,8 +627,8 @@ internal static class ConfigRegistry
             "Tasks close it when they need the screen. Default: off.",
 
         ["auto_upgrade/priority_mode"] =
-            "Balance upgrades selected slots in order each burst.\n" +
-            "Focus first saves gold for the first visible slot, even when it cannot afford an upgrade."
+            "Balance buys one upgrade per selected slot in turn.\n" +
+            "Focus first buys the first slot as often as it can, then the next ones, until nothing is affordable."
     };
 
     /// <summary>Reads the sections of our file, in the order MelonLoader registered them.</summary>

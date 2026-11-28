@@ -128,8 +128,8 @@ public static class AutoUpgrade
             "priority_mode",
             "balanced",
             "Priority Strategy",
-            "Balance upgrades each selected slot in order. Focus first spends only on the first visible " +
-            "selected slot and saves gold for it when it cannot afford another upgrade."
+            "Balance buys one upgrade per selected slot in turn. Focus first buys the first visible selected " +
+            "slot as many times as it can, then moves on to the next slots, and repeats until nothing is affordable."
         );
 
         _everySeconds = section.CreateEntry(
@@ -398,7 +398,8 @@ public static class AutoUpgrade
 
 
         var visibleButtons = 0;
-        var rounds = priorityMode == UncappedUpgradeMode.Balanced ? BalancedRoundLimit : 1;
+        // Focus drains the first slot, carries on down the list and comes back round, so every point gets spent.
+        var rounds = BalancedRoundLimit;
         for (var round = 0; round < rounds && !ShouldStopSweep(priorityMode); round++)
         {
             // The first round always finishes, as before; further rounds give way to a waiting task.
@@ -419,7 +420,6 @@ public static class AutoUpgrade
                     pressed++;
                     yield return GapBetweenButtonsWait;
                 }
-                if (!UncappedUpgradePolicy.ContinueAfterTarget(priorityMode, true)) break;
             }
 
             // A round where nothing could be bought means every selected slot is out of reach for now.

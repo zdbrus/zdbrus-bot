@@ -1081,13 +1081,16 @@ if ($Mode -eq 'force') {
 
         mode.Value = "focus";
         RunCycle("focus");
-        Check(ExecuteEvents.Targets.Count == 20 &&
-              ExecuteEvents.Targets.All(path => path.EndsWith("/heroSlot/lvlUpButton")),
-            "Focused spending fell through or did not finish its bounded burst.");
+        var focusTargets = ExecuteEvents.Targets.ToList();
+        Check(focusTargets.Count > 20 &&
+              focusTargets.Take(20).All(path => path.EndsWith("/heroSlot/lvlUpButton")) &&
+              focusTargets.Skip(20).Take(20).All(path => path.EndsWith("/customUpgrade/buyButton")),
+            "Focused spending did not drain the first slot and then carry on to the next one.");
 
         hero.interactable = false;
         RunCycle("focus");
-        Check(ExecuteEvents.Targets.Count == 0, "Focused spending fell through an unaffordable top slot.");
+        Check(ExecuteEvents.Targets.Count > 0 && ExecuteEvents.Targets.All(path => path.EndsWith("/customUpgrade/buyButton")),
+            "Focused spending stopped at an unaffordable top slot instead of moving on to the next one.");
 
         RunCycle("balanced");
         Check(ExecuteEvents.Targets.Count == 20 &&
